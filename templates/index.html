@@ -3,52 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valifi Credit Search</title>
+  <title>Valifi TransUnion Pull</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
   <div class="container">
-    <h1>Valifi Credit Agreement Lookup</h1>
+    <h1>Valifi: TransUnion Credit Report</h1>
 
     <form id="searchForm" method="post" action="/query">
+      <!-- Name & DOB fields -->
       <div class="form-group">
-        <label for="first_name">First Name</label>
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr" />
+      </div>
+
+      <div class="form-group">
+        <label for="first_name">First Name *</label>
         <input type="text" id="first_name" name="first_name" required />
       </div>
 
       <div class="form-group">
-        <label for="last_name">Last Name</label>
+        <label for="middle_name">Middle Name</label>
+        <input type="text" id="middle_name" name="middle_name" />
+      </div>
+
+      <div class="form-group">
+        <label for="last_name">Last Name *</label>
         <input type="text" id="last_name" name="last_name" required />
       </div>
 
       <div class="form-group">
-        <label for="date_of_birth">Date of Birth (YYYY-MM-DD)</label>
-        <input type="text" id="date_of_birth" name="date_of_birth" placeholder="e.g. 1980-12-31" required />
+        <label for="date_of_birth">Date of Birth (YYYY-MM-DD) *</label>
+        <input
+          type="text"
+          id="date_of_birth"
+          name="date_of_birth"
+          placeholder="e.g. 1980-12-31"
+          required
+        />
       </div>
 
-      <button type="submit">Search</button>
+      <!-- Current Address fields -->
+      <h2>Current Address *</h2>
+      <div class="form-group">
+        <label for="flat">Flat / Unit</label>
+        <input type="text" id="flat" name="flat" placeholder="e.g. 1" required />
+      </div>
+
+      <div class="form-group">
+        <label for="street">Street *</label>
+        <input type="text" id="street" name="street" placeholder="e.g. Example Street" required />
+      </div>
+
+      <div class="form-group">
+        <label for="post_town">Post Town *</label>
+        <input type="text" id="post_town" name="post_town" placeholder="e.g. TEST TOWN" required />
+      </div>
+
+      <div class="form-group">
+        <label for="post_code">Post Code *</label>
+        <input type="text" id="post_code" name="post_code" placeholder="e.g. AB1 2CD" required />
+      </div>
+
+      <!-- Submit button -->
+      <button type="submit">Get TransUnion Report</button>
     </form>
 
     <div id="result">
-      <!-- We’ll inject the JSON response here via JavaScript -->
+      <!-- We’ll print the JSON response here -->
     </div>
   </div>
 
   <script>
-    // Optional: intercept the form submit to display results below without full page reload
+    // Intercept the form submit so we can display results inline without a full page reload
     document.getElementById("searchForm").addEventListener("submit", async function (e) {
       e.preventDefault();
 
-      const firstName = document.getElementById("first_name").value.trim();
-      const lastName = document.getElementById("last_name").value.trim();
-      const dob = document.getElementById("date_of_birth").value.trim();
+      const form = e.target;
+      const formData = new URLSearchParams(new FormData(form));
 
-      if (!firstName || !lastName || !dob) {
-        alert("All fields are required.");
-        return;
-      }
-
-      // Show a “Loading…” state
+      // Show a “Loading…” message
       const resultDiv = document.getElementById("result");
       resultDiv.innerHTML = "<p>Loading…</p>";
 
@@ -58,11 +92,7 @@
           headers: {
             "Content-Type": "application/x-www-form-urlencoded"
           },
-          body: new URLSearchParams({
-            first_name: firstName,
-            last_name: lastName,
-            date_of_birth: dob
-          })
+          body: formData
         });
 
         if (!response.ok) {
@@ -72,10 +102,8 @@
         }
 
         const data = await response.json();
-        // Pretty‐print the JSON in a <pre> block:
-        resultDiv.innerHTML = "<h2>Result:</h2><pre>" +
-          JSON.stringify(data, null, 2) +
-          "</pre>";
+        resultDiv.innerHTML =
+          "<h2>TransUnion JSON Response:</h2><pre>" + JSON.stringify(data, null, 2) + "</pre>";
       } catch (err) {
         resultDiv.innerHTML = `<pre style="color:red;">Network or server error: ${err}</pre>`;
       }
