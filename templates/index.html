@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valifi Credit Search</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <h1>Valifi Credit Agreement Lookup</h1>
+
+    <form id="searchForm" method="post" action="/query">
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name" required />
+      </div>
+
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name" required />
+      </div>
+
+      <div class="form-group">
+        <label for="date_of_birth">Date of Birth (YYYY-MM-DD)</label>
+        <input type="text" id="date_of_birth" name="date_of_birth" placeholder="e.g. 1980-12-31" required />
+      </div>
+
+      <button type="submit">Search</button>
+    </form>
+
+    <div id="result">
+      <!-- We’ll inject the JSON response here via JavaScript -->
+    </div>
+  </div>
+
+  <script>
+    // Optional: intercept the form submit to display results below without full page reload
+    document.getElementById("searchForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const firstName = document.getElementById("first_name").value.trim();
+      const lastName = document.getElementById("last_name").value.trim();
+      const dob = document.getElementById("date_of_birth").value.trim();
+
+      if (!firstName || !lastName || !dob) {
+        alert("All fields are required.");
+        return;
+      }
+
+      // Show a “Loading…” state
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "<p>Loading…</p>";
+
+      try {
+        const response = await fetch("/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: new URLSearchParams({
+            first_name: firstName,
+            last_name: lastName,
+            date_of_birth: dob
+          })
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          resultDiv.innerHTML = `<pre style="color:red;">Error ${response.status}: ${text}</pre>`;
+          return;
+        }
+
+        const data = await response.json();
+        // Pretty‐print the JSON in a <pre> block:
+        resultDiv.innerHTML = "<h2>Result:</h2><pre>" +
+          JSON.stringify(data, null, 2) +
+          "</pre>";
+      } catch (err) {
+        resultDiv.innerHTML = `<pre style="color:red;">Network or server error: ${err}</pre>`;
+      }
+    });
+  </script>
+</body>
+</html>
