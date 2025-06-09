@@ -211,25 +211,39 @@
     });
 
     // Send OTP
+
     sendOtpBtn.addEventListener('click', async () => {
       alert('📩 [DEBUG] Send OTP clicked');
-      console.log('[DEBUG] Fetching /otp/request');
-      const mobile = document.getElementById('mobile').value.trim();
-      if (!mobile) { alert('Please enter a mobile number'); return; }
+
+      // grab raw input and strip non-digits
+      const raw   = document.getElementById('mobile').value;
+      const mobile = raw.replace(/\D/g, '');
+
+      if (!mobile) {
+        alert('Please enter a valid mobile number (digits only)');
+        return;
+      }
+
+      console.log('[DEBUG] Sending OTP to:', mobile);
 
       try {
         const res = await fetch('/otp/request', {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ mobile })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ mobile })   // sends { "mobile": "447973288569" }
         });
         console.log('[DEBUG] otp/request status:', res.status);
         const data = await res.json();
         console.log('[DEBUG] otp/request JSON:', data);
+
         if (!res.ok) {
-          alert(`OTP request failed: ${data.error||res.status}`);
+          alert(`OTP request failed: ${data.error || res.status}`);
           return;
         }
+
+        // success
         otpGroup.style.display = 'block';
       } catch (err) {
         console.error('[DEBUG] otp/request error', err);
