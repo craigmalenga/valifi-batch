@@ -139,7 +139,7 @@
         const res  = await fetch('/lookup-address', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ postCode: pc })    // ← POST body
+          body: JSON.stringify({ postCode: pc })
         });
         console.log('[DEBUG] lookup-address status:', res.status);
         const data = await res.json();
@@ -149,12 +149,14 @@
           addrErr.style.display = 'block';
           return;
         }
-        // populate from data.addresses
+
+        // Populate dropdown: use name or flat, then street1, postTown
         addrSel.innerHTML = '<option value="">Pick an address…</option>';
-        (data.addresses||[]).forEach(a => {
+        (data.addresses || []).forEach(a => {
           const o = document.createElement('option');
           o.value = JSON.stringify(a);
-          o.textContent = `${a.name} ${a.street1}, ${a.postTown}`;  // ← TU/Equifax keys
+          const label = a.name || a.flat || '';
+          o.textContent = `${label} ${a.street1}, ${a.postTown}`;
           addrSel.appendChild(o);
         });
         addrCont.style.display = 'block';
@@ -165,14 +167,14 @@
       }
     });
 
-    // On address select
+    // On address select → fill form fields
     addrSel.addEventListener('change', e => {
-      const a = JSON.parse(e.target.value||'{}');
-      if (!a.name) return;
-      document.getElementById('flat').value      = a.name     || '';
-      document.getElementById('street').value    = a.street1  || '';
-      document.getElementById('post_town').value = a.postTown || '';
-      document.getElementById('post_code').value = a.postcode || '';
+      const a = JSON.parse(e.target.value || '{}');
+      if (!a.name && !a.flat) return;
+      document.getElementById('flat').value      = a.name  || a.flat  || '';
+      document.getElementById('street').value    = a.street1         || '';
+      document.getElementById('post_town').value = a.postTown        || '';
+      document.getElementById('post_code').value = a.postcode        || '';
     });
 
     // Send OTP
@@ -186,7 +188,7 @@
         const res = await fetch('/otp/request', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({mobile})
+          body: JSON.stringify({ mobile })
         });
         console.log('[DEBUG] otp/request status:', res.status);
         const data = await res.json();
@@ -214,7 +216,7 @@
         const res  = await fetch('/otp/verify', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({mobile,code})
+          body: JSON.stringify({ mobile, code })
         });
         console.log('[DEBUG] otp/verify status:', res.status);
         const data = await res.json();
@@ -229,7 +231,7 @@
       }
     });
 
-    // Final form POST → /query (builds the TU report payload on the server)
+    // Final form submit → /query
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
