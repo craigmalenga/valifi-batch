@@ -40,16 +40,16 @@
         <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr"/>
       </div>
       <div class="form-group"><label for="first_name">First Name *</label>
-        <input type="text" id="first_name" name="first_name" required/>
+        <input type="text" id="first_name" name="firstName" required/>
       </div>
       <div class="form-group"><label for="middle_name">Middle Name</label>
-        <input type="text" id="middle_name" name="middle_name"/>
+        <input type="text" id="middle_name" name="middleName"/>
       </div>
       <div class="form-group"><label for="last_name">Last Name *</label>
-        <input type="text" id="last_name" name="last_name" required/>
+        <input type="text" id="last_name" name="lastName" required/>
       </div>
       <div class="form-group"><label for="date_of_birth">Date of Birth *</label>
-        <input type="text" id="date_of_birth" name="date_of_birth" placeholder="YYYY-MM-DD" required/>
+        <input type="text" id="date_of_birth" name="dateOfBirth" placeholder="YYYY-MM-DD" required/>
       </div>
 
       <!-- 2) Current Address -->
@@ -61,10 +61,10 @@
         <input type="text" id="street" name="street" placeholder="e.g. Example Street" required/>
       </div>
       <div class="form-group"><label for="post_town">Post Town *</label>
-        <input type="text" id="post_town" name="post_town" placeholder="e.g. TEST TOWN" required/>
+        <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required/>
       </div>
       <div class="form-group"><label for="post_code">Post Code *</label>
-        <input type="text" id="post_code" name="post_code" placeholder="e.g. AB1 2CD" required/>
+        <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required/>
       </div>
 
       <!-- 3) OR lookup by postcode -->
@@ -122,40 +122,44 @@
       document.getElementById('searchForm').reset();
       addrCont.style.display = 'none';
       addrErr.style.display  = 'none';
-      otpGroup.style.display = 'block';  // now always visible
+      otpGroup.style.display = 'block';
       otpGroup.querySelector('#otp_status').textContent = '';
       submitBtn.disabled = true;
     });
 
-    // Address lookup
+    // Address lookup (POST, matches your Postman)
     lookupBtn.addEventListener('click', async () => {
       alert('🔍 [DEBUG] Find Address clicked');
-      console.log('[DEBUG] Fetching /address_lookup');
+      console.log('[DEBUG] Fetching /lookup-address');
       const pc = document.getElementById('lookup_postcode').value.trim();
       addrErr.style.display = 'none';
       if (!pc) { alert('Please enter a postcode'); return; }
 
       try {
-        const res  = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
-        console.log('[DEBUG] address_lookup status:', res.status);
+        const res  = await fetch('/lookup-address', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ postCode: pc })    // ← POST body
+        });
+        console.log('[DEBUG] lookup-address status:', res.status);
         const data = await res.json();
-        console.log('[DEBUG] address_lookup JSON:', data);
+        console.log('[DEBUG] lookup-address JSON:', data);
         if (!res.ok) {
           addrErr.textContent = data.error || 'Lookup failed';
           addrErr.style.display = 'block';
           return;
         }
-        // populate
+        // populate from data.addresses
         addrSel.innerHTML = '<option value="">Pick an address…</option>';
         (data.addresses||[]).forEach(a => {
           const o = document.createElement('option');
           o.value = JSON.stringify(a);
-          o.textContent = `${a.flat||''} ${a.street}, ${a.town}`;
+          o.textContent = `${a.name} ${a.street1}, ${a.postTown}`;  // ← TU/Equifax keys
           addrSel.appendChild(o);
         });
         addrCont.style.display = 'block';
       } catch (err) {
-        console.error('[DEBUG] address_lookup error', err);
+        console.error('[DEBUG] lookup-address error', err);
         addrErr.textContent = 'Network error';
         addrErr.style.display = 'block';
       }
@@ -164,11 +168,11 @@
     // On address select
     addrSel.addEventListener('change', e => {
       const a = JSON.parse(e.target.value||'{}');
-      if (!a.flat) return;
-      document.getElementById('flat').value      = a.flat     || '';
-      document.getElementById('street').value    = a.street   || '';
-      document.getElementById('post_town').value = a.town     || '';
-      document.getElementById('post_code').value = a.postCode || '';
+      if (!a.name) return;
+      document.getElementById('flat').value      = a.name     || '';
+      document.getElementById('street').value    = a.street1  || '';
+      document.getElementById('post_town').value = a.postTown || '';
+      document.getElementById('post_code').value = a.postcode || '';
     });
 
     // Send OTP
@@ -191,7 +195,6 @@
           alert(`OTP request failed: ${data.error||res.status}`);
           return;
         }
-        // unhide OTP group just in case
         otpGroup.style.display = 'block';
       } catch (err) {
         console.error('[DEBUG] otp/request error', err);
@@ -223,6 +226,40 @@
       } catch (err) {
         console.error('[DEBUG] otp/verify error', err);
         alert('Network error verifying OTP');
+      }
+    });
+
+    // Final form POST → /query (builds the TU report payload on the server)
+    const form = document.getElementById('searchForm');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+
+      const payload = {
+        title:           document.getElementById('title').value.trim(),
+        firstName:       document.getElementById('first_name').value.trim(),
+        middleName:      document.getElementById('middle_name').value.trim(),
+        lastName:        document.getElementById('last_name').value.trim(),
+        dateOfBirth:     document.getElementById('date_of_birth').value.trim(),
+        flat:            document.getElementById('flat').value.trim(),
+        street:          document.getElementById('street').value.trim(),
+        postTown:        document.getElementById('post_town').value.trim(),
+        postCode:        document.getElementById('post_code').value.trim(),
+        clientReference: 'report'
+      };
+
+      try {
+        const res    = await fetch('/query', {
+          method:  'POST',
+          headers: {'Content-Type':'application/json'},
+          body:    JSON.stringify(payload)
+        });
+        const result = await res.json();
+        document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+      } catch(err) {
+        document.getElementById('result').textContent = 'Error: ' + err;
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   });

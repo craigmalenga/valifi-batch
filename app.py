@@ -27,6 +27,7 @@ def get_valifi_token():
 
 # ─── 3) Postcode → address lookup ───────────────────────────────────────────────
 @app.route("/lookup-address", methods=["POST"])
+
 def lookup_address():
     postcode = request.json.get("postCode", "").strip()
     if not postcode:
@@ -43,9 +44,14 @@ def lookup_address():
         headers=headers,
         timeout=15
     )
-    if resp.status_code != 200:
-        return jsonify(error=resp.text), resp.status_code
-    return jsonify(resp.json()), 200
+    # drill into the Valifi response and return just the addresses array
+    addresses = (
+        resp.json()
+            .get("data", {})
+            .get("listAddressByPostcodeResponse", {})
+            .get("matchedStructuredAddress", [])
+    )
+    return jsonify(addresses=addresses), 200
 
 
 # ─── 4) OTP request & verify ───────────────────────────────────────────────────
