@@ -184,7 +184,7 @@
       document.getElementById("otp_group").style.display = "none";
       document.getElementById("otp_status").textContent = "";
       document.getElementById("address_error").style.display = "none";
-      document.querySelector("button[type=submit]").disabled = true;
+      document.querySelector("button[type=\"submit\"]").disabled = true;
     });
 
     // ─── Postcode lookup with error handling ───────────────────────────────────
@@ -266,7 +266,7 @@
         : "❌ Try again";
 
       if (ok) {
-        document.querySelector("button[type=submit]").disabled = false;
+        document.querySelector("button[type=\"submit\"]").disabled = false;
       }
     });
   </script>
