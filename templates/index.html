@@ -60,27 +60,23 @@
     <h1>Valifi: TransUnion Credit Report</h1>
 
     <form id="searchForm" method="post" action="/query">
-      <!-- Name & DOB -->
+      <!-- 1) Name & DOB -->
       <div class="form-group">
         <label for="title">Title</label>
         <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr" />
       </div>
-
       <div class="form-group">
         <label for="first_name">First Name *</label>
         <input type="text" id="first_name" name="first_name" required />
       </div>
-
       <div class="form-group">
         <label for="middle_name">Middle Name</label>
         <input type="text" id="middle_name" name="middle_name" />
       </div>
-
       <div class="form-group">
         <label for="last_name">Last Name *</label>
         <input type="text" id="last_name" name="last_name" required />
       </div>
-
       <div class="form-group">
         <label for="date_of_birth">Date of Birth *</label>
         <input
@@ -92,14 +88,12 @@
         />
       </div>
 
-      <!-- Current Address -->
+      <!-- 2) Current Address -->
       <h2>Current Address *</h2>
-
       <div class="form-group">
         <label for="flat">Flat / Unit</label>
         <input type="text" id="flat" name="flat" placeholder="e.g. 1" required />
       </div>
-
       <div class="form-group">
         <label for="street">Street *</label>
         <input
@@ -110,7 +104,6 @@
           required
         />
       </div>
-
       <div class="form-group">
         <label for="post_town">Post Town *</label>
         <input
@@ -121,7 +114,6 @@
           required
         />
       </div>
-
       <div class="form-group">
         <label for="post_code">Post Code *</label>
         <input
@@ -133,16 +125,10 @@
         />
       </div>
 
-      <!-- OR lookup by postcode -->
-      <div class="form-group lookup-hint">
-        <em>Or look up by postcode:</em>
-      </div>
+      <!-- 3) OR lookup by postcode -->
+      <div class="form-group"><em>Or look up by postcode:</em></div>
       <div class="form-group lookup-postcode">
-        <input
-          type="text"
-          id="lookup_postcode"
-          placeholder="Enter postcode…"
-        />
+        <input type="text" id="lookup_postcode" placeholder="Enter postcode…" />
         <button type="button" id="address_lookup_btn">Find Address</button>
       </div>
       <div class="form-group" id="address_container" style="display:none;">
@@ -153,14 +139,13 @@
       </div>
       <div id="address_error">Failed to lookup address</div>
 
-      <!-- Mobile + OTP -->
+      <!-- 4) Mobile + OTP -->
       <h2>Mobile Verification *</h2>
       <div class="form-group">
         <label for="mobile">Mobile Number</label>
         <input type="text" id="mobile" name="mobile" required />
         <button type="button" id="send_otp">Send OTP</button>
       </div>
-
       <div class="form-group" id="otp_group" style="display:none;">
         <label for="otp">Enter OTP</label>
         <input type="text" id="otp" name="otp" />
@@ -168,7 +153,7 @@
         <span id="otp_status"></span>
       </div>
 
-      <!-- Actions -->
+      <!-- 5) Actions -->
       <button type="button" id="clear_btn">Clear All</button>
       <button type="submit" disabled>Get TransUnion Report</button>
     </form>
@@ -177,97 +162,100 @@
   </div>
 
   <script>
-    // ─── Clear all fields ───────────────────────────────────────────────────────
-    document.getElementById("clear_btn").addEventListener("click", () => {
-      document.getElementById("searchForm").reset();
-      document.getElementById("address_container").style.display = "none";
-      document.getElementById("otp_group").style.display = "none";
-      document.getElementById("otp_status").textContent = "";
-      document.getElementById("address_error").style.display = "none";
-      document.querySelector("button[type=\"submit\"]").disabled = true;
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const form       = document.getElementById('searchForm');
+      const lookupBtn  = document.getElementById('address_lookup_btn');
+      const addrSel    = document.getElementById('address_select');
+      const addrCont   = document.getElementById('address_container');
+      const addrErr    = document.getElementById('address_error');
+      const sendOtpBtn = document.getElementById('send_otp');
+      const verifyBtn  = document.getElementById('verify_otp');
+      const otpGroup   = document.getElementById('otp_group');
+      const submitBtn  = form.querySelector('button[type="submit"]');
+      const clearBtn   = document.getElementById('clear_btn');
 
-    // ─── Postcode lookup with error handling ───────────────────────────────────
-    async function lookupAddress() {
-      const pc = document.getElementById("lookup_postcode").value.trim();
-      const errDiv = document.getElementById("address_error");
-      errDiv.style.display = "none";
-
-      if (!pc) return;
-      let res, data;
-      try {
-        res = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
-      } catch (e) {
-        errDiv.textContent = "Network error";
-        errDiv.style.display = "block";
-        return;
-      }
-      data = await res.json();
-
-      if (!res.ok) {
-        errDiv.textContent = data.error || JSON.stringify(data);
-        errDiv.style.display = "block";
-        return;
-      }
-
-      const sel = document.getElementById("address_select");
-      sel.innerHTML = `<option value="">Pick an address…</option>`;
-      (data.addresses || []).forEach(addr => {
-        const o = document.createElement("option");
-        o.value = JSON.stringify(addr);
-        o.textContent = `${addr.flat||""} ${addr.street}, ${addr.town}`;
-        sel.appendChild(o);
-      });
-      document.getElementById("address_container").style.display = "block";
-    }
-
-    document
-      .getElementById("address_lookup_btn")
-      .addEventListener("click", lookupAddress);
-
-    document
-      .getElementById("address_select")
-      .addEventListener("change", e => {
-        const addr = JSON.parse(e.target.value || "{}");
-        if (!addr) return;
-        document.getElementById("flat").value     = addr.flat   || "";
-        document.getElementById("street").value   = addr.street || "";
-        document.getElementById("post_town").value= addr.town   || "";
-        document.getElementById("post_code").value= addr.postCode|| "";
+      // Clear all
+      clearBtn.addEventListener('click', () => {
+        form.reset();
+        addrCont.style.display = 'none';
+        otpGroup.style.display = 'none';
+        addrErr.style.display  = 'none';
+        submitBtn.disabled     = true;
       });
 
-    // ─── Send OTP → show verify UI ────────────────────────────────────────────
-    document.getElementById("send_otp").addEventListener("click", async () => {
-      const mobile = document.getElementById("mobile").value.trim();
-      const res = await fetch("/otp/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile })
+      // Address lookup
+      lookupBtn.addEventListener('click', async () => {
+        alert('🔍 Address lookup clicked');
+        const pc = document.getElementById('lookup_postcode').value.trim();
+        addrErr.style.display = 'none';
+        if (!pc) { alert('Enter postcode'); return; }
+
+        try {
+          const res  = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
+          const data = await res.json();
+          if (!res.ok) {
+            addrErr.textContent = data.error || 'Lookup failed';
+            addrErr.style.display = 'block';
+            return;
+          }
+          // populate select
+          addrSel.innerHTML = '<option value="">Pick an address…</option>';
+          (data.addresses||[]).forEach(a => {
+            const o = document.createElement('option');
+            o.value = JSON.stringify(a);
+            o.textContent = `${a.flat||''} ${a.street}, ${a.town}`;
+            addrSel.appendChild(o);
+          });
+          addrCont.style.display = 'block';
+        } catch(e) {
+          addrErr.textContent = 'Network error';
+          addrErr.style.display = 'block';
+        }
       });
-      if (res.ok) {
-        document.getElementById("otp_group").style.display = "block";
-      }
-    });
 
-    // ─── Verify OTP → enable submit ───────────────────────────────────────────
-    document.getElementById("verify_otp").addEventListener("click", async () => {
-      const mobile = document.getElementById("mobile").value.trim();
-      const code   = document.getElementById("otp").value.trim();
-      const res    = await fetch("/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile, code })
+      // Populate manual fields on select
+      addrSel.addEventListener('change', e => {
+        const a = JSON.parse(e.target.value||'{}');
+        if (!a.flat) return;
+        document.getElementById('flat').value      = a.flat    || '';
+        document.getElementById('street').value    = a.street  || '';
+        document.getElementById('post_town').value = a.town    || '';
+        document.getElementById('post_code').value = a.postCode|| '';
       });
-      const json = await res.json();
-      const ok   = json.data?.result === "PASS";
 
-      document.getElementById("otp_status").textContent = ok
-        ? "✔ Verified"
-        : "❌ Try again";
+      // Send OTP
+      sendOtpBtn.addEventListener('click', async () => {
+        alert('📩 Send OTP clicked');
+        const mobile = document.getElementById('mobile').value.trim();
+        if (!mobile) { alert('Enter mobile'); return; }
+        const res = await fetch('/otp/request', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({mobile})
+        });
+        if (res.ok) {
+          otpGroup.style.display = 'block';
+        } else {
+          alert('Failed to send OTP');
+        }
+      });
 
-      if (ok) {
-        document.querySelector("button[type=\"submit\"]").disabled = false;
-      }
+      // Verify OTP
+      verifyBtn.addEventListener('click', async () => {
+        alert('🔐 Verify OTP clicked');
+        const mobile = document.getElementById('mobile').value.trim();
+        const code   = document.getElementById('otp').value.trim();
+        if (!code) { alert('Enter OTP'); return; }
+        const res  = await fetch('/otp/verify', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({mobile,code})
+        });
+        const json = await res.json();
+        const ok   = json.data?.result === 'PASS';
+        document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
+        if (ok) submitBtn.disabled = false;
+      });
     });
   </script>
 </body>
