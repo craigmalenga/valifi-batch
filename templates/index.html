@@ -6,52 +6,27 @@
   <title>Valifi: TransUnion Credit Report</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    .container {
-      max-width: 800px;
-      margin: auto;
-      padding: 20px;
-    }
+    .container { max-width: 800px; margin: auto; padding: 20px; }
     form {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem 2rem;
       align-items: start;
     }
-    form h2 {
-      grid-column: span 2;
-      margin-top: 1.5rem;
-    }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-    .lookup-postcode,
-    #otp_group,
-    #address_error,
-    #clear_btn,
-    button[type="submit"] {
+    form h2 { grid-column: span 2; margin-top: 1.5rem; }
+    .form-group { display: flex; flex-direction: column; }
+    .lookup-postcode, #address_error, #clear_btn, button[type="submit"] {
       grid-column: span 2;
     }
     .lookup-postcode {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-end;
+      display: flex; gap: 0.5rem; align-items: flex-end;
     }
-    #clear_btn {
-      margin-top: 1rem;
-      background: #eee;
-      border: 1px solid #ccc;
-      padding: 0.5rem;
-    }
-    @media (max-width: 600px) {
+    #address_error { color: #b00; display: none; }
+    @media (max-width:600px) {
       form { grid-template-columns: 1fr; }
-      .lookup-postcode, #otp_group, #address_error, #clear_btn, button[type="submit"] {
+      .lookup-postcode, #address_error, #clear_btn, button[type="submit"] {
         grid-column: span 1;
       }
-    }
-    #address_error {
-      color: #b00;
-      display: none;
     }
   </style>
 </head>
@@ -61,74 +36,41 @@
 
     <form id="searchForm" method="post" action="/query">
       <!-- 1) Name & DOB -->
-      <div class="form-group">
-        <label for="title">Title</label>
-        <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr" />
+      <div class="form-group"><label for="title">Title</label>
+        <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr"/>
       </div>
-      <div class="form-group">
-        <label for="first_name">First Name *</label>
-        <input type="text" id="first_name" name="first_name" required />
+      <div class="form-group"><label for="first_name">First Name *</label>
+        <input type="text" id="first_name" name="first_name" required/>
       </div>
-      <div class="form-group">
-        <label for="middle_name">Middle Name</label>
-        <input type="text" id="middle_name" name="middle_name" />
+      <div class="form-group"><label for="middle_name">Middle Name</label>
+        <input type="text" id="middle_name" name="middle_name"/>
       </div>
-      <div class="form-group">
-        <label for="last_name">Last Name *</label>
-        <input type="text" id="last_name" name="last_name" required />
+      <div class="form-group"><label for="last_name">Last Name *</label>
+        <input type="text" id="last_name" name="last_name" required/>
       </div>
-      <div class="form-group">
-        <label for="date_of_birth">Date of Birth *</label>
-        <input
-          type="text"
-          id="date_of_birth"
-          name="date_of_birth"
-          placeholder="YYYY-MM-DD"
-          required
-        />
+      <div class="form-group"><label for="date_of_birth">Date of Birth *</label>
+        <input type="text" id="date_of_birth" name="date_of_birth" placeholder="YYYY-MM-DD" required/>
       </div>
 
       <!-- 2) Current Address -->
       <h2>Current Address *</h2>
-      <div class="form-group">
-        <label for="flat">Flat / Unit</label>
-        <input type="text" id="flat" name="flat" placeholder="e.g. 1" required />
+      <div class="form-group"><label for="flat">Flat / Unit</label>
+        <input type="text" id="flat" name="flat" placeholder="e.g. 1" required/>
       </div>
-      <div class="form-group">
-        <label for="street">Street *</label>
-        <input
-          type="text"
-          id="street"
-          name="street"
-          placeholder="e.g. Example Street"
-          required
-        />
+      <div class="form-group"><label for="street">Street *</label>
+        <input type="text" id="street" name="street" placeholder="e.g. Example Street" required/>
       </div>
-      <div class="form-group">
-        <label for="post_town">Post Town *</label>
-        <input
-          type="text"
-          id="post_town"
-          name="post_town"
-          placeholder="e.g. TEST TOWN"
-          required
-        />
+      <div class="form-group"><label for="post_town">Post Town *</label>
+        <input type="text" id="post_town" name="post_town" placeholder="e.g. TEST TOWN" required/>
       </div>
-      <div class="form-group">
-        <label for="post_code">Post Code *</label>
-        <input
-          type="text"
-          id="post_code"
-          name="post_code"
-          placeholder="e.g. AB1 2CD"
-          required
-        />
+      <div class="form-group"><label for="post_code">Post Code *</label>
+        <input type="text" id="post_code" name="post_code" placeholder="e.g. AB1 2CD" required/>
       </div>
 
       <!-- 3) OR lookup by postcode -->
       <div class="form-group"><em>Or look up by postcode:</em></div>
       <div class="form-group lookup-postcode">
-        <input type="text" id="lookup_postcode" placeholder="Enter postcode…" />
+        <input type="text" id="lookup_postcode" placeholder="Enter postcode…"/>
         <button type="button" id="address_lookup_btn">Find Address</button>
       </div>
       <div class="form-group" id="address_container" style="display:none;">
@@ -143,12 +85,14 @@
       <h2>Mobile Verification *</h2>
       <div class="form-group">
         <label for="mobile">Mobile Number</label>
-        <input type="text" id="mobile" name="mobile" required />
+        <input type="text" id="mobile" name="mobile" required/>
         <button type="button" id="send_otp">Send OTP</button>
       </div>
-      <div class="form-group" id="otp_group" style="display:none;">
+
+      <!-- Make this always visible now, so we can debug it -->
+      <div class="form-group" id="otp_group">
         <label for="otp">Enter OTP</label>
-        <input type="text" id="otp" name="otp" />
+        <input type="text" id="otp" name="otp"/>
         <button type="button" id="verify_otp">Verify OTP</button>
         <span id="otp_status"></span>
       </div>
@@ -162,101 +106,126 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const form       = document.getElementById('searchForm');
-      const lookupBtn  = document.getElementById('address_lookup_btn');
-      const addrSel    = document.getElementById('address_select');
-      const addrCont   = document.getElementById('address_container');
-      const addrErr    = document.getElementById('address_error');
-      const sendOtpBtn = document.getElementById('send_otp');
-      const verifyBtn  = document.getElementById('verify_otp');
-      const otpGroup   = document.getElementById('otp_group');
-      const submitBtn  = form.querySelector('button[type="submit"]');
-      const clearBtn   = document.getElementById('clear_btn');
+  document.addEventListener('DOMContentLoaded', () => {
+    const lookupBtn  = document.getElementById('address_lookup_btn');
+    const addrSel    = document.getElementById('address_select');
+    const addrCont   = document.getElementById('address_container');
+    const addrErr    = document.getElementById('address_error');
+    const sendOtpBtn = document.getElementById('send_otp');
+    const verifyBtn  = document.getElementById('verify_otp');
+    const otpGroup   = document.getElementById('otp_group');
+    const submitBtn  = document.querySelector('button[type="submit"]');
+    const clearBtn   = document.getElementById('clear_btn');
 
-      // Clear all
-      clearBtn.addEventListener('click', () => {
-        form.reset();
-        addrCont.style.display = 'none';
-        otpGroup.style.display = 'none';
-        addrErr.style.display  = 'none';
-        submitBtn.disabled     = true;
-      });
+    // Clear-all
+    clearBtn.addEventListener('click', () => {
+      document.getElementById('searchForm').reset();
+      addrCont.style.display = 'none';
+      addrErr.style.display  = 'none';
+      otpGroup.style.display = 'block';  // now always visible
+      otpGroup.querySelector('#otp_status').textContent = '';
+      submitBtn.disabled = true;
+    });
 
-      // Address lookup
-      lookupBtn.addEventListener('click', async () => {
-        alert('🔍 Address lookup clicked');
-        const pc = document.getElementById('lookup_postcode').value.trim();
-        addrErr.style.display = 'none';
-        if (!pc) { alert('Enter postcode'); return; }
+    // Address lookup
+    lookupBtn.addEventListener('click', async () => {
+      alert('🔍 [DEBUG] Find Address clicked');
+      console.log('[DEBUG] Fetching /address_lookup');
+      const pc = document.getElementById('lookup_postcode').value.trim();
+      addrErr.style.display = 'none';
+      if (!pc) { alert('Please enter a postcode'); return; }
 
-        try {
-          const res  = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
-          const data = await res.json();
-          if (!res.ok) {
-            addrErr.textContent = data.error || 'Lookup failed';
-            addrErr.style.display = 'block';
-            return;
-          }
-          // populate select
-          addrSel.innerHTML = '<option value="">Pick an address…</option>';
-          (data.addresses||[]).forEach(a => {
-            const o = document.createElement('option');
-            o.value = JSON.stringify(a);
-            o.textContent = `${a.flat||''} ${a.street}, ${a.town}`;
-            addrSel.appendChild(o);
-          });
-          addrCont.style.display = 'block';
-        } catch(e) {
-          addrErr.textContent = 'Network error';
+      try {
+        const res  = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
+        console.log('[DEBUG] address_lookup status:', res.status);
+        const data = await res.json();
+        console.log('[DEBUG] address_lookup JSON:', data);
+        if (!res.ok) {
+          addrErr.textContent = data.error || 'Lookup failed';
           addrErr.style.display = 'block';
+          return;
         }
-      });
+        // populate
+        addrSel.innerHTML = '<option value="">Pick an address…</option>';
+        (data.addresses||[]).forEach(a => {
+          const o = document.createElement('option');
+          o.value = JSON.stringify(a);
+          o.textContent = `${a.flat||''} ${a.street}, ${a.town}`;
+          addrSel.appendChild(o);
+        });
+        addrCont.style.display = 'block';
+      } catch (err) {
+        console.error('[DEBUG] address_lookup error', err);
+        addrErr.textContent = 'Network error';
+        addrErr.style.display = 'block';
+      }
+    });
 
-      // Populate manual fields on select
-      addrSel.addEventListener('change', e => {
-        const a = JSON.parse(e.target.value||'{}');
-        if (!a.flat) return;
-        document.getElementById('flat').value      = a.flat    || '';
-        document.getElementById('street').value    = a.street  || '';
-        document.getElementById('post_town').value = a.town    || '';
-        document.getElementById('post_code').value = a.postCode|| '';
-      });
+    // On address select
+    addrSel.addEventListener('change', e => {
+      const a = JSON.parse(e.target.value||'{}');
+      if (!a.flat) return;
+      document.getElementById('flat').value      = a.flat     || '';
+      document.getElementById('street').value    = a.street   || '';
+      document.getElementById('post_town').value = a.town     || '';
+      document.getElementById('post_code').value = a.postCode || '';
+    });
 
-      // Send OTP
-      sendOtpBtn.addEventListener('click', async () => {
-        alert('📩 Send OTP clicked');
-        const mobile = document.getElementById('mobile').value.trim();
-        if (!mobile) { alert('Enter mobile'); return; }
+    // Send OTP
+    sendOtpBtn.addEventListener('click', async () => {
+      alert('📩 [DEBUG] Send OTP clicked');
+      console.log('[DEBUG] Fetching /otp/request');
+      const mobile = document.getElementById('mobile').value.trim();
+      if (!mobile) { alert('Please enter a mobile number'); return; }
+
+      try {
         const res = await fetch('/otp/request', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
           body: JSON.stringify({mobile})
         });
-        if (res.ok) {
-          otpGroup.style.display = 'block';
-        } else {
-          alert('Failed to send OTP');
+        console.log('[DEBUG] otp/request status:', res.status);
+        const data = await res.json();
+        console.log('[DEBUG] otp/request JSON:', data);
+        if (!res.ok) {
+          alert(`OTP request failed: ${data.error||res.status}`);
+          return;
         }
-      });
+        // unhide OTP group just in case
+        otpGroup.style.display = 'block';
+      } catch (err) {
+        console.error('[DEBUG] otp/request error', err);
+        alert('Network error sending OTP');
+      }
+    });
 
-      // Verify OTP
-      verifyBtn.addEventListener('click', async () => {
-        alert('🔐 Verify OTP clicked');
-        const mobile = document.getElementById('mobile').value.trim();
-        const code   = document.getElementById('otp').value.trim();
-        if (!code) { alert('Enter OTP'); return; }
+    // Verify OTP
+    verifyBtn.addEventListener('click', async () => {
+      alert('🔐 [DEBUG] Verify OTP clicked');
+      console.log('[DEBUG] Fetching /otp/verify');
+      const mobile = document.getElementById('mobile').value.trim();
+      const code   = document.getElementById('otp').value.trim();
+      if (!code) { alert('Please enter the 6-digit OTP'); return; }
+
+      try {
         const res  = await fetch('/otp/verify', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
           body: JSON.stringify({mobile,code})
         });
-        const json = await res.json();
-        const ok   = json.data?.result === 'PASS';
+        console.log('[DEBUG] otp/verify status:', res.status);
+        const data = await res.json();
+        console.log('[DEBUG] otp/verify JSON:', data);
+
+        const ok = data.data?.result === 'PASS';
         document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
         if (ok) submitBtn.disabled = false;
-      });
+      } catch (err) {
+        console.error('[DEBUG] otp/verify error', err);
+        alert('Network error verifying OTP');
+      }
     });
+  });
   </script>
 </body>
 </html>
