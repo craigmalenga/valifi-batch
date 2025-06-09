@@ -42,23 +42,52 @@ def get_valifi_token():
 # ─── INSERT START: postcode → address lookup ───
 @app.route("/address_lookup", methods=["GET"])
 def address_lookup():
-    """Lookup addresses by postcode via Valifi API."""
+    """Lookup addresses by postcode via Valifi API, with full error handling."""
     postcode = request.args.get("postcode", "").strip()
     if not postcode:
         return jsonify({"error": "Postcode is required"}), 400
 
-    token = get_valifi_token()
+    try:
+        token = get_valifi_token()
+    except Exception as e:
+        # failure obtaining Bearer token
+        app.logger.exception("Auth error in address_lookup")
+        return jsonify({"error": f"Authentication failed: {e}"}), 502
+
+    url = f"{VALIFI_API_URL}/address/v1/lookup"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-    resp = requests.post(
-        f"{VALIFI_API_URL}/address/v1/lookup",
-        json={"postCode": postcode},
-        headers=headers,
-        timeout=15
-    )
-    return jsonify(resp.json()), resp.status_code
+
+    # (1) Network call
+    try:
+        resp = requests.post(
+            url, json={"postCode": postcode}, headers=headers, timeout=15
+        )
+    except requests.RequestException as e:
+        app.logger.exception("Network error in address_lookup")
+        return jsonify({"error": f"Network error: {e}"}), 502
+
+    # (2) Non-200 status → return JSON error
+    if resp.status_code != 200:
+        text = resp.text.strip().replace("\n", " ")[:200]
+        return jsonify({
+            "error": f"Valifi returned HTTP {resp.status_code}",
+            "details": text
+        }), resp.status_code
+
+    # (3) Parse JSON safely
+    try:
+        data = resp.json()
+    except ValueError:
+        app.logger.error("Invalid JSON from Valifi address lookup: %s", resp.text)
+        return jsonify({
+            "error": "Invalid JSON from Valifi address lookup",
+            "details": resp.text.strip().replace("\n", " ")[:200]
+        }), 502
+
+    return jsonify(data), 200
 
 # ─── INSERT START: OTP request & verify ───────────────────────────────────────
 @app.route("/otp/request", methods=["POST"])
