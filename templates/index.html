@@ -254,27 +254,45 @@
     // Verify OTP
     verifyBtn.addEventListener('click', async () => {
       alert('🔐 [DEBUG] Verify OTP clicked');
-      console.log('[DEBUG] Fetching /otp/verify');
-      const mobile = document.getElementById('mobile').value.trim();
-      const code   = document.getElementById('otp').value.trim();
-      if (!code) { alert('Please enter the 6-digit OTP'); return; }
+
+      // grab & clean inputs
+      const rawMobile = document.getElementById('mobile').value;
+      const mobile    = rawMobile.replace(/\D/g, '');
+      const rawCode   = document.getElementById('otp').value;
+      const code      = rawCode.replace(/\D/g, '');
+
+      if (!mobile) {
+        alert('Please enter a valid mobile number (digits only)');
+        return;
+      }
+      if (!code) {
+        alert('Please enter the 6-digit OTP (digits only)');
+        return;
+      }
+
+      console.log('[DEBUG] Verifying OTP for:', mobile, 'code:', code);
 
       try {
-        const res  = await fetch('/otp/verify', {
+        const res = await fetch('/otp/verify', {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mobile, code })
         });
         console.log('[DEBUG] otp/verify status:', res.status);
         const data = await res.json();
         console.log('[DEBUG] otp/verify JSON:', data);
 
+        if (!res.ok) {
+          throw new Error(data.error || `Status ${res.status}`);
+        }
+
         const ok = data.data?.result === 'PASS';
         document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
         if (ok) submitBtn.disabled = false;
+
       } catch (err) {
         console.error('[DEBUG] otp/verify error', err);
-        alert('Network error verifying OTP');
+        alert(`OTP verification failed: ${err.message}`);
       }
     });
 
