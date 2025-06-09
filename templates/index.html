@@ -5,21 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Valifi: TransUnion Credit Report</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem 2rem;
+      align-items: start;
+    }
+    form h2 {
+      grid-column: span 2;
+      margin-top: 1.5rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .lookup-postcode,
+    #otp_group,
+    #address_error,
+    #clear_btn,
+    button[type="submit"] {
+      grid-column: span 2;
+    }
+    .lookup-postcode {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    #clear_btn {
+      margin-top: 1rem;
+      background: #eee;
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+    }
+    @media (max-width: 600px) {
+      form { grid-template-columns: 1fr; }
+      .lookup-postcode, #otp_group, #address_error, #clear_btn, button[type="submit"] {
+        grid-column: span 1;
+      }
+    }
+    #address_error {
+      color: #b00;
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
     <h1>Valifi: TransUnion Credit Report</h1>
 
     <form id="searchForm" method="post" action="/query">
-      <!-- Name & DOB fields -->
+      <!-- Name & DOB -->
       <div class="form-group">
         <label for="title">Title</label>
-        <input
-          type="text"
-          id="title"
-          name="title"
-          placeholder="Mr / Mrs / Ms / Dr"
-        />
+        <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr" />
       </div>
 
       <div class="form-group">
@@ -38,29 +82,22 @@
       </div>
 
       <div class="form-group">
-        <label for="date_of_birth">Date of Birth (YYYY-MM-DD) *</label>
+        <label for="date_of_birth">Date of Birth *</label>
         <input
           type="text"
           id="date_of_birth"
           name="date_of_birth"
-          placeholder="e.g. 1980-12-31"
+          placeholder="YYYY-MM-DD"
           required
         />
       </div>
 
-      <!-- Current Address fields -->
+      <!-- Current Address -->
       <h2>Current Address *</h2>
 
-      <!-- Manual entry -->
       <div class="form-group">
         <label for="flat">Flat / Unit</label>
-        <input
-          type="text"
-          id="flat"
-          name="flat"
-          placeholder="e.g. 1"
-          required
-        />
+        <input type="text" id="flat" name="flat" placeholder="e.g. 1" required />
       </div>
 
       <div class="form-group">
@@ -114,10 +151,12 @@
           <option value="">Pick an address…</option>
         </select>
       </div>
+      <div id="address_error">Failed to lookup address</div>
 
-      <!-- OTP UI -->
+      <!-- Mobile + OTP -->
+      <h2>Mobile Verification *</h2>
       <div class="form-group">
-        <label for="mobile">Mobile Number *</label>
+        <label for="mobile">Mobile Number</label>
         <input type="text" id="mobile" name="mobile" required />
         <button type="button" id="send_otp">Send OTP</button>
       </div>
@@ -129,29 +168,54 @@
         <span id="otp_status"></span>
       </div>
 
-      <!-- Submit -->
+      <!-- Actions -->
+      <button type="button" id="clear_btn">Clear All</button>
       <button type="submit" disabled>Get TransUnion Report</button>
     </form>
 
-    <div id="result">
-      <!-- We'll render the JSON response here -->
-    </div>
+    <div id="result"></div>
   </div>
 
   <script>
-    // ─── Postcode lookup & populate fields ────────────────────────────────
+    // ─── Clear all fields ───────────────────────────────────────────────────────
+    document.getElementById("clear_btn").addEventListener("click", () => {
+      document.getElementById("searchForm").reset();
+      document.getElementById("address_container").style.display = "none";
+      document.getElementById("otp_group").style.display = "none";
+      document.getElementById("otp_status").textContent = "";
+      document.getElementById("address_error").style.display = "none";
+      document.querySelector("button[type=submit]").disabled = true;
+    });
+
+    // ─── Postcode lookup with error handling ───────────────────────────────────
     async function lookupAddress() {
       const pc = document.getElementById("lookup_postcode").value.trim();
+      const errDiv = document.getElementById("address_error");
+      errDiv.style.display = "none";
+
       if (!pc) return;
-      const res = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      let res, data;
+      try {
+        res = await fetch(`/address_lookup?postcode=${encodeURIComponent(pc)}`);
+      } catch (e) {
+        errDiv.textContent = "Network error";
+        errDiv.style.display = "block";
+        return;
+      }
+      data = await res.json();
+
+      if (!res.ok) {
+        errDiv.textContent = data.error || JSON.stringify(data);
+        errDiv.style.display = "block";
+        return;
+      }
+
       const sel = document.getElementById("address_select");
       sel.innerHTML = `<option value="">Pick an address…</option>`;
       (data.addresses || []).forEach(addr => {
         const o = document.createElement("option");
         o.value = JSON.stringify(addr);
-        o.textContent = `${addr.flat || ""} ${addr.street}, ${addr.town}`;
+        o.textContent = `${addr.flat||""} ${addr.street}, ${addr.town}`;
         sel.appendChild(o);
       });
       document.getElementById("address_container").style.display = "block";
@@ -166,13 +230,13 @@
       .addEventListener("change", e => {
         const addr = JSON.parse(e.target.value || "{}");
         if (!addr) return;
-        document.getElementById("flat").value = addr.flat || "";
-        document.getElementById("street").value = addr.street || "";
-        document.getElementById("post_town").value = addr.town || "";
-        document.getElementById("post_code").value = addr.postCode || "";
+        document.getElementById("flat").value     = addr.flat   || "";
+        document.getElementById("street").value   = addr.street || "";
+        document.getElementById("post_town").value= addr.town   || "";
+        document.getElementById("post_code").value= addr.postCode|| "";
       });
 
-    // ─── OTP handlers ─────────────────────────────────────────────────────
+    // ─── Send OTP → show verify UI ────────────────────────────────────────────
     document.getElementById("send_otp").addEventListener("click", async () => {
       const mobile = document.getElementById("mobile").value.trim();
       const res = await fetch("/otp/request", {
@@ -185,19 +249,22 @@
       }
     });
 
+    // ─── Verify OTP → enable submit ───────────────────────────────────────────
     document.getElementById("verify_otp").addEventListener("click", async () => {
       const mobile = document.getElementById("mobile").value.trim();
-      const code = document.getElementById("otp").value.trim();
-      const res = await fetch("/otp/verify", {
+      const code   = document.getElementById("otp").value.trim();
+      const res    = await fetch("/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mobile, code })
       });
       const json = await res.json();
-      const ok = json.data?.result === "PASS";
+      const ok   = json.data?.result === "PASS";
+
       document.getElementById("otp_status").textContent = ok
         ? "✔ Verified"
         : "❌ Try again";
+
       if (ok) {
         document.querySelector("button[type=submit]").disabled = false;
       }
