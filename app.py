@@ -1,5 +1,6 @@
 # app.py
 import os
+import json
 from flask import Flask, render_template, request, jsonify
 import requests
 
@@ -37,6 +38,62 @@ def get_valifi_token():
         raise RuntimeError("Valifi Basic-Auth did not return a token in data.token")
 
     return token
+
+# ─── INSERT START: postcode → address lookup ───
+@app.route("/address_lookup", methods=["GET"])
+def address_lookup():
+    """Lookup addresses by postcode via Valifi API."""
+    postcode = request.args.get("postcode", "").strip()
+    if not postcode:
+        return jsonify({"error": "Postcode is required"}), 400
+
+    token = get_valifi_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    resp = requests.post(
+        f"{VALIFI_API_URL}/address/v1/lookup",
+        json={"postCode": postcode},
+        headers=headers,
+        timeout=15
+    )
+    return jsonify(resp.json()), resp.status_code
+
+# ─── INSERT START: OTP request & verify ───────────────────────────────────────
+@app.route("/otp/request", methods=["POST"])
+def otp_request():
+    """Trigger SMS OTP to mobile number."""
+    mobile = request.json.get("mobile", "").strip()
+    token  = get_valifi_token()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    resp = requests.post(
+        f"{VALIFI_API_URL}/otp/v1/request",
+        json={"mobile": mobile},
+        headers=headers,
+        timeout=15
+    )
+    return jsonify(resp.json()), resp.status_code
+
+@app.route("/otp/verify", methods=["POST"])
+def otp_verify():
+    """Verify SMS OTP code."""
+    payload = {
+        "mobile": request.json.get("mobile", "").strip(),
+        "code":   request.json.get("code", "")
+    }
+    token  = get_valifi_token()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    resp = requests.post(
+        f"{VALIFI_API_URL}/otp/v1/verify",
+        json=payload,
+        headers=headers,
+        timeout=15
+    )
+    return jsonify(resp.json()), resp.status_code
+# ─── INSERT END: OTP request & verify ─────────────────────────────────────────
+
+
 
 
 # ─── 3) Render the HTML form ─────────────────────────────────────────────────────
@@ -98,25 +155,33 @@ def query_valifi():
         "previousPreviousAddress":  None
     }
 
-    # (D) Authenticate to Valifi Basic-Auth, get Bearer token
-    try:
-        bearer_token = get_valifi_token()
-    except RuntimeError as auth_err:
-        return jsonify({"error": str(auth_err)}), 502
 
-    # (E) Call TransUnion endpoint with Bearer token
-    tu_url = f"{VALIFI_API_URL}/bureau/v1/tu/report"
+    # (D) Authenticate to Valifi Basic-Auth, get Bearer token
+    bearer_token = get_valifi_token()
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "Content-Type":  "application/json"
     }
 
-    try:
-        resp = requests.post(tu_url, json=tu_payload, headers=headers, timeout=30)
-    except requests.RequestException as e:
-        return jsonify({"error": f"Failed to connect to TransUnion endpoint: {e}"}), 502
+    # (E1) AML & Mobile-ID validation
+    validate_url = f"{VALIFI_API_URL}/bureau/v1/tu/validate"
+    validate_payload = {
+        **tu_payload,
+        "dateOfBirth": tu_payload["dateOfBirth"] + "T00:00:00",
+        "includeMobileKYC": True
+    }
+    resp_val = requests.post(validate_url, json=validate_payload, headers=headers, timeout=30)
+    if resp_val.status_code != 200 or resp_val.json().get("status") != "true":
+        return jsonify({
+            "error":   "AML/MobileID validation failed",
+            "details": resp_val.text
+        }), 400
 
-    # (F) If TU returns non-200, forward the error
+    # (E2) Full TransUnion report
+    tu_url = f"{VALIFI_API_URL}/bureau/v1/tu/report"
+    resp = requests.post(tu_url, json=tu_payload, headers=headers, timeout=30)
+
+    # (F) Error handling & return
     if resp.status_code != 200:
         return (
             jsonify({
@@ -126,6 +191,8 @@ def query_valifi():
             }),
             resp.status_code
         )
+    data = resp.json()
+    return jsonify(data)
 
     # (G) Otherwise, parse and return TU’s JSON
     try:
