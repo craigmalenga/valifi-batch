@@ -132,38 +132,56 @@
       alert('🔍 [DEBUG] Find Address clicked');
       console.log('[DEBUG] Fetching /lookup-address');
       const pc = document.getElementById('lookup_postcode').value.trim();
+      const addrContainer = document.getElementById('address_container');
+      const addrErr       = document.getElementById('address_error');
+      const addrSel       = document.getElementById('address_select');
+
       addrErr.style.display = 'none';
-      if (!pc) { alert('Please enter a postcode'); return; }
+      addrSel.innerHTML     = '<option value="">Pick an address…</option>';
+
+      if (!pc) {
+        alert('Please enter a postcode');
+        return;
+      }
 
       try {
-        const res  = await fetch('/lookup-address', {
+        const res = await fetch('/lookup-address', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ postCode: pc })
         });
         console.log('[DEBUG] lookup-address status:', res.status);
+
         const data = await res.json();
         console.log('[DEBUG] lookup-address JSON:', data);
-        if (!res.ok) {
-          addrErr.textContent = data.error || 'Lookup failed';
-          addrErr.style.display = 'block';
+
+        if (!res.ok || !Array.isArray(data.addresses)) {
+          throw new Error(data.error || 'Lookup failed');
+        }
+
+        if (data.addresses.length === 0) {
+          addrContainer.style.display = 'none';
+          addrErr.textContent         = 'No addresses found';
+          addrErr.style.display       = 'block';
           return;
         }
 
-        // Populate dropdown: use name or flat, then street1, postTown
-        addrSel.innerHTML = '<option value="">Pick an address…</option>';
-        (data.addresses || []).forEach(a => {
-          const o = document.createElement('option');
-          o.value = JSON.stringify(a);
+        // build dropdown
+        data.addresses.forEach(a => {
+          const opt   = document.createElement('option');
+          opt.value   = JSON.stringify(a);
           const label = a.name || a.flat || '';
-          o.textContent = `${label} ${a.street1}, ${a.postTown}`;
-          addrSel.appendChild(o);
+          opt.textContent = `${label} ${a.street1}, ${a.postTown}`;
+          addrSel.appendChild(opt);
         });
-        addrCont.style.display = 'block';
+
+        addrContainer.style.display = 'block';
+
       } catch (err) {
         console.error('[DEBUG] lookup-address error', err);
-        addrErr.textContent = 'Network error';
-        addrErr.style.display = 'block';
+        addrContainer.style.display = 'none';
+        addrErr.textContent         = err.message || 'Network error';
+        addrErr.style.display       = 'block';
       }
     });
 
