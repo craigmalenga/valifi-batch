@@ -170,7 +170,13 @@
         data.addresses.forEach(a => {
           const opt   = document.createElement('option');
           opt.value   = JSON.stringify(a);
-          const label = a.name || a.flat || '';
+
+          const label = a.name   ||
+                        a.flat   ||
+                        a.house  ||
+                        a.number ||
+                        '';
+
           opt.textContent = `${label} ${a.street1}, ${a.postTown}`;
           addrSel.appendChild(opt);
         });
@@ -186,13 +192,22 @@
     });
 
     // On address select → fill form fields
+
     addrSel.addEventListener('change', e => {
       const a = JSON.parse(e.target.value || '{}');
-      if (!a.name && !a.flat) return;
-      document.getElementById('flat').value      = a.name  || a.flat  || '';
-      document.getElementById('street').value    = a.street1         || '';
-      document.getElementById('post_town').value = a.postTown        || '';
-      document.getElementById('post_code').value = a.postcode        || '';
+      if (!a.name && !a.flat && !a.house && !a.number) return;
+
+      // same fallback logic for populating the flat/unit field:
+      const flatVal = a.name   ||
+                      a.flat   ||
+                      a.house  ||
+                      a.number ||
+                      '';
+
+      document.getElementById('flat').value      = flatVal;
+      document.getElementById('street').value    = a.street1  || '';
+      document.getElementById('post_town').value = a.postTown || '';
+      document.getElementById('post_code').value = a.postcode || '';
     });
 
     // Send OTP
