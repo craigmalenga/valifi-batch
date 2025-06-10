@@ -296,7 +296,7 @@
       }
     });
 
-    // Final form submit → /query
+    // Final form submit → /query + upload to FLG
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
@@ -316,19 +316,44 @@
       };
 
       try {
+        // 1) Request the TU report summary/PDF endpoint
         const res    = await fetch('/query', {
           method:  'POST',
           headers: {'Content-Type':'application/json'},
           body:    JSON.stringify(payload)
         });
         const result = await res.json();
-        document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+
+        // 2) Show the raw summary on screen (for debugging)
+        document.getElementById('result')
+                .textContent = JSON.stringify(result, null, 2);
+
+        // 3) Extract the summary object (assumes it's in result.data)
+        const summary = result.data || result;
+
+        // 4) POST the summary off to your backend for FLG upload
+        const uplRes = await fetch('/upload_summary', {
+          method:  'POST',
+          headers: {'Content-Type':'application/json'},
+          body:    JSON.stringify(summary)
+        });
+
+        if (!uplRes.ok) {
+          console.error('❌ Summary upload failed:', await uplRes.text());
+        } else {
+          console.log('✅ Summary uploaded successfully to backend');
+        }
+
       } catch(err) {
-        document.getElementById('result').textContent = 'Error: ' + err;
+        document.getElementById('result')
+                .textContent = 'Error: ' + err;
+        console.error(err);
       } finally {
         submitBtn.disabled = false;
       }
     });
+
+
   });
   </script>
 </body>

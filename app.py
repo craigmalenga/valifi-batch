@@ -1,6 +1,7 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify,send_file, Response
 import requests
+import io
 
 app = Flask(__name__)
 
@@ -97,22 +98,25 @@ def index():
 
 
 # ─── 6) Handle the form POST → TransUnion report ────────────────────────────────
+
+
 @app.route("/query", methods=["POST"])
 def query_valifi():
-    # Required fields from form
-    data = request.json
+    # 1) Validate required fields
+    data = request.json or {}
     for k in ("firstName","lastName","dateOfBirth","flat","street","postTown","postCode"):
         if not data.get(k):
             return jsonify(error=f"{k} is required"), 400
 
+    # 2) Build the Valifi payload requesting a PDF
     payload = {
-        "includeJsonReport":    True,
-        "includePdfReport":     False,
+        "includeJsonReport":    False,
+        "includePdfReport":     True,
         "includeSummaryReport": True,
-        "clientReference":      data.get("clientReference","report"),
-        "title":                data.get("title",""),
+        "clientReference":      data.get("clientReference", "report"),
+        "title":                data.get("title", ""),
         "forename":             data["firstName"],
-        "middleName":           data.get("middleName",""),
+        "middleName":           data.get("middleName", ""),
         "surname":              data["lastName"],
         "dateOfBirth":          data["dateOfBirth"],
         "currentAddress": {
@@ -125,15 +129,56 @@ def query_valifi():
         "previousPreviousAddress": None
     }
 
+    # 3) Fetch a fresh Bearer token
     token = get_valifi_token()
-    headers = {"Authorization": f"Bearer {token}", "Content-Type":"application/json"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json"
+    }
+
+    # 4) Request the TU report, streaming the PDF
     resp = requests.post(
         f"{VALIFI_API_URL}/bureau/v1/tu/report",
         json=payload,
         headers=headers,
-        timeout=30
+        timeout=60,
+        stream=True
     )
-    return jsonify(resp.json()), resp.status_code
+
+    # 5) If Valifi returns an error, pass it back as JSON
+    if resp.status_code != 200:
+        return jsonify(resp.json()), resp.status_code
+
+    # 6) Otherwise read the PDF bytes
+    pdf_bytes = resp.content
+
+    # 7) Send the PDF back with a Save As dialog
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name="transunion_report.pdf"
+    )
+
+
+@app.route("/upload_summary", methods=["POST"])
+def upload_summary():
+    summary = request.json
+    if not summary:
+        return jsonify(error="No summary provided"), 400
+
+    # TODO: call FLG’s API here, e.g.:
+    # flg_resp = requests.post(
+    #     FLG_API_URL + "/import",
+    #     headers={"Authorization": f"Bearer {FLG_TOKEN}", "Content-Type":"application/json"},
+    #     json=summary,
+    #     timeout=30
+    # )
+    # if flg_resp.status_code != 200:
+    #     return jsonify(error="FLG upload failed", details=flg_resp.text), flg_resp.status_code
+
+    # For now, just echo success
+    return jsonify(success=True), 200
 
 
 if __name__ == "__main__":
