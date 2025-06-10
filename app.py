@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, jsonify,send_file, Response
 import requests
 import io
+import logging
 
 logging.basicConfig(level=logging.INFO)
 app.logger.setLevel(logging.INFO)
