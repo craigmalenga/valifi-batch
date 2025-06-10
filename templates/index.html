@@ -296,14 +296,13 @@
       }
     });
 
-    // Final form submit → /query + upload to FLG
-
+    // Final form submit → /query (+ base64 PDF decode)
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
 
-      // 1) Build the same payload
+      // build payload as before
       const payload = {
         title:           document.getElementById('title').value.trim(),
         firstName:       document.getElementById('first_name').value.trim(),
@@ -318,17 +317,27 @@
       };
 
       try {
-        // 2) Send request
-        const res = await fetch('/query', {
+        const res    = await fetch('/query', {
           method:  'POST',
           headers: {'Content-Type':'application/json'},
           body:    JSON.stringify(payload)
         });
+        const result = await res.json();
 
-        const contentType = res.headers.get('Content-Type') || '';
-        if (contentType.includes('application/pdf')) {
-          // 3a) PDF path: save to disk via browser
-          const blob = await res.blob();
+        // 1) Show summary (exclude the giant pdfReport field)
+        const summary = result.data?.summaryReport || result.data;
+        document.getElementById('result')
+                .textContent = JSON.stringify(summary, null, 2);
+
+        // 2) If there's a base64 PDF, decode & trigger Save As…
+        const b64 = result.data?.pdfReport;
+        if (b64) {
+          const binary = atob(b64);
+          const u8     = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            u8[i] = binary.charCodeAt(i);
+          }
+          const blob = new Blob([u8], { type: 'application/pdf' });
           const url  = URL.createObjectURL(blob);
           const a    = document.createElement('a');
           a.href     = url;
@@ -337,20 +346,12 @@
           a.click();
           a.remove();
           URL.revokeObjectURL(url);
-
-          // Optionally clear any prior summary
-          document.getElementById('result').textContent = '';
-        } else {
-          // 3b) JSON path: show summary
-          const result = await res.json();
-          document.getElementById('result')
-                  .textContent = JSON.stringify(result, null, 2);
         }
 
       } catch (err) {
+        console.error(err);
         document.getElementById('result')
                 .textContent = 'Error: ' + err;
-        console.error(err);
       } finally {
         submitBtn.disabled = false;
       }
