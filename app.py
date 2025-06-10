@@ -242,7 +242,56 @@ def upload_summary():
         return jsonify(error="No summary provided"), 400
 
     app.logger.info("upload_summary payload: %s", summary)
-    xml_payload = build_flg_lead_xml(summary)
+
+    # ─── 1) Extract & split full name into title, first, last ──────────────
+    full_name = (summary.get("name") or "").strip()
+    parts     = full_name.split(" ", 1)
+    title     = parts[0] if len(parts) > 1 else ""
+    rest      = parts[1] if len(parts) > 1 else parts[0]
+    first, last = (rest.split(" ", 1) + [""])[:2]
+
+    # ─── 2) Pull address fields from matchedAddress (if present) ───────────
+    addr = summary.get("matchedAddress", {})
+    # if matchedAddress has nested structure, adjust accordingly
+    addr_struct = addr if isinstance(addr, dict) and "street1" in addr else {}
+    address1 = addr_struct.get("street1", "")
+    address2 = addr_struct.get("street2", "")
+    town     = addr_struct.get("postTown", "")
+    postcode = addr_struct.get("postcode", "")
+
+    # ─── 3) Date-of-birth from first account’s dob (YYYY-MM-DD) ────────────
+    dob_iso = ""
+    accounts = summary.get("accounts") or []
+    if accounts and accounts[0].get("dob"):
+        dob_iso = accounts[0]["dob"].split("T")[0]
+
+    # ─── 4) Build the flat FLG lead dict ───────────────────────────────────
+    lead = {
+        "source":      "ValifiTransUnion",
+        "medium":      "API",
+        "term":        "CreditReport",
+        "title":       title,
+        "firstname":   first,
+        "lastname":    last,
+        "phone1":      summary.get("mobile", ""),
+        "email":       summary.get("email", ""),
+        "address":     address1,
+        "address2":    address2,
+        "towncity":    town,
+        "postcode":    postcode,
+        "dateOfBirth": dob_iso,
+        # contact preferences – adjust to "Yes"/"No" if needed
+        "contactphone":  "Unknown",
+        "contactsms":    "Unknown",
+        "contactemail":  "Unknown",
+        "contactmail":   "Unknown",
+        "contactfax":    "Unknown",
+        # add any extra data fields here, e.g.:
+        # "data1": lender_name, "data5": agreement_number, etc.
+    }
+
+    # ─── 5) Build & send the XML to FLG ────────────────────────────────────
+    xml_payload = build_flg_lead_xml(lead)
     app.logger.debug("FLG XML payload:\n%s", xml_payload.decode())
 
     flg_resp = flg_send_lead(xml_payload)
@@ -252,11 +301,13 @@ def upload_summary():
         flg_resp.text
     )
 
-    if flg_resp.status_code != 200:
+    # ─── 6) Handle errors vs success ───────────────────────────────────────
+    if flg_resp.status_code != 200 or "<status>1</status>" not in flg_resp.text:
+        # FLG returns <status>1</status> for missing-field errors, so catch any non-200 or error status
         app.logger.error("FLG upload failed: %s", flg_resp.text)
         return (
             jsonify(error="FLG upload failed", details=flg_resp.text),
-            flg_resp.status_code
+            flg_resp.status_code or 500
         )
 
     return jsonify(success=True, flg_response=flg_resp.text), 200
