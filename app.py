@@ -1,13 +1,15 @@
 import os
-from flask import Flask, render_template, request, jsonify,send_file, Response
+import logging
+
+from flask import Flask, render_template, request, jsonify, send_file, Response
 import requests
 import io
-import logging
+
+# ─── App & Logging setup ───────────────────────────────────────────────────────
+app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 app.logger.setLevel(logging.INFO)
-
-app = Flask(__name__)
 
 # ─── 1) Load credentials from environment ────────────────────────────────────────
 VALIFI_API_URL  = os.getenv("VALIFI_API_URL", "").rstrip("/")   # e.g. "https://staging-app.valifi.click"
