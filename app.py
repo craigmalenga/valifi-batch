@@ -10,6 +10,18 @@ VALIFI_API_URL  = os.getenv("VALIFI_API_URL", "").rstrip("/")   # e.g. "https://
 VALIFI_API_USER = os.getenv("VALIFI_API_USER", "")               # e.g. "belmondclaims-api"
 VALIFI_API_PASS = os.getenv("VALIFI_API_PASS", "")               # e.g. "!jdu6Rdnmh9b3"
 
+# ─── FLG API configuration ────────────────────────────────────────────
+FLG_API_URL      = os.getenv(
+    "FLG_API_URL",
+    "https://cars.flg360.co.uk/api/APILeadCreateUpdate.php"
+)
+FLG_API_KEY      = os.getenv(
+    "FLG_API_KEY",
+    "T9jrI9IdgOlnODCEuziNDcn5Vt7m4sgA"   # your FLG key
+)
+FLG_LEADGROUP_ID = os.getenv("FLG_LEADGROUP_ID", "57862")
+
+
 
 # ─── 2) Helper: Authenticate via Basic Auth to get a Bearer token ──────────────
 def get_valifi_token():
@@ -24,6 +36,61 @@ def get_valifi_token():
     if not token:
         raise RuntimeError("No token in auth response")
     return token
+
+def build_flg_lead_xml(lead: dict) -> bytes:
+    """
+    Build the XML payload for FLG APILeadCreateUpdate.php
+    """
+    import xml.etree.ElementTree as ET
+
+    root   = ET.Element("data")
+    lead_el = ET.SubElement(root, "lead")
+    ET.SubElement(lead_el, "key").text       = FLG_API_KEY
+    ET.SubElement(lead_el, "leadgroup").text = str(FLG_LEADGROUP_ID)
+    ET.SubElement(lead_el, "site").text      = lead.get("site", "0")
+
+    # Standard fields
+    for f in ("source","medium","term","title",
+              "firstname","lastname",
+              "phone1","phone2","email",
+              "address","address2","address3",
+              "towncity","postcode"):
+        if lead.get(f):
+            ET.SubElement(lead_el, f).text = str(lead[f])
+
+    # Date of birth
+    dob = lead.get("dateOfBirth","")
+    if dob:
+        day, mon, year = dob.split("-")
+        ET.SubElement(lead_el, "dobday").text   = day
+        ET.SubElement(lead_el, "dobmonth").text = mon
+        ET.SubElement(lead_el, "dobyear").text  = year
+
+    # Contact prefs
+    for pref in ("contactphone","contactsms","contactemail",
+                 "contactmail","contactfax"):
+        ET.SubElement(lead_el, pref).text = lead.get(pref, "Unknown")
+
+    # Extra data fields
+    for extra in ("data1","data5","data7","data25",
+                  "data29","data32","data33","data37"):
+        if lead.get(extra):
+            ET.SubElement(lead_el, extra).text = str(lead[extra])
+
+    xml_body = ET.tostring(root, encoding="utf-8", method="xml")
+    return b'<?xml version="1.0" encoding="UTF-8"?>' + xml_body
+
+def flg_send_lead(xml_payload: bytes) -> requests.Response:
+    """
+    Post XML to the FLG endpoint and return the Response.
+    """
+    return requests.post(
+        FLG_API_URL,
+        data=xml_payload,
+        headers={"Content-Type": "application/xml"},
+        timeout=30
+    )
+
 
 
 # ─── 3) Postcode → address lookup ───────────────────────────────────────────────
@@ -167,18 +234,59 @@ def upload_summary():
     if not summary:
         return jsonify(error="No summary provided"), 400
 
-    # TODO: call FLG’s API here, e.g.:
-    # flg_resp = requests.post(
-    #     FLG_API_URL + "/import",
-    #     headers={"Authorization": f"Bearer {FLG_TOKEN}", "Content-Type":"application/json"},
-    #     json=summary,
-    #     timeout=30
-    # )
-    # if flg_resp.status_code != 200:
-    #     return jsonify(error="FLG upload failed", details=flg_resp.text), flg_resp.status_code
+    xml_payload = build_flg_lead_xml(summary)
+    flg_resp    = flg_send_lead(xml_payload)
+    if flg_resp.status_code != 200:
+        return (
+            jsonify(error="FLG upload failed", details=flg_resp.text),
+            flg_resp.status_code
+        )
+    return jsonify(success=True, flg_response=flg_resp.text), 200
 
-    # For now, just echo success
+
+
+@app.route("/flg/lead", methods=["POST"])
+def create_flg_lead():
+    """Create or update a lead in FLG."""
+    lead = request.json or {}
+    xml  = build_flg_lead_xml(lead)
+    resp = flg_send_lead(xml)
+    return jsonify(response=resp.text), resp.status_code
+
+@app.route("/flg/lead/<lead_id>", methods=["PUT"])
+def update_flg_lead(lead_id):
+    """Update an existing FLG lead by ID."""
+    lead          = request.json or {}
+    lead["leadid"] = lead_id
+    xml           = build_flg_lead_xml(lead)
+    resp          = flg_send_lead(xml)
+    if resp.status_code != 200:
+        return jsonify(error="FLG update failed", details=resp.text), resp.status_code
     return jsonify(success=True), 200
+
+@app.route("/flg/lead/<lead_id>", methods=["DELETE"])
+def delete_flg_lead(lead_id):
+    """Delete a lead in FLG by ID."""
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<data>
+  <lead>
+    <key>{FLG_API_KEY}</key>
+    <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
+    <leadid>{lead_id}</leadid>
+    <action>delete</action>
+  </lead>
+</data>
+"""
+    resp = requests.post(
+        FLG_API_URL,
+        data=xml,
+        headers={"Content-Type": "application/xml"},
+        timeout=30
+    )
+    if resp.status_code != 200:
+        return jsonify(error="Delete failed", details=resp.text), resp.status_code
+    return jsonify(success=True), 200
+
 
 
 if __name__ == "__main__":
