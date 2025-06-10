@@ -103,6 +103,7 @@
     </form>
 
     <div id="result"></div>
+    <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
   </div>
 
   <script>
@@ -328,6 +329,34 @@
         const summary = result.data?.summaryReport || result.data;
         document.getElementById('result')
                 .textContent = JSON.stringify(summary, null, 2);
+
+        // 3) Post summary to FLG endpoint
+        console.log('[DEBUG] Posting summary to /upload_summary:', summary);
+        try {
+          const flgRes  = await fetch('/upload_summary', {
+            method:  'POST',
+            headers: {'Content-Type':'application/json'},
+            body:    JSON.stringify(summary)
+          });
+          const flgData = await flgRes.json();
+          console.log(
+            '[DEBUG] FLG upload response →',
+            flgRes.status,
+            flgData
+          );
+
+          // Show status on page
+          document.getElementById('flg_status')
+                  .textContent = flgRes.ok
+                    ? 'FLG upload succeeded'
+                    : `FLG upload failed: ${flgData.error || flgRes.status}`;
+        } catch (err) {
+          console.error('[DEBUG] Error posting to FLG:', err);
+          document.getElementById('flg_status')
+                  .textContent = 'Error posting to FLG, see console';
+        }
+
+
 
         // 2) If there's a base64 PDF, decode & trigger Save As…
         const b64 = result.data?.pdfReport;

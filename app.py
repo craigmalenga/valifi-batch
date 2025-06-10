@@ -3,6 +3,9 @@ from flask import Flask, render_template, request, jsonify,send_file, Response
 import requests
 import io
 
+logging.basicConfig(level=logging.INFO)
+app.logger.setLevel(logging.INFO)
+
 app = Flask(__name__)
 
 # ─── 1) Load credentials from environment ────────────────────────────────────────
@@ -232,15 +235,27 @@ def query_valifi():
 def upload_summary():
     summary = request.json
     if not summary:
+        app.logger.warning("upload_summary called with no JSON body")
         return jsonify(error="No summary provided"), 400
 
+    app.logger.info("upload_summary payload: %s", summary)
     xml_payload = build_flg_lead_xml(summary)
-    flg_resp    = flg_send_lead(xml_payload)
+    app.logger.debug("FLG XML payload:\n%s", xml_payload.decode())
+
+    flg_resp = flg_send_lead(xml_payload)
+    app.logger.info(
+        "FLG responded: status=%s body=%s",
+        flg_resp.status_code,
+        flg_resp.text
+    )
+
     if flg_resp.status_code != 200:
+        app.logger.error("FLG upload failed: %s", flg_resp.text)
         return (
             jsonify(error="FLG upload failed", details=flg_resp.text),
             flg_resp.status_code
         )
+
     return jsonify(success=True, flg_response=flg_resp.text), 200
 
 
