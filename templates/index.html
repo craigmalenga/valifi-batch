@@ -297,11 +297,13 @@
     });
 
     // Final form submit → /query + upload to FLG
+
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
 
+      // 1) Build the same payload
       const payload = {
         title:           document.getElementById('title').value.trim(),
         firstName:       document.getElementById('first_name').value.trim(),
@@ -316,35 +318,36 @@
       };
 
       try {
-        // 1) Request the TU report summary/PDF endpoint
-        const res    = await fetch('/query', {
+        // 2) Send request
+        const res = await fetch('/query', {
           method:  'POST',
           headers: {'Content-Type':'application/json'},
           body:    JSON.stringify(payload)
         });
-        const result = await res.json();
 
-        // 2) Show the raw summary on screen (for debugging)
-        document.getElementById('result')
-                .textContent = JSON.stringify(result, null, 2);
+        const contentType = res.headers.get('Content-Type') || '';
+        if (contentType.includes('application/pdf')) {
+          // 3a) PDF path: save to disk via browser
+          const blob = await res.blob();
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement('a');
+          a.href     = url;
+          a.download = 'transunion_report.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
 
-        // 3) Extract the summary object (assumes it's in result.data)
-        const summary = result.data || result;
-
-        // 4) POST the summary off to your backend for FLG upload
-        const uplRes = await fetch('/upload_summary', {
-          method:  'POST',
-          headers: {'Content-Type':'application/json'},
-          body:    JSON.stringify(summary)
-        });
-
-        if (!uplRes.ok) {
-          console.error('❌ Summary upload failed:', await uplRes.text());
+          // Optionally clear any prior summary
+          document.getElementById('result').textContent = '';
         } else {
-          console.log('✅ Summary uploaded successfully to backend');
+          // 3b) JSON path: show summary
+          const result = await res.json();
+          document.getElementById('result')
+                  .textContent = JSON.stringify(result, null, 2);
         }
 
-      } catch(err) {
+      } catch (err) {
         document.getElementById('result')
                 .textContent = 'Error: ' + err;
         console.error(err);
@@ -352,7 +355,6 @@
         submitBtn.disabled = false;
       }
     });
-
 
   });
   </script>
