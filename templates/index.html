@@ -48,23 +48,42 @@
       <div class="form-group"><label for="last_name">Last Name *</label>
         <input type="text" id="last_name" name="lastName" required/>
       </div>
-      <div class="form-group"><label for="date_of_birth">Date of Birth *</label>
-        <input type="text" id="date_of_birth" name="dateOfBirth" placeholder="YYYY-MM-DD" required/>
+
+      <div class="form-group"><label>Date of Birth *</label>
+        <div style="display:flex; gap:0.5rem;">
+          <select id="dob_day">
+            <option value="">Day</option>
+            ${[...Array(31)].map((_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
+          </select>
+          <select id="dob_month">
+            <option value="">Month</option>
+            ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+              .map((m, i) => `<option value="${i+1}">${m}</option>`).join('')}
+          </select>
+          <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" style="width:5rem"/>
+        </div>
+      </div>      
+
+      <div class="form-group" style="grid-column: span 2;">
+        <button type="button" id="enter_manual_btn">Enter address manually</button>
       </div>
 
+
       <!-- 2) Current Address -->
-      <h2>Current Address *</h2>
-      <div class="form-group"><label for="flat">Flat / Unit</label>
-        <input type="text" id="flat" name="flat" placeholder="e.g. 1" required/>
-      </div>
-      <div class="form-group"><label for="street">Street *</label>
-        <input type="text" id="street" name="street" placeholder="e.g. Example Street" required/>
-      </div>
-      <div class="form-group"><label for="post_town">Post Town *</label>
-        <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required/>
-      </div>
-      <div class="form-group"><label for="post_code">Post Code *</label>
-        <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required/>
+      <div id="manual_address" style="display:none;">
+        <h2>Current Address *</h2>
+        <div class="form-group"><label for="flat">Flat / Unit</label>
+          <input type="text" id="flat" name="flat" placeholder="e.g. 1" required/>
+        </div>
+        <div class="form-group"><label for="street">Street *</label>
+          <input type="text" id="street" name="street" placeholder="e.g. Example Street" required/>
+        </div>
+        <div class="form-group"><label for="post_town">Post Town *</label>
+          <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required/>
+        </div>
+        <div class="form-group"><label for="post_code">Post Code *</label>
+          <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required/>
+        </div>
       </div>
 
       <!-- 3) OR lookup by postcode -->
@@ -106,7 +125,23 @@
     <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
   </div>
 
+
+  <div id="overlay" style="display:none;">
+    <div class="message" id="overlay_msg">Processing…</div>
+  </div>
+
+
   <script>
+
+  const manualBtn     = document.getElementById('enter_manual_btn');
+  const manualAddress = document.getElementById('manual_address');
+
+  // Show fields when manual entry clicked
+  manualBtn.addEventListener('click', () => {
+    manualAddress.style.display = 'block';
+  });
+
+
   document.addEventListener('DOMContentLoaded', () => {
     const lookupBtn  = document.getElementById('address_lookup_btn');
     const addrSel    = document.getElementById('address_select');
@@ -130,7 +165,6 @@
 
     // Address lookup (POST, matches your Postman)
     lookupBtn.addEventListener('click', async () => {
-      alert('🔍 [DEBUG] Find Address clicked');
       console.log('[DEBUG] Fetching /lookup-address');
       const pc = document.getElementById('lookup_postcode').value.trim();
       const addrContainer = document.getElementById('address_container');
@@ -209,69 +243,49 @@
       document.getElementById('street').value    = a.street1  || '';
       document.getElementById('post_town').value = a.postTown || '';
       document.getElementById('post_code').value = a.postcode || '';
+      manualAddress.style.display = 'block';  // Show form fields after lookup
     });
 
     // Send OTP
 
     sendOtpBtn.addEventListener('click', async () => {
-      alert('📩 [DEBUG] Send OTP clicked');
-
-      // grab raw input and strip non-digits
-      const raw   = document.getElementById('mobile').value;
+      const raw = document.getElementById('mobile').value;
       const mobile = raw.replace(/\D/g, '');
+      if (!mobile) return alert('Please enter a valid mobile number');
 
-      if (!mobile) {
-        alert('Please enter a valid mobile number (digits only)');
-        return;
-      }
-
-      console.log('[DEBUG] Sending OTP to:', mobile);
+      sendOtpBtn.disabled = true;
+      document.getElementById('overlay_msg').textContent = 'Code being sent to your mobile… please wait';
+      document.getElementById('overlay').style.display = 'flex';
 
       try {
         const res = await fetch('/otp/request', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ mobile })   // sends { "mobile": "447973288569" }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile })
         });
-        console.log('[DEBUG] otp/request status:', res.status);
         const data = await res.json();
-        console.log('[DEBUG] otp/request JSON:', data);
+        if (!res.ok) throw new Error(data.error || 'Failed');
 
-        if (!res.ok) {
-          alert(`OTP request failed: ${data.error || res.status}`);
-          return;
-        }
-
-        // success
         otpGroup.style.display = 'block';
+        verifyBtn.disabled = false;
+
       } catch (err) {
-        console.error('[DEBUG] otp/request error', err);
-        alert('Network error sending OTP');
+        alert(`OTP send failed: ${err.message}`);
+      } finally {
+        document.getElementById('overlay').style.display = 'none';
+        sendOtpBtn.disabled = false;
       }
     });
 
     // Verify OTP
     verifyBtn.addEventListener('click', async () => {
-      alert('🔐 [DEBUG] Verify OTP clicked');
+      const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+      const code   = document.getElementById('otp').value.replace(/\D/g, '');
+      if (!mobile || !code) return alert('Please complete both mobile and OTP fields');
 
-      // grab & clean inputs
-      const rawMobile = document.getElementById('mobile').value;
-      const mobile    = rawMobile.replace(/\D/g, '');
-      const rawCode   = document.getElementById('otp').value;
-      const code      = rawCode.replace(/\D/g, '');
-
-      if (!mobile) {
-        alert('Please enter a valid mobile number (digits only)');
-        return;
-      }
-      if (!code) {
-        alert('Please enter the 6-digit OTP (digits only)');
-        return;
-      }
-
-      console.log('[DEBUG] Verifying OTP for:', mobile, 'code:', code);
+      verifyBtn.disabled = true;
+      document.getElementById('overlay_msg').textContent = 'Verifying OTP code… please wait';
+      document.getElementById('overlay').style.display = 'flex';
 
       try {
         const res = await fetch('/otp/verify', {
@@ -279,21 +293,19 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mobile, code })
         });
-        console.log('[DEBUG] otp/verify status:', res.status);
         const data = await res.json();
-        console.log('[DEBUG] otp/verify JSON:', data);
-
-        if (!res.ok) {
-          throw new Error(data.error || `Status ${res.status}`);
-        }
-
         const ok = data.data?.result === 'PASS';
-        document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
+
+        const statusEl = document.getElementById('otp_status');
+        statusEl.textContent = ok ? '✔ Verified' : '❌ Failed';
+        statusEl.classList.toggle('verified', ok);
         if (ok) submitBtn.disabled = false;
 
       } catch (err) {
-        console.error('[DEBUG] otp/verify error', err);
         alert(`OTP verification failed: ${err.message}`);
+      } finally {
+        document.getElementById('overlay').style.display = 'none';
+        verifyBtn.disabled = false;
       }
     });
 
@@ -309,7 +321,7 @@
         firstName:       document.getElementById('first_name').value.trim(),
         middleName:      document.getElementById('middle_name').value.trim(),
         lastName:        document.getElementById('last_name').value.trim(),
-        dateOfBirth:     document.getElementById('date_of_birth').value.trim(),
+        dateOfBirth:    `${document.getElementById('dob_year').value.trim()}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
         flat:            document.getElementById('flat').value.trim(),
         street:          document.getElementById('street').value.trim(),
         postTown:        document.getElementById('post_town').value.trim(),

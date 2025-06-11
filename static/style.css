@@ -67,3 +67,50 @@ button[type="submit"] {
   border-radius: 4px;
   border: 1px solid #ddd;
 }
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#overlay .message {
+  background: white;
+  padding: 2rem 3rem;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+#otp_status {
+  font-weight: bold;
+  margin-left: 10px;
+}
+#otp_status.verified {
+  color: green;
+}
+
+input, select, button {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+button {
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+}
+button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+h1, h2 {
+  font-family: 'Segoe UI', sans-serif;
+}
