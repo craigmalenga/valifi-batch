@@ -233,7 +233,6 @@ def query_valifi():
         download_name="transunion_report.pdf"
     )
 
-
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
     summary = request.json
@@ -251,13 +250,14 @@ def upload_summary():
     first, last = (rest.split(" ", 1) + [""])[:2]
 
     # ─── 2) Pull address fields from matchedAddress (if present) ───────────
-    addr = summary.get("matchedAddress", {})
-    # if matchedAddress has nested structure, adjust accordingly
-    addr_struct = addr if isinstance(addr, dict) and "street1" in addr else {}
-    address1 = addr_struct.get("street1", "")
-    address2 = addr_struct.get("street2", "")
-    town     = addr_struct.get("postTown", "")
-    postcode = addr_struct.get("postcode", "")
+    addr = summary.get("matchedAddress", {}) or {}
+    # Some APIs nest under a "$" key:
+    if "$" in addr and isinstance(addr["$"], dict):
+        addr = addr["$"]
+    address1 = addr.get("street1", "")
+    address2 = addr.get("street2", "")
+    town     = addr.get("postTown", "")
+    postcode = addr.get("postcode", "")
 
     # ─── 3) Date-of-birth from first account’s dob (YYYY-MM-DD) ────────────
     dob_iso = ""
@@ -265,52 +265,64 @@ def upload_summary():
     if accounts and accounts[0].get("dob"):
         dob_iso = accounts[0]["dob"].split("T")[0]
 
-    # ─── 4) Build the flat FLG lead dict ───────────────────────────────────
-    lead = {
-        "source":      "ValifiTransUnion",
-        "medium":      "API",
-        "term":        "CreditReport",
-        "title":       title,
-        "firstname":   first,
-        "lastname":    last,
-        "phone1":      summary.get("mobile", ""),
-        "email":       summary.get("email", ""),
-        "address":     address1,
-        "address2":    address2,
-        "towncity":    town,
-        "postcode":    postcode,
-        "dateOfBirth": dob_iso,
-        # contact preferences – adjust to "Yes"/"No" if needed
-        "contactphone":  "Unknown",
-        "contactsms":    "Unknown",
-        "contactemail":  "Unknown",
-        "contactmail":   "Unknown",
-        "contactfax":    "Unknown",
-        # add any extra data fields here, e.g.:
-        # "data1": lender_name, "data5": agreement_number, etc.
-    }
+    # ─── 4) Build the flat FLG lead XML ───────────────────────────────────
+    flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
+<lead>
+  <source>ValifiTransUnion</source>
+  <medium>API</medium>
+  <term>CreditReport</term>
+  <title>{title}</title>
+  <firstname>{first}</firstname>
+  <lastname>{last}</lastname>
+  <phone1>{summary.get("mobile","")}</phone1>
+  <email>{summary.get("email","")}</email>
+  <address>{address1}</address>
+  <address2>{address2}</address2>
+  <towncity>{town}</towncity>
+  <postcode>{postcode}</postcode>
+  <dateOfBirth>{dob_iso}</dateOfBirth>
+  <contactphone>Unknown</contactphone>
+  <contactsms>Unknown</contactsms>
+  <contactemail>Unknown</contactemail>
+  <contactmail>Unknown</contactmail>
+  <contactfax>Unknown</contactfax>
+</lead>""".strip().encode("ISO-8859-1")
 
-    # ─── 5) Build & send the XML to FLG ────────────────────────────────────
-    xml_payload = build_flg_lead_xml(lead)
-    app.logger.debug("FLG XML payload:\n%s", xml_payload.decode())
+    app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    flg_resp = flg_send_lead(xml_payload)
-    app.logger.info(
-        "FLG responded: status=%s body=%s",
-        flg_resp.status_code,
-        flg_resp.text
+    # ─── 5) Send to FLG ────────────────────────────────────────────────────
+    flg_url = os.getenv("FLG_API_URL")
+    flg_resp = requests.post(
+        flg_url,
+        data=flg_lead_xml,
+        headers={"Content-Type": "application/xml"},
+        timeout=30
     )
 
-    # ─── 6) Handle errors vs success ───────────────────────────────────────
-    if flg_resp.status_code != 200 or "<status>1</status>" not in flg_resp.text:
-        # FLG returns <status>1</status> for missing-field errors, so catch any non-200 or error status
-        app.logger.error("FLG upload failed: %s", flg_resp.text)
-        return (
-            jsonify(error="FLG upload failed", details=flg_resp.text),
-            flg_resp.status_code or 500
-        )
+    # 1) Log full XML response in Railway logs
+    app.logger.info("FLG responded: status=%s body=\n%s",
+                    flg_resp.status_code, flg_resp.text)
 
-    return jsonify(success=True, flg_response=flg_resp.text), 200
+    # 2) Parse out <status> and <item>/<id>
+    try:
+        root      = ET.fromstring(flg_resp.text)
+        status    = root.findtext("status")
+        record_id = root.findtext("item/id")
+    except Exception as e:
+        app.logger.error("Failed parsing FLG XML: %s", e)
+        return jsonify(error="Failed to parse FLG response", details=str(e)), 500
+
+    # 3) If FLG indicates error (<status> not “0”), return failure
+    if flg_resp.status_code != 200 or status != "0":
+        return (jsonify(error="FLG upload failed",
+                        flg_status=status,
+                        flg_body=flg_resp.text),
+                flg_resp.status_code or 500)
+
+    # 4) Success — return the new FLG lead ID
+    return jsonify(success=True, flg_status=status, flg_id=record_id), 200
+
+
 
 
 
