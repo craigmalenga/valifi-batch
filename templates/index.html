@@ -34,64 +34,75 @@
   <div class="container">
     <h1>Valifi: TransUnion Credit Report</h1>
 
-    <form id="searchForm" method="post" action="/query" autocomplete="on">
-      <!-- 1) Name & DOB -->
-      <div class="form-group"><label for="title">Title</label>
-        <input type="text" id="title" name="title" placeholder="Mr / Mrs / Ms / Dr"/>
-      </div>
-      <div class="form-group"><label for="first_name">First Name *</label>
-        <input type="text" id="first_name" name="firstName" required/>
-      </div>
-      <div class="form-group"><label for="middle_name">Middle Name</label>
-        <input type="text" id="middle_name" name="middleName"/>
-      </div>
-      <div class="form-group"><label for="last_name">Last Name *</label>
-        <input type="text" id="last_name" name="lastName" required/>
-      </div>
+    <form id="searchForm" autocomplete="on">
+      <!-- === STEP 1: Personal Info === -->
+      <div class="form-step" id="step1">
+        <div class="step-title">Ready to roll? Tell Us Who Was Driving</div>
 
-      <div class="form-group"><label>Date of Birth *</label>
-        <div style="display:flex; gap:0.5rem;">
-
-          <select id="dob_day">
-            <option value="">Day</option>
-            <!-- 1–31 -->
-            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-            <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
-            <option>16</option><option>17</option><option>18</option><option>19</option><option>20</option>
-            <option>21</option><option>22</option><option>23</option><option>24</option><option>25</option>
-            <option>26</option><option>27</option><option>28</option><option>29</option><option>30</option>
-            <option>31</option>
+        <div class="form-group">
+          <label for="title">Title *</label>
+          <select id="title" required>
+            <option value="">Select…</option>
+            <option>Mr</option><option>Mrs</option><option>Ms</option>
+            <option>Miss</option><option>Dr</option><option>Other</option>
           </select>
-
-          <select id="dob_month">
-            <option value="">Month</option>
-            <option value="1">Jan</option>
-            <option value="2">Feb</option>
-            <option value="3">Mar</option>
-            <option value="4">Apr</option>
-            <option value="5">May</option>
-            <option value="6">Jun</option>
-            <option value="7">Jul</option>
-            <option value="8">Aug</option>
-            <option value="9">Sep</option>
-            <option value="10">Oct</option>
-            <option value="11">Nov</option>
-            <option value="12">Dec</option>
-          </select>
-
-          <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" style="width:5rem"/>
         </div>
-      </div>      
 
-      <div class="form-group" style="grid-column: span 2;">
-        <button type="button" id="enter_manual_btn">Enter address manually</button>
+        <div class="form-group">
+          <label for="first_name">First Name (as on documents) *</label>
+          <input type="text" id="first_name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="middle_name">Middle Name(s) – optional</label>
+          <input type="text" id="middle_name">
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Last Name *</label>
+          <input type="text" id="last_name" required>
+        </div>
+
+        <div class="form-group">
+          <label>Date of Birth *</label>
+          <div style="display:flex; gap:0.5rem;">
+            <select id="dob_day">
+              <option value="">Day</option>
+              ${[...Array(31)].map((_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
+            </select>
+            <select id="dob_month">
+              <option value="">Month</option>
+              ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+                .map((m, i) => `<option value="${i+1}">${m}</option>`).join('')}
+            </select>
+            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" style="width:5rem" />
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="button-left" id="clear_step1">Clear Data</button>
+          <button type="button" class="button-right" id="next_to_step2">Proceed</button>
+        </div>
       </div>
 
+      <!-- === STEP 2: Address === -->
+      <div class="form-step" id="step2" style="display:none;">
+        <div class="step-title">What’s your address?</div>
 
-      <!-- 2) Current Address -->
-      <div id="manual_address" style="display:none;">
-        <h2>Current Address *</h2>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="lookup_postcode" placeholder="Enter postcode…" style="flex:1;" />
+          <button type="button" class="button-right" id="address_lookup_btn">Find Address</button>
+        </div>
+
+        <div id="address_container" style="margin-top: 1rem; display:none;">
+          <label for="address_select">Select Address</label>
+          <select id="address_select" name="address_select" style="width: 100%;">
+            <option value="">Pick an address…</option>
+          </select>
+        </div>
+
+        <div id="address_error" style="color: red; display: none; margin-top:0.5rem;"></div>
+
         <div class="form-group"><label for="flat">Flat / Unit</label>
           <input type="text" id="flat" name="flat" placeholder="e.g. 1" required/>
         </div>
@@ -104,52 +115,84 @@
         <div class="form-group"><label for="post_code">Post Code *</label>
           <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required/>
         </div>
+
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step1">Go Back</button>
+          <button type="button" class="button-right" id="next_to_step3">Proceed</button>
+        </div>
       </div>
 
-      <!-- 3) OR lookup by postcode -->
-      <div class="form-group"><em>Or look up by postcode:</em></div>
-      <div class="form-group lookup-postcode">
-        <input type="text" id="lookup_postcode" placeholder="Enter postcode…"/>
-        <button type="button" id="address_lookup_btn">Find Address</button>
-      </div>
-      <div class="form-group" id="address_container" style="display:none;">
-        <label for="address_select">Select Address</label>
-        <select id="address_select" name="address_select">
-          <option value="">Pick an address…</option>
-        </select>
-      </div>
-      <div id="address_error">Failed to lookup address</div>
+      <!-- === STEP 3: Mobile Entry === -->
+      <div class="form-step" id="step3" style="display:none;">
+        <div class="step-title">Mobile Verification</div>
 
-      <!-- 4) Mobile + OTP -->
-      <h2>Mobile Verification *</h2>
-      <div class="form-group">
-        <label for="mobile">Mobile Number</label>
-        <input type="text" id="mobile" name="mobile" required/>
-        <button type="button" id="send_otp">Send OTP</button>
+        <div class="form-group">
+          <label for="mobile">Mobile Number *</label>
+          <input type="tel" id="mobile" name="mobile" required autocomplete="tel">
+          <button type="button" class="button-right" id="send_otp">Send OTP</button>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step2">Go Back</button>
+          <button type="button" class="button-right" id="next_to_step4">Proceed</button>
+        </div>
       </div>
 
-      <!-- Make this always visible now, so we can debug it -->
-      <div class="form-group" id="otp_group">
-        <label for="otp">Enter OTP</label>
-        <input type="text" id="otp" name="otp" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*"/>
-        <button type="button" id="verify_otp">Verify OTP</button>
-        <span id="otp_status"></span>
+      <!-- === STEP 4: OTP Verification === -->
+      <div class="form-step" id="step4" style="display:none;">
+        <div class="step-title">Verify OTP Code</div>
+
+        <div class="form-group" id="otp_group">
+          <label for="otp">Enter OTP *</label>
+          <input type="text" id="otp" name="otp" autocomplete="one-time-code" inputmode="numeric">
+          <button type="button" class="button-right" id="verify_otp">Verify OTP</button>
+          <span id="otp_status"></span>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step3">Go Back</button>
+          <button type="button" class="button-right" id="next_to_step5">Proceed</button>
+        </div>
       </div>
 
-      <!-- 5) Actions -->
-      <button type="button" id="clear_btn">Clear All</button>
-      <button type="submit" disabled>Get TransUnion Report</button>
+      <!-- === STEP 5: Submit Final === -->
+      <div class="form-step" id="step5" style="display:none;">
+        <div class="step-title">Review and Submit</div>
+
+        <p style="text-align:center;">Click below to retrieve your credit report.</p>
+
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step4">Go Back</button>
+          <button type="submit" class="button-right">Get Report</button>
+        </div>
+      </div>
     </form>
-
     <div id="result"></div>
     <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
   </div>
 
+  const showStep = (idToShow) => {
+    document.querySelectorAll('.form-step').forEach(div => {
+      div.style.display = (div.id === idToShow) ? 'block' : 'none';
+    });
+  };
 
-  <div id="overlay" style="display:none;">
-    <div class="message" id="overlay_msg">Processing…</div>
-  </div>
+  document.getElementById('next_to_step2').onclick = () => showStep('step2');
+  document.getElementById('back_to_step1').onclick = () => showStep('step1');
 
+  document.getElementById('next_to_step3').onclick = () => showStep('step3');
+  document.getElementById('back_to_step2').onclick = () => showStep('step2');
+
+  document.getElementById('next_to_step4').onclick = () => showStep('step4');
+  document.getElementById('back_to_step3').onclick = () => showStep('step3');
+
+  document.getElementById('next_to_step5').onclick = () => showStep('step5');
+  document.getElementById('back_to_step4').onclick = () => showStep('step4');
+
+  document.getElementById('clear_step1').onclick = () => {
+    document.getElementById('searchForm').reset();
+    showStep('step1');
+  };
 
   <script>
 
