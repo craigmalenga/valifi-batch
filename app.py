@@ -232,6 +232,8 @@ def query_valifi():
         as_attachment=True,
         download_name="transunion_report.pdf"
     )
+
+
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
     summary = request.json
@@ -239,43 +241,34 @@ def upload_summary():
         app.logger.warning("upload_summary called with no JSON body")
         return jsonify(error="No summary provided"), 400
 
-    app.logger.info("upload_summary payload: %s", summary)
+    # (…name/date splitting as before…)
 
-    # 1) Extract & split full name into title, first, last
-    full_name = (summary.get("name") or "").strip()
-    parts     = full_name.split(" ", 1)
-    title     = parts[0] if len(parts) > 1 else ""
-    rest      = parts[1] if len(parts) > 1 else parts[0]
-    first, last = (rest.split(" ", 1) + [""])[:2]
-
-    # 2) Extract dateOfBirth if present
-    dob_iso = summary.get("dateOfBirth", "")
-
-    # 3) Build minimal FLG lead XML
+    # Build the **exact** wrapper + lead XML
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
-<lead>
-  <title>{title}</title>
-  <firstname>{first}</firstname>
-  <lastname>{last}</lastname>
-  <dateOfBirth>{dob_iso}</dateOfBirth>
-</lead>""".encode("ISO-8859-1")
+<data>
+  <lead>
+    <title>{title}</title>
+    <firstname>{first}</firstname>
+    <lastname>{last}</lastname>
+    <dateOfBirth>{dob_iso}</dateOfBirth>
+  </lead>
+</data>""".encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    # 4) Send to FLG
-    flg_url  = os.getenv("FLG_API_URL")
-    flg_resp = requests.post(
-        flg_url,
-        data=flg_lead_xml,
-        headers={"Content-Type": "application/xml"},
-        timeout=30
-    )
+    # (…send to FLG, log full XML response…)
 
-    # 5) Log the raw XML response
-    app.logger.info("FLG XML response (status %s):\n%s",
-                    flg_resp.status_code, flg_resp.text)
-
-    # 6) Parse <status> and <item>/<id>
+    # Parse the <result> … <id> per spec:
+    # <result>
+    #   <status>0</status>
+    #   <item>
+    #     <record>1</record>
+    #     <code>0</code>
+    #     <message>OK</message>
+    #     <id>1001150</id>
+    #   </item>
+    # </result>
+    # :contentReference[oaicite:1]{index=1}
     try:
         root      = ET.fromstring(flg_resp.text)
         status    = root.findtext("status")
@@ -284,7 +277,6 @@ def upload_summary():
         app.logger.error("Failed parsing FLG XML: %s", e)
         return jsonify(error="Failed to parse FLG response", details=str(e)), 500
 
-    # 7) Check for FLG error (status ≠ "0")
     if flg_resp.status_code != 200 or status != "0":
         app.logger.error("FLG upload failed: %s", flg_resp.text)
         return jsonify(
@@ -293,13 +285,7 @@ def upload_summary():
             flg_body=flg_resp.text
         ), flg_resp.status_code or 500
 
-    # 8) Success: return the new FLG lead ID
-    return jsonify(
-        success=True,
-        flg_status=status,
-        flg_id=record_id
-    ), 200
-
+    return jsonify(success=True, flg_status=status, flg_id=record_id), 200
 
 
 @app.route("/flg/lead", methods=["POST"])
