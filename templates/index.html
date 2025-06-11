@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Valifi: TransUnion Credit Report</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
     .container { max-width: 800px; margin: auto; padding: 20px; }
@@ -32,20 +31,24 @@
 </head>
 <body>
   <div class="container">
-    <h1>Valifi: TransUnion Credit Report</h1>
 
     <form id="searchForm" autocomplete="on">
       <!-- === STEP 1: Personal Info === -->
       <div class="form-step" id="step1">
-        <div class="step-title">Ready to roll? Tell Us Who Was Driving</div>
+        <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
 
         <div class="form-group">
-          <label for="title">Title *</label>
-          <select id="title" required>
-            <option value="">Select…</option>
-            <option>Mr</option><option>Mrs</option><option>Ms</option>
-            <option>Miss</option><option>Dr</option><option>Other</option>
-          </select>
+          <label>Title *</label>
+          <div class="title-button-group" id="title_buttons">
+            <button type="button" data-value="Mr">Mr</button>
+            <button type="button" data-value="Mrs">Mrs</button>
+            <button type="button" data-value="Miss">Miss</button>
+            <button type="button" data-value="Ms">Ms</button>
+            <button type="button" data-value="Dr">Dr</button>
+            <button type="button" data-value="Lady">Lady</button>
+            <button type="button" data-value="Sir">Sir</button>
+          </div>
+          <input type="hidden" id="title" name="title" required />
         </div>
 
         <div class="form-group">
@@ -64,18 +67,15 @@
         </div>
 
         <div class="form-group">
-          <label>Date of Birth *</label>
+          <label for="dob_day">Date of Birth *</label>
           <div style="display:flex; gap:0.5rem;">
-            <select id="dob_day">
+            <select id="dob_day" required>
               <option value="">Day</option>
-              ${[...Array(31)].map((_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
             </select>
-            <select id="dob_month">
+            <select id="dob_month" required>
               <option value="">Month</option>
-              ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-                .map((m, i) => `<option value="${i+1}">${m}</option>`).join('')}
             </select>
-            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" style="width:5rem" />
+            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" required />
           </div>
         </div>
 
@@ -171,76 +171,92 @@
     <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
   </div>
 
-  const showStep = (idToShow) => {
-    document.querySelectorAll('.form-step').forEach(div => {
-      div.style.display = (div.id === idToShow) ? 'block' : 'none';
-    });
-  };
-
-  document.getElementById('next_to_step2').onclick = () => showStep('step2');
-  document.getElementById('back_to_step1').onclick = () => showStep('step1');
-
-  document.getElementById('next_to_step3').onclick = () => showStep('step3');
-  document.getElementById('back_to_step2').onclick = () => showStep('step2');
-
-  document.getElementById('next_to_step4').onclick = () => showStep('step4');
-  document.getElementById('back_to_step3').onclick = () => showStep('step3');
-
-  document.getElementById('next_to_step5').onclick = () => showStep('step5');
-  document.getElementById('back_to_step4').onclick = () => showStep('step4');
-
-  document.getElementById('clear_step1').onclick = () => {
-    document.getElementById('searchForm').reset();
-    showStep('step1');
-  };
-
   <script>
-
-  const manualBtn     = document.getElementById('enter_manual_btn');
-  const manualAddress = document.getElementById('manual_address');
-
-  // Show fields when manual entry clicked
-  manualBtn.addEventListener('click', () => {
-    manualAddress.style.display = 'block';
-  });
-
-
   document.addEventListener('DOMContentLoaded', () => {
-    const lookupBtn  = document.getElementById('address_lookup_btn');
-    const addrSel    = document.getElementById('address_select');
-    const addrCont   = document.getElementById('address_container');
-    const addrErr    = document.getElementById('address_error');
-    const sendOtpBtn = document.getElementById('send_otp');
-    const verifyBtn  = document.getElementById('verify_otp');
-    const otpGroup   = document.getElementById('otp_group');
-    const submitBtn  = document.querySelector('button[type="submit"]');
-    const clearBtn   = document.getElementById('clear_btn');
+    // Step navigation logic
+    const showStep = (idToShow) => {
+      document.querySelectorAll('.form-step').forEach(div => {
+        div.style.display = (div.id === idToShow) ? 'block' : 'none';
+      });
+    };
+
+    document.getElementById('next_to_step2')?.addEventListener('click', () => showStep('step2'));
+    document.getElementById('back_to_step1')?.addEventListener('click', () => showStep('step1'));
+    document.getElementById('next_to_step3')?.addEventListener('click', () => showStep('step3'));
+    document.getElementById('back_to_step2')?.addEventListener('click', () => showStep('step2'));
+    document.getElementById('next_to_step4')?.addEventListener('click', () => showStep('step4'));
+    document.getElementById('back_to_step3')?.addEventListener('click', () => showStep('step3'));
+    document.getElementById('next_to_step5')?.addEventListener('click', () => showStep('step5'));
+    document.getElementById('back_to_step4')?.addEventListener('click', () => showStep('step4'));
+
+    document.getElementById('clear_step1')?.addEventListener('click', () => {
+      document.getElementById('searchForm').reset();
+      showStep('step1');
+    });
+
+    // Populate DOB dropdowns
+    const daySel = document.getElementById('dob_day');
+    const monthSel = document.getElementById('dob_month');
+
+    if (daySel && monthSel) {
+      for (let i = 1; i <= 31; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = i;
+        daySel.appendChild(opt);
+      }
+
+      ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        .forEach((m, i) => {
+          const opt = document.createElement('option');
+          opt.value = i + 1;
+          opt.textContent = m;
+          monthSel.appendChild(opt);
+        });
+    }
+
+    // Manual address toggle
+    const manualBtn = document.getElementById('enter_manual_btn');
+    const manualAddress = document.getElementById('manual_address');
+    if (manualBtn && manualAddress) {
+      manualBtn.addEventListener('click', () => {
+        manualAddress.style.display = 'block';
+      });
+    }
+
+    // Title button group logic
+    document.querySelectorAll('#title_buttons button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#title_buttons button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('title').value = btn.dataset.value;
+      });
+    });
 
     // Clear-all
-    clearBtn.addEventListener('click', () => {
+    const clearBtn = document.getElementById('clear_btn');
+    const addrCont = document.getElementById('address_container');
+    const addrErr = document.getElementById('address_error');
+    const otpGroup = document.getElementById('otp_group');
+    const submitBtn = document.querySelector('button[type="submit"]');
+
+    clearBtn?.addEventListener('click', () => {
       document.getElementById('searchForm').reset();
       addrCont.style.display = 'none';
-      addrErr.style.display  = 'none';
+      addrErr.style.display = 'none';
       otpGroup.style.display = 'block';
       otpGroup.querySelector('#otp_status').textContent = '';
       submitBtn.disabled = true;
     });
 
-    // Address lookup (POST, matches your Postman)
-    lookupBtn.addEventListener('click', async () => {
-      console.log('[DEBUG] Fetching /lookup-address');
+    // Address lookup
+    document.getElementById('address_lookup_btn')?.addEventListener('click', async () => {
       const pc = document.getElementById('lookup_postcode').value.trim();
-      const addrContainer = document.getElementById('address_container');
-      const addrErr       = document.getElementById('address_error');
-      const addrSel       = document.getElementById('address_select');
-
+      const addrSel = document.getElementById('address_select');
       addrErr.style.display = 'none';
-      addrSel.innerHTML     = '<option value="">Pick an address…</option>';
+      addrSel.innerHTML = '<option value="">Pick an address…</option>';
 
-      if (!pc) {
-        alert('Please enter a postcode');
-        return;
-      }
+      if (!pc) return alert('Please enter a postcode');
 
       try {
         const res = await fetch('/lookup-address', {
@@ -248,74 +264,51 @@
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ postCode: pc })
         });
-        console.log('[DEBUG] lookup-address status:', res.status);
-
         const data = await res.json();
-        console.log('[DEBUG] lookup-address JSON:', data);
 
-        if (!res.ok || !Array.isArray(data.addresses)) {
-          throw new Error(data.error || 'Lookup failed');
-        }
-
+        if (!res.ok || !Array.isArray(data.addresses)) throw new Error(data.error || 'Lookup failed');
         if (data.addresses.length === 0) {
-          addrContainer.style.display = 'none';
-          addrErr.textContent         = 'No addresses found';
-          addrErr.style.display       = 'block';
+          addrCont.style.display = 'none';
+          addrErr.textContent = 'No addresses found';
+          addrErr.style.display = 'block';
           return;
         }
 
-        // build dropdown
         data.addresses.forEach(a => {
-          const opt   = document.createElement('option');
-          opt.value   = JSON.stringify(a);
-
-          const label = a.name   ||
-                        a.flat   ||
-                        a.house  ||
-                        a.number ||
-                        '';
-
+          const opt = document.createElement('option');
+          opt.value = JSON.stringify(a);
+          const label = a.name || a.flat || a.house || a.number || '';
           opt.textContent = `${label} ${a.street1}, ${a.postTown}`;
           addrSel.appendChild(opt);
         });
 
-        addrContainer.style.display = 'block';
-
+        addrCont.style.display = 'block';
       } catch (err) {
-        console.error('[DEBUG] lookup-address error', err);
-        addrContainer.style.display = 'none';
-        addrErr.textContent         = err.message || 'Network error';
-        addrErr.style.display       = 'block';
+        addrCont.style.display = 'none';
+        addrErr.textContent = err.message || 'Network error';
+        addrErr.style.display = 'block';
       }
     });
 
-    // On address select → fill form fields
-
-    addrSel.addEventListener('change', e => {
+    // Populate fields after selecting address
+    document.getElementById('address_select')?.addEventListener('change', e => {
       const a = JSON.parse(e.target.value || '{}');
       if (!a.name && !a.flat && !a.house && !a.number) return;
-
-      // same fallback logic for populating the flat/unit field:
-      const flatVal = a.name   ||
-                      a.flat   ||
-                      a.house  ||
-                      a.number ||
-                      '';
-
-      document.getElementById('flat').value      = flatVal;
-      document.getElementById('street').value    = a.street1  || '';
+      const flatVal = a.name || a.flat || a.house || a.number || '';
+      document.getElementById('flat').value = flatVal;
+      document.getElementById('street').value = a.street1 || '';
       document.getElementById('post_town').value = a.postTown || '';
       document.getElementById('post_code').value = a.postcode || '';
-      manualAddress.style.display = 'block';  // Show form fields after lookup
+      manualAddress.style.display = 'block';
     });
 
-    // Send OTP
-
-    sendOtpBtn.addEventListener('click', async () => {
-      const raw = document.getElementById('mobile').value;
-      const mobile = raw.replace(/\D/g, '');
+    // OTP request
+    document.getElementById('send_otp')?.addEventListener('click', async () => {
+      const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
       if (!mobile) return alert('Please enter a valid mobile number');
 
+      const sendOtpBtn = document.getElementById('send_otp');
+      const verifyBtn = document.getElementById('verify_otp');
       sendOtpBtn.disabled = true;
       document.getElementById('overlay_msg').textContent = 'Code being sent to your mobile… please wait';
       document.getElementById('overlay').style.display = 'flex';
@@ -328,10 +321,8 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed');
-
         otpGroup.style.display = 'block';
         verifyBtn.disabled = false;
-
       } catch (err) {
         alert(`OTP send failed: ${err.message}`);
       } finally {
@@ -340,12 +331,13 @@
       }
     });
 
-    // Verify OTP
-    verifyBtn.addEventListener('click', async () => {
+    // OTP verify
+    document.getElementById('verify_otp')?.addEventListener('click', async () => {
       const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-      const code   = document.getElementById('otp').value.replace(/\D/g, '');
+      const code = document.getElementById('otp').value.replace(/\D/g, '');
       if (!mobile || !code) return alert('Please complete both mobile and OTP fields');
 
+      const verifyBtn = document.getElementById('verify_otp');
       verifyBtn.disabled = true;
       document.getElementById('overlay_msg').textContent = 'Verifying OTP code… please wait';
       document.getElementById('overlay').style.display = 'flex';
@@ -358,12 +350,10 @@
         });
         const data = await res.json();
         const ok = data.data?.result === 'PASS';
-
         const statusEl = document.getElementById('otp_status');
         statusEl.textContent = ok ? '✔ Verified' : '❌ Failed';
         statusEl.classList.toggle('verified', ok);
         if (ok) submitBtn.disabled = false;
-
       } catch (err) {
         alert(`OTP verification failed: ${err.message}`);
       } finally {
@@ -372,79 +362,62 @@
       }
     });
 
-    // Final form submit → /query (+ base64 PDF decode)
+    // Form submit
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
 
-      // build payload as before
       const payload = {
-        title:           document.getElementById('title').value.trim(),
-        firstName:       document.getElementById('first_name').value.trim(),
-        middleName:      document.getElementById('middle_name').value.trim(),
-        lastName:        document.getElementById('last_name').value.trim(),
-        dateOfBirth:    `${document.getElementById('dob_year').value.trim()}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
-        flat:            document.getElementById('flat').value.trim(),
-        street:          document.getElementById('street').value.trim(),
-        postTown:        document.getElementById('post_town').value.trim(),
-        postCode:        document.getElementById('post_code').value.trim(),
+        title: document.getElementById('title').value.trim(),
+        firstName: document.getElementById('first_name').value.trim(),
+        middleName: document.getElementById('middle_name').value.trim(),
+        lastName: document.getElementById('last_name').value.trim(),
+        dateOfBirth: `${document.getElementById('dob_year').value.trim()}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
+        flat: document.getElementById('flat').value.trim(),
+        street: document.getElementById('street').value.trim(),
+        postTown: document.getElementById('post_town').value.trim(),
+        postCode: document.getElementById('post_code').value.trim(),
         clientReference: 'report'
       };
 
       try {
-        const res    = await fetch('/query', {
-          method:  'POST',
-          headers: {'Content-Type':'application/json'},
-          body:    JSON.stringify(payload)
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
         const result = await res.json();
-
-        // 1) Show summary (exclude the giant pdfReport field)
         const summary = result.data?.summaryReport || result.data;
-        document.getElementById('result')
-                .textContent = JSON.stringify(summary, null, 2);
+        document.getElementById('result').textContent = JSON.stringify(summary, null, 2);
 
-        // 3) Post summary to FLG endpoint
-        console.log('[DEBUG] Posting summary to /upload_summary:', summary);
+        // Send to FLG
         try {
-          const flgRes  = await fetch('/upload_summary', {
-            method:  'POST',
-            headers: {'Content-Type':'application/json'},
-            body:    JSON.stringify(summary)
+          const flgRes = await fetch('/upload_summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(summary)
           });
           const flgData = await flgRes.json();
-          console.log(
-            '[DEBUG] FLG upload response →',
-            flgRes.status,
-            flgData
-          );
-
-          // Show status on page
-          document.getElementById('flg_status')
-                  .textContent = flgRes.ok
-                    ? 'FLG upload succeeded'
-                    : `FLG upload failed: ${flgData.error || flgRes.status}`;
+          document.getElementById('flg_status').textContent = flgRes.ok
+            ? 'FLG upload succeeded'
+            : `FLG upload failed: ${flgData.error || flgRes.status}`;
         } catch (err) {
           console.error('[DEBUG] Error posting to FLG:', err);
-          document.getElementById('flg_status')
-                  .textContent = 'Error posting to FLG, see console';
+          document.getElementById('flg_status').textContent = 'Error posting to FLG, see console';
         }
 
-
-
-        // 2) If there's a base64 PDF, decode & trigger Save As…
         const b64 = result.data?.pdfReport;
         if (b64) {
           const binary = atob(b64);
-          const u8     = new Uint8Array(binary.length);
+          const u8 = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) {
             u8[i] = binary.charCodeAt(i);
           }
           const blob = new Blob([u8], { type: 'application/pdf' });
-          const url  = URL.createObjectURL(blob);
-          const a    = document.createElement('a');
-          a.href     = url;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
           a.download = 'transunion_report.pdf';
           document.body.appendChild(a);
           a.click();
@@ -454,8 +427,7 @@
 
       } catch (err) {
         console.error(err);
-        document.getElementById('result')
-                .textContent = 'Error: ' + err;
+        document.getElementById('result').textContent = 'Error: ' + err;
       } finally {
         submitBtn.disabled = false;
       }
@@ -463,5 +435,8 @@
 
   });
   </script>
+
+
+  
 </body>
 </html>
