@@ -232,7 +232,6 @@ def query_valifi():
         as_attachment=True,
         download_name="transunion_report.pdf"
     )
-
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
     summary = request.json
@@ -242,56 +241,29 @@ def upload_summary():
 
     app.logger.info("upload_summary payload: %s", summary)
 
-    # ─── 1) Extract & split full name into title, first, last ──────────────
+    # 1) Extract & split full name into title, first, last
     full_name = (summary.get("name") or "").strip()
     parts     = full_name.split(" ", 1)
     title     = parts[0] if len(parts) > 1 else ""
     rest      = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
 
-    # ─── 2) Pull address fields from matchedAddress (if present) ───────────
-    addr = summary.get("matchedAddress", {}) or {}
-    # Some APIs nest under a "$" key:
-    if "$" in addr and isinstance(addr["$"], dict):
-        addr = addr["$"]
-    address1 = addr.get("street1", "")
-    address2 = addr.get("street2", "")
-    town     = addr.get("postTown", "")
-    postcode = addr.get("postcode", "")
+    # 2) Extract dateOfBirth if present
+    dob_iso = summary.get("dateOfBirth", "")
 
-    # ─── 3) Date-of-birth from first account’s dob (YYYY-MM-DD) ────────────
-    dob_iso = ""
-    accounts = summary.get("accounts") or []
-    if accounts and accounts[0].get("dob"):
-        dob_iso = accounts[0]["dob"].split("T")[0]
-
-    # ─── 4) Build the flat FLG lead XML ───────────────────────────────────
+    # 3) Build minimal FLG lead XML
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
 <lead>
-  <source>ValifiTransUnion</source>
-  <medium>API</medium>
-  <term>CreditReport</term>
   <title>{title}</title>
   <firstname>{first}</firstname>
   <lastname>{last}</lastname>
-  <phone1>{summary.get("mobile","")}</phone1>
-  <email>{summary.get("email","")}</email>
-  <address>{address1}</address>
-  <address2>{address2}</address2>
-  <towncity>{town}</towncity>
-  <postcode>{postcode}</postcode>
   <dateOfBirth>{dob_iso}</dateOfBirth>
-  <contactphone>Unknown</contactphone>
-  <contactsms>Unknown</contactsms>
-  <contactemail>Unknown</contactemail>
-  <contactmail>Unknown</contactmail>
-  <contactfax>Unknown</contactfax>
-</lead>""".strip().encode("ISO-8859-1")
+</lead>""".encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    # ─── 5) Send to FLG ────────────────────────────────────────────────────
-    flg_url = os.getenv("FLG_API_URL")
+    # 4) Send to FLG
+    flg_url  = os.getenv("FLG_API_URL")
     flg_resp = requests.post(
         flg_url,
         data=flg_lead_xml,
@@ -299,11 +271,11 @@ def upload_summary():
         timeout=30
     )
 
-    # 1) Log full XML response in Railway logs
-    app.logger.info("FLG responded: status=%s body=\n%s",
+    # 5) Log the raw XML response
+    app.logger.info("FLG XML response (status %s):\n%s",
                     flg_resp.status_code, flg_resp.text)
 
-    # 2) Parse out <status> and <item>/<id>
+    # 6) Parse <status> and <item>/<id>
     try:
         root      = ET.fromstring(flg_resp.text)
         status    = root.findtext("status")
@@ -312,17 +284,21 @@ def upload_summary():
         app.logger.error("Failed parsing FLG XML: %s", e)
         return jsonify(error="Failed to parse FLG response", details=str(e)), 500
 
-    # 3) If FLG indicates error (<status> not “0”), return failure
+    # 7) Check for FLG error (status ≠ "0")
     if flg_resp.status_code != 200 or status != "0":
-        return (jsonify(error="FLG upload failed",
-                        flg_status=status,
-                        flg_body=flg_resp.text),
-                flg_resp.status_code or 500)
+        app.logger.error("FLG upload failed: %s", flg_resp.text)
+        return jsonify(
+            error="FLG upload failed",
+            flg_status=status,
+            flg_body=flg_resp.text
+        ), flg_resp.status_code or 500
 
-    # 4) Success — return the new FLG lead ID
-    return jsonify(success=True, flg_status=status, flg_id=record_id), 200
-
-
+    # 8) Success: return the new FLG lead ID
+    return jsonify(
+        success=True,
+        flg_status=status,
+        flg_id=record_id
+    ), 200
 
 
 
