@@ -4,6 +4,7 @@ import logging
 from flask import Flask, render_template, request, jsonify, send_file, Response
 import requests
 import io
+import xml.etree.ElementTree as ET
 
 # ─── App & Logging setup ───────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -257,6 +258,7 @@ def upload_summary():
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
 <data>
   <lead>
+    <leadgroup>57862</leadgroup>
     <title>{title}</title>
     <firstname>{first}</firstname>
     <lastname>{last}</lastname>
