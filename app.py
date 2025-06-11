@@ -241,9 +241,23 @@ def upload_summary():
         app.logger.warning("upload_summary called with no JSON body")
         return jsonify(error="No summary provided"), 400
 
-    # (…name/date splitting as before…)
+    app.logger.info("upload_summary payload: %s", summary)
 
-    # Build the **exact** wrapper + lead XML
+    # 1) Extract & split full name into title, first, last
+    full_name = (summary.get("name") or "").strip()
+    parts     = full_name.split(" ", 1)
+    title     = parts[0] if len(parts) > 1 else ""
+    rest      = parts[1] if len(parts) > 1 else parts[0]
+    first, last = (rest.split(" ", 1) + [""])[:2]
+
+    # 2) Extract dateOfBirth (either directly or from first account)
+    dob_iso = summary.get("dateOfBirth", "")
+    if not dob_iso:
+        accounts = summary.get("accounts") or []
+        if accounts and accounts[0].get("dob"):
+            dob_iso = accounts[0]["dob"].split("T")[0]
+
+    # 3) Build exact FLG XML payload (wrapped in <data><lead>…</lead></data>)
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
 <data>
   <lead>
@@ -256,19 +270,23 @@ def upload_summary():
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    # (…send to FLG, log full XML response…)
+    # 4) Send to FLG
+    flg_url = os.getenv("FLG_API_URL")
+    try:
+        flg_resp = requests.post(
+            flg_url,
+            data=flg_lead_xml,
+            headers={"Content-Type": "application/xml"},
+            timeout=30
+        )
+    except Exception as e:
+        app.logger.error("Failed posting to FLG: %s", e)
+        return jsonify(error="FLG request failed", details=str(e)), 500
 
-    # Parse the <result> … <id> per spec:
-    # <result>
-    #   <status>0</status>
-    #   <item>
-    #     <record>1</record>
-    #     <code>0</code>
-    #     <message>OK</message>
-    #     <id>1001150</id>
-    #   </item>
-    # </result>
-    # :contentReference[oaicite:1]{index=1}
+    app.logger.info("FLG XML response (status %s):\n%s",
+                    flg_resp.status_code, flg_resp.text)
+
+    # 5) Parse XML response to extract <status> and <id>
     try:
         root      = ET.fromstring(flg_resp.text)
         status    = root.findtext("status")
@@ -277,6 +295,7 @@ def upload_summary():
         app.logger.error("Failed parsing FLG XML: %s", e)
         return jsonify(error="Failed to parse FLG response", details=str(e)), 500
 
+    # 6) Handle error status
     if flg_resp.status_code != 200 or status != "0":
         app.logger.error("FLG upload failed: %s", flg_resp.text)
         return jsonify(
@@ -285,7 +304,9 @@ def upload_summary():
             flg_body=flg_resp.text
         ), flg_resp.status_code or 500
 
+    # 7) Success
     return jsonify(success=True, flg_status=status, flg_id=record_id), 200
+
 
 
 @app.route("/flg/lead", methods=["POST"])
