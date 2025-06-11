@@ -304,14 +304,22 @@
 
     // OTP request
     document.getElementById('send_otp')?.addEventListener('click', async () => {
-      const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-      if (!mobile) return alert('Please enter a valid mobile number');
-
+      const mobileInput = document.getElementById('mobile');
       const sendOtpBtn = document.getElementById('send_otp');
       const verifyBtn = document.getElementById('verify_otp');
+      const overlay = document.getElementById('overlay');
+      const overlayMsg = document.getElementById('overlay_msg');
+
+      const mobile = mobileInput.value.replace(/\D/g, '');
+      if (!mobile || mobile.length < 10) {
+        alert('Please enter a valid mobile number');
+        return;
+      }
+
       sendOtpBtn.disabled = true;
-      document.getElementById('overlay_msg').textContent = 'Code being sent to your mobile… please wait';
-      document.getElementById('overlay').style.display = 'flex';
+      verifyBtn.disabled = true;
+      overlayMsg.textContent = 'Code being sent to your mobile… please wait';
+      overlay.style.display = 'flex';
 
       try {
         const res = await fetch('/otp/request', {
@@ -320,16 +328,23 @@
           body: JSON.stringify({ mobile })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed');
-        otpGroup.style.display = 'block';
+        console.log('[DEBUG] OTP response:', data);
+
+        if (!res.ok || !data?.data?.result) {
+          throw new Error(data?.error || 'OTP send failed');
+        }
+
+        document.getElementById('otp_group').style.display = 'block';
         verifyBtn.disabled = false;
       } catch (err) {
+        console.error('OTP send error:', err);
         alert(`OTP send failed: ${err.message}`);
       } finally {
-        document.getElementById('overlay').style.display = 'none';
+        overlay.style.display = 'none';
         sendOtpBtn.disabled = false;
       }
     });
+
 
     // OTP verify
     document.getElementById('verify_otp')?.addEventListener('click', async () => {
