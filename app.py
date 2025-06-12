@@ -189,6 +189,7 @@ def query_valifi():
         if not data.get(k):
             return jsonify(error=f"{k} is required"), 400
 
+
     # 2) Build the Valifi payload requesting JSON + base64 PDF + summary
     payload = {
         "includeJsonReport":    True,
