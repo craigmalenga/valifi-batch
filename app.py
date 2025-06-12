@@ -323,14 +323,27 @@ def upload_summary():
 
     if flg_resp.status_code != 200 or status != "0":
         app.logger.error("FLG upload failed: %s", flg_resp.text)
+
         return jsonify(
             error="FLG upload failed",
             flg_status=status,
-            flg_body=flg_resp.text
+            flg_body=flg_resp.text,
+            debug_data32=data32_str,
+            debug_lenders=",".join(acc.get("lenderName","") for acc in accounts),
+            debug_flg_xml=flg_lead_xml.decode("ISO-8859-1")
         ), flg_resp.status_code or 500
 
+
     # 6. Success
-    return jsonify(success=True, flg_status=status, flg_id=record_id), 200
+    return jsonify({
+        "success": True,
+        "flg_status": status,
+        "flg_id": record_id,
+        "debug_data32": data32_str,
+        "debug_lenders": ",".join(acc.get("lenderName","") for acc in accounts),
+        "debug_flg_xml": flg_lead_xml.decode("ISO-8859-1")
+    }), 200
+
 
 @app.route("/flg/lead", methods=["POST"])
 def create_flg_lead():

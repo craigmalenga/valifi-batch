@@ -469,6 +469,24 @@
                   ? 'FLG upload succeeded'
                   : `FLG upload failed: ${flgData.error||flgRes.status}`;
 
+        // TEMPORARY DEBUG OUTPUT:
+        const debugDiv = document.createElement('div');
+        debugDiv.style = "margin-top:1em; padding:0.5em; background:#f9f9f9; border:1px dashed #ccc;";
+        debugDiv.innerHTML = `
+          <h4>🔍 FLG Debug Info</h4>
+          <p><strong>Comma-delimited data32:</strong></p>
+          <pre style="white-space:pre-wrap;">${flgData.debug_data32}</pre>
+          <p><strong>Lender Names:</strong> ${flgData.debug_lenders}</p>
+          <p><strong>Full FLG XML Payload:</strong></p>
+          <pre style="white-space:pre-wrap;">${flgData.debug_flg_xml}</pre>
+        `;
+        document.getElementById('flg_status').insertAdjacentElement('afterend', debugDiv);
+
+        // Also log to console:
+        console.log('FLG data32:', flgData.debug_data32);
+        console.log('FLG XML payload:', flgData.debug_flg_xml);
+
+
         // 5) Decode & download PDF
         const b64 = result.data?.pdfReport;
         if (b64) {
