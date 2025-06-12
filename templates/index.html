@@ -173,12 +173,26 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
+    const lookupBtn  = document.getElementById('address_lookup_btn');
+    const addrSel    = document.getElementById('address_select');
+    const addrCont   = document.getElementById('address_container');
+    const addrErr    = document.getElementById('address_error');
+    const sendOtpBtn = document.getElementById('send_otp');
+    const verifyBtn  = document.getElementById('verify_otp');
+    const otpGroup   = document.getElementById('otp_group');
+    const submitBtn  = document.querySelector('button[type="submit"]');
+    const clearBtn   = document.getElementById('clear_btn');
+    
+    
     // Step navigation logic
     const showStep = (idToShow) => {
       document.querySelectorAll('.form-step').forEach(div => {
         div.style.display = (div.id === idToShow) ? 'block' : 'none';
       });
     };
+
+
+
 
     document.getElementById('next_to_step2')?.addEventListener('click', () => showStep('step2'));
     document.getElementById('back_to_step1')?.addEventListener('click', () => showStep('step1'));
@@ -308,7 +322,7 @@
       alert('📩 [DEBUG] Send OTP clicked');
 
       // grab raw input and strip non-digits
-      const raw   = document.getElementById('mobile').value;
+      const raw    = document.getElementById('mobile').value;
       const mobile = raw.replace(/\D/g, '');
 
       if (!mobile) {
@@ -318,17 +332,14 @@
 
       console.log('[DEBUG] Sending OTP to:', mobile);
 
-
-
       try {
         const res = await fetch('/otp/request', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ mobile })  
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ mobile })
         });
         console.log('[DEBUG] otp/request status:', res.status);
+
         const data = await res.json();
         console.log('[DEBUG] otp/request JSON:', data);
 
@@ -336,15 +347,16 @@
           alert(`OTP request failed: ${data.error || res.status}`);
           return;
         }
-      try {
 
-        // show OTP input once sent
+        // on success, reveal the OTP input group
         otpGroup.style.display = 'block';
+
       } catch (err) {
         console.error('[DEBUG] otp/request error', err);
         alert('Network error sending OTP');
       }
     });
+
 
 
     // Verify OTP
