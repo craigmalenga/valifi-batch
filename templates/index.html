@@ -32,7 +32,7 @@
 <body>
   <div class="container">
 
-    <form id="searchForm" autocomplete="on">
+    <form id="searchForm" autocomplete="on" novalidate>
       <!-- === STEP 1: Personal Info === -->
       <div class="form-step" id="step1">
         <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
@@ -406,7 +406,12 @@
         firstName:       document.getElementById('first_name').value.trim(),
         middleName:      document.getElementById('middle_name').value.trim(),
         lastName:        document.getElementById('last_name').value.trim(),
-        dateOfBirth:     document.getElementById('date_of_birth').value.trim(),
+
+        const day   = document.getElementById('dob_day').value.padStart(2,'0');
+        const month = document.getElementById('dob_month').value.padStart(2,'0');
+        const year  = document.getElementById('dob_year').value.trim();
+        dateOfBirth: `${year}-${month}-${day}`,
+
         flat:            document.getElementById('flat').value.trim(),
         street:          document.getElementById('street').value.trim(),
         postTown:        document.getElementById('post_town').value.trim(),
