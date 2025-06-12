@@ -177,7 +177,7 @@
       <!-- === STEP 6: What we’ve found === -->
       <div class="form-step" id="step6" style="display:none;">
         <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
-        <div id="found_list" style="display:grid; grid-template-columns:20% 80%; gap:1rem;">
+        <div id="found_list" style="display:grid; grid-template-columns:20% 40% 40%; gap:1rem;">        
           <!-- JS will inject lender icons + names here -->
         </div>
         <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
@@ -505,26 +505,36 @@
           URL.revokeObjectURL(url);
         }
 
-        // 6) Populate Step 6 “found” list and advance
+        // Populate Step 6 “found” list and advance (3-column: icon / name / start-date)
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';
-        (summary.accounts||[]).forEach(acc => {
-          const row = document.createElement('div');
-          row.style.display = 'contents';
 
-          const iconCell = document.createElement('div');
-          const img      = document.createElement('img');
-          img.alt        = acc.lenderName;
+        (summary.accounts || []).forEach(acc => {
+          // 1) Icon
+          const iconDiv = document.createElement('div');
+          const img     = document.createElement('img');
+          img.alt       = acc.lenderName;
           img.style.width = '100%';
           // img.src = `/static/icons/${acc.lenderName.toLowerCase()}.png`;
-          iconCell.appendChild(img);
+          iconDiv.appendChild(img);
 
-          const textCell = document.createElement('div');
-          textCell.textContent = acc.lenderName;
+          // 2) Lender name
+          const nameDiv = document.createElement('div');
+          nameDiv.textContent = acc.lenderName;
 
-          row.append(iconCell, textCell);
-          foundList.appendChild(row);
+          // 3) Contract start date
+          const startDiv = document.createElement('div');
+          if (acc.startDate) {
+            const d = new Date(acc.startDate);
+            const monthName = d.toLocaleString('default', { month: 'long' });
+            const yearShort = String(d.getFullYear()).slice(2);
+            startDiv.textContent = `From ${monthName} '${yearShort}`;
+          }
+
+          // Append in order: icon / name / start
+          foundList.append(iconDiv, nameDiv, startDiv);
         });
+
         showStep('step6');
 
       } catch (err) {
