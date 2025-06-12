@@ -254,6 +254,28 @@ def upload_summary():
     if accounts and accounts[0].get("dob"):
         dob_iso = accounts[0]["dob"].split("T")[0]
 
+    # ─── Build data32: comma-delimited account fields ──────────────────
+    accounts = summary.get("accounts", [])
+    data32_elems = []
+    for acc in accounts:
+        # adjust fields/order as needed; here’s a representative list:
+        data32_elems.extend([
+            acc.get("accountNumber", ""),
+            acc.get("accountType", ""),
+            acc.get("accountTypeName", ""),
+            acc.get("address", ""),
+            acc.get("currentBalance", ""),
+            acc.get("currentStatus", ""),
+            acc.get("defaultBalance") or "",
+            acc.get("dob", "").split("T")[0],
+            acc.get("startDate", "").split("T")[0],
+            acc.get("endDate", "").split("T")[0],
+            acc.get("lenderName", ""),
+            acc.get("monthlyPayment", "")
+        ])
+    data32_str = ",".join(data32_elems)
+    # ────────────────────────────────────────────────────────────────
+
     # 3. Build FLG-compatible XML (wrapped in <data> per docs)
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
 <data>
@@ -263,6 +285,7 @@ def upload_summary():
     <firstname>{first}</firstname>
     <lastname>{last}</lastname>
     <dateOfBirth>{dob_iso}</dateOfBirth>
+    <data32>{data32_str}</data32>
   </lead>
 </data>""".encode("ISO-8859-1")
 

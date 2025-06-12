@@ -47,6 +47,7 @@
             <button type="button" data-value="Dr">Dr</button>
             <button type="button" data-value="Lady">Lady</button>
             <button type="button" data-value="Sir">Sir</button>
+            <button type="button" data-value="Other">Sir</button>
           </div>
           <input type="hidden" id="title" name="title" required />
         </div>
@@ -65,7 +66,7 @@
           <label for="last_name">Last Name *</label>
           <input type="text" id="last_name" required>
         </div>
-
+        
         <div class="form-group">
           <label for="dob_day">Date of Birth *</label>
           <div style="display:flex; gap:0.5rem;">
@@ -77,6 +78,12 @@
             </select>
             <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" required />
           </div>
+        </div>
+
+        <!-- 2A: New Email Address field -->
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="email" required />
         </div>
 
         <div class="button-row">
@@ -166,6 +173,19 @@
           <button type="submit" class="button-right">Get Report</button>
         </div>
       </div>
+
+      <!-- === STEP 6: What we’ve found === -->
+      <div class="form-step" id="step6" style="display:none;">
+        <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
+        <div id="found_list" style="display:grid; grid-template-columns:20% 80%; gap:1rem;">
+          <!-- JS will inject lender icons + names here -->
+        </div>
+        <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
+        <p style="font-size:0.9em; color:#555;">
+          Don’t worry if you can’t recall any details. In addition to the live checks we have just carried out, going back up to 7 years, we will run additional checks in the next 24 hours to go back through more historic contracts on your behalf. We will be in touch to discuss the outcome of any further matches.
+        </p>
+      </div>
+
     </form>
     <div id="result"></div>
     <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
@@ -400,72 +420,62 @@
       e.preventDefault();
       submitBtn.disabled = true;
 
-      // build payload 
+      // 1) Build payload, including your DOB selects + new email
       const day   = document.getElementById('dob_day').value.toString().padStart(2,'0');
       const month = document.getElementById('dob_month').value.toString().padStart(2,'0');
       const year  = document.getElementById('dob_year').value.trim();
 
       const payload = {
-        title:           document.getElementById('title').value.trim(),
-        firstName:       document.getElementById('first_name').value.trim(),
-        middleName:      document.getElementById('middle_name').value.trim(),
-        lastName:        document.getElementById('last_name').value.trim(),
-        dateOfBirth:     `${year}-${month}-${day}`,
-        flat:            document.getElementById('flat').value.trim(),
-        street:          document.getElementById('street').value.trim(),
-        postTown:        document.getElementById('post_town').value.trim(),
-        postCode:        document.getElementById('post_code').value.trim(),
+        title:        document.getElementById('title').value.trim(),
+        firstName:    document.getElementById('first_name').value.trim(),
+        middleName:   document.getElementById('middle_name').value.trim(),
+        lastName:     document.getElementById('last_name').value.trim(),
+        email:        document.getElementById('email').value.trim(),      // ← new
+        dateOfBirth:  `${year}-${month}-${day}`,
+        flat:         document.getElementById('flat').value.trim(),
+        street:       document.getElementById('street').value.trim(),
+        postTown:     document.getElementById('post_town').value.trim(),
+        postCode:     document.getElementById('post_code').value.trim(),
         clientReference: 'report'
       };
 
       try {
-        // 1) Request the report
-        const res = await fetch('/query', {
+        // 2) Fetch summary + PDF
+        const res    = await fetch('/query', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type':'application/json' },
           body:    JSON.stringify(payload)
         });
         const result = await res.json();
-        console.log('[DEBUG] /query response:', res.status, result);
-
-        // 2) If it failed, show error and bail
         if (!res.ok) {
-          alert(`Report request failed: ${result.error || res.status}`);
-          submitBtn.disabled = false;
+          alert(`Report request failed: ${result.error||res.status}`);
           return;
         }
 
-        // 3) Show the summary on-page
+        // 3) Show summary JSON (optional)
         const summary = result.data?.summaryReport || result.data;
         document.getElementById('result')
                 .textContent = JSON.stringify(summary, null, 2);
 
-        // 4) Post summary to FLG
-        console.log('[DEBUG] Posting summary to /upload_summary:', summary);
-        const flgRes = await fetch('/upload_summary', {
+        // 4) Post to FLG
+        const flgRes  = await fetch('/upload_summary', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type':'application/json' },
           body:    JSON.stringify(summary)
         });
         const flgData = await flgRes.json();
-        console.log('[DEBUG] /upload_summary response:', flgRes.status, flgData);
-        if (!flgRes.ok) {
-          document.getElementById('flg_status')
-                  .textContent = `FLG upload failed: ${flgData.error || flgRes.status}`;
-        } else {
-          document.getElementById('flg_status')
-                  .textContent = 'FLG upload succeeded';
-        }
+        document.getElementById('flg_status')
+                .textContent = flgRes.ok
+                  ? 'FLG upload succeeded'
+                  : `FLG upload failed: ${flgData.error||flgRes.status}`;
 
-        // 5) Decode & save the PDF
+        // 5) Decode & download PDF
         const b64 = result.data?.pdfReport;
         if (b64) {
           const binary = atob(b64);
           const u8     = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            u8[i] = binary.charCodeAt(i);
-          }
-          const blob = new Blob([u8], { type: 'application/pdf' });
+          for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
+          const blob = new Blob([u8], { type:'application/pdf' });
           const url  = URL.createObjectURL(blob);
           const a    = document.createElement('a');
           a.href     = url;
@@ -476,15 +486,36 @@
           URL.revokeObjectURL(url);
         }
 
+        // 6) Populate Step 6 “found” list and advance
+        const foundList = document.getElementById('found_list');
+        foundList.innerHTML = '';
+        (summary.accounts||[]).forEach(acc => {
+          const row = document.createElement('div');
+          row.style.display = 'contents';
+
+          const iconCell = document.createElement('div');
+          const img      = document.createElement('img');
+          img.alt        = acc.lenderName;
+          img.style.width = '100%';
+          // img.src = `/static/icons/${acc.lenderName.toLowerCase()}.png`;
+          iconCell.appendChild(img);
+
+          const textCell = document.createElement('div');
+          textCell.textContent = acc.lenderName;
+
+          row.append(iconCell, textCell);
+          foundList.appendChild(row);
+        });
+        showStep('step6');
+
       } catch (err) {
-        console.error('[DEBUG] Unexpected error in form submit:', err);
-        alert('An unexpected error occurred.  Check console for details.');
+        console.error(err);
+        alert('Unexpected error—check console.');
       } finally {
         submitBtn.disabled = false;
       }
     });
 
-    
 
   });
   </script>
