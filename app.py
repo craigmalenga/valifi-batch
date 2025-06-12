@@ -260,20 +260,19 @@ def upload_summary():
     for acc in accounts:
         # adjust fields/order as needed; here’s a representative list:
         data32_elems.extend([
-            acc.get("accountNumber", ""),
-            acc.get("accountType", ""),
-            acc.get("accountTypeName", ""),
-            acc.get("address", ""),
-            acc.get("currentBalance", ""),
-            acc.get("currentStatus", ""),
-
-            acc.get("defaultBalance") or "",
-            (acc.get("dob") or "").split("T")[0],
-            (acc.get("startDate") or "").split("T")[0],
-            (acc.get("endDate") or "").split("T")[0],
-
-            acc.get("lenderName", ""),
-            acc.get("monthlyPayment", "")
+            acc.get("accountNumber")   or "",
+            acc.get("accountType")     or "",
+            acc.get("accountTypeName") or "",
+            acc.get("address")         or "",
+            acc.get("currentBalance")  or "",
+            acc.get("currentStatus")   or "",
+            acc.get("defaultBalance")  or "",
+            # Dates: split off the 'T...' safely even if None
+            (acc.get("dob")        or "").split("T")[0],
+            (acc.get("startDate")  or "").split("T")[0],
+            (acc.get("endDate")    or "").split("T")[0],
+            acc.get("lenderName")      or "",
+            acc.get("monthlyPayment")  or ""
         ])
     data32_str = ",".join(data32_elems)
     # ────────────────────────────────────────────────────────────────
