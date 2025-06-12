@@ -510,6 +510,8 @@
         foundList.innerHTML = '';
 
         (summary.accounts || []).forEach(acc => {
+        accounts.forEach(acc => {
+
           // 1) Icon
           const iconDiv = document.createElement('div');
           const img     = document.createElement('img');
