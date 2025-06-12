@@ -281,6 +281,7 @@ def upload_summary():
 <data>
   <lead>
     <leadgroup>57862</leadgroup>
+    <key>{FLG_API_KEY}</key>
     <title>{title}</title>
     <firstname>{first}</firstname>
     <lastname>{last}</lastname>
