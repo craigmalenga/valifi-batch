@@ -247,13 +247,6 @@
       });
     });
 
-    // Clear-all
-    const clearBtn = document.getElementById('clear_btn');
-    const addrCont = document.getElementById('address_container');
-    const addrErr = document.getElementById('address_error');
-    const otpGroup = document.getElementById('otp_group');
-    const submitBtn = document.querySelector('button[type="submit"]');
-
     clearBtn?.addEventListener('click', () => {
       document.getElementById('searchForm').reset();
       addrCont.style.display = 'none';
