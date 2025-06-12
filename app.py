@@ -194,6 +194,7 @@ def query_valifi():
         "includeJsonReport":    True,
         "includePdfReport":     True,
         "includeSummaryReport": True,
+        "title":                data.get("title", ""), 
         "clientReference":      data.get("clientReference", "report"),
         "forename":             data["firstName"],
         "middleName":           data.get("middleName", ""),
