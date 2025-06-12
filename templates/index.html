@@ -400,18 +400,17 @@
       e.preventDefault();
       submitBtn.disabled = true;
 
-      // build payload exactly as before
+      // build payload 
+      const day   = document.getElementById('dob_day').value.toString().padStart(2,'0');
+      const month = document.getElementById('dob_month').value.toString().padStart(2,'0');
+      const year  = document.getElementById('dob_year').value.trim();
+
       const payload = {
         title:           document.getElementById('title').value.trim(),
         firstName:       document.getElementById('first_name').value.trim(),
         middleName:      document.getElementById('middle_name').value.trim(),
         lastName:        document.getElementById('last_name').value.trim(),
-
-        const day   = document.getElementById('dob_day').value.padStart(2,'0');
-        const month = document.getElementById('dob_month').value.padStart(2,'0');
-        const year  = document.getElementById('dob_year').value.trim();
-        dateOfBirth: `${year}-${month}-${day}`,
-
+        dateOfBirth:     `${year}-${month}-${day}`,
         flat:            document.getElementById('flat').value.trim(),
         street:          document.getElementById('street').value.trim(),
         postTown:        document.getElementById('post_town').value.trim(),
