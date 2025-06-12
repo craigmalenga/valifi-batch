@@ -302,6 +302,7 @@
       manualAddress.style.display = 'block';
     });
 
+
     // Send OTP
     sendOtpBtn.addEventListener('click', async () => {
       alert('📩 [DEBUG] Send OTP clicked');
@@ -317,11 +318,15 @@
 
       console.log('[DEBUG] Sending OTP to:', mobile);
 
+
+
       try {
         const res = await fetch('/otp/request', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ mobile })  
         });
         console.log('[DEBUG] otp/request status:', res.status);
         const data = await res.json();
@@ -331,6 +336,7 @@
           alert(`OTP request failed: ${data.error || res.status}`);
           return;
         }
+      try {
 
         // show OTP input once sent
         otpGroup.style.display = 'block';
