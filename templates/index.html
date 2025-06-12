@@ -302,24 +302,20 @@
       manualAddress.style.display = 'block';
     });
 
-    // OTP request
-    document.getElementById('send_otp')?.addEventListener('click', async () => {
-      const mobileInput = document.getElementById('mobile');
-      const sendOtpBtn = document.getElementById('send_otp');
-      const verifyBtn = document.getElementById('verify_otp');
-      const overlay = document.getElementById('overlay');
-      const overlayMsg = document.getElementById('overlay_msg');
+    // Send OTP
+    sendOtpBtn.addEventListener('click', async () => {
+      alert('📩 [DEBUG] Send OTP clicked');
 
-      const mobile = mobileInput.value.replace(/\D/g, '');
-      if (!mobile || mobile.length < 10) {
-        alert('Please enter a valid mobile number');
+      // grab raw input and strip non-digits
+      const raw   = document.getElementById('mobile').value;
+      const mobile = raw.replace(/\D/g, '');
+
+      if (!mobile) {
+        alert('Please enter a valid mobile number (digits only)');
         return;
       }
 
-      sendOtpBtn.disabled = true;
-      verifyBtn.disabled = true;
-      overlayMsg.textContent = 'Code being sent to your mobile… please wait';
-      overlay.style.display = 'flex';
+      console.log('[DEBUG] Sending OTP to:', mobile);
 
       try {
         const res = await fetch('/otp/request', {
@@ -327,35 +323,44 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mobile })
         });
+        console.log('[DEBUG] otp/request status:', res.status);
         const data = await res.json();
-        console.log('[DEBUG] OTP response:', data);
+        console.log('[DEBUG] otp/request JSON:', data);
 
-        if (!res.ok || !data?.data?.result) {
-          throw new Error(data?.error || 'OTP send failed');
+        if (!res.ok) {
+          alert(`OTP request failed: ${data.error || res.status}`);
+          return;
         }
 
-        document.getElementById('otp_group').style.display = 'block';
-        verifyBtn.disabled = false;
+        // show OTP input once sent
+        otpGroup.style.display = 'block';
       } catch (err) {
-        console.error('OTP send error:', err);
-        alert(`OTP send failed: ${err.message}`);
-      } finally {
-        overlay.style.display = 'none';
-        sendOtpBtn.disabled = false;
+        console.error('[DEBUG] otp/request error', err);
+        alert('Network error sending OTP');
       }
     });
 
 
-    // OTP verify
-    document.getElementById('verify_otp')?.addEventListener('click', async () => {
-      const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-      const code = document.getElementById('otp').value.replace(/\D/g, '');
-      if (!mobile || !code) return alert('Please complete both mobile and OTP fields');
+    // Verify OTP
+    verifyBtn.addEventListener('click', async () => {
+      alert('🔐 [DEBUG] Verify OTP clicked');
 
-      const verifyBtn = document.getElementById('verify_otp');
-      verifyBtn.disabled = true;
-      document.getElementById('overlay_msg').textContent = 'Verifying OTP code… please wait';
-      document.getElementById('overlay').style.display = 'flex';
+      // grab & clean inputs
+      const rawMobile = document.getElementById('mobile').value;
+      const mobile    = rawMobile.replace(/\D/g, '');
+      const rawCode   = document.getElementById('otp').value;
+      const code      = rawCode.replace(/\D/g, '');
+
+      if (!mobile) {
+        alert('Please enter a valid mobile number (digits only)');
+        return;
+      }
+      if (!code) {
+        alert('Please enter the 6-digit OTP (digits only)');
+        return;
+      }
+
+      console.log('[DEBUG] Verifying OTP for:', mobile, 'code:', code);
 
       try {
         const res = await fetch('/otp/verify', {
@@ -363,17 +368,21 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mobile, code })
         });
+        console.log('[DEBUG] otp/verify status:', res.status);
         const data = await res.json();
+        console.log('[DEBUG] otp/verify JSON:', data);
+
+        if (!res.ok) {
+          throw new Error(data.error || `Status ${res.status}`);
+        }
+
         const ok = data.data?.result === 'PASS';
-        const statusEl = document.getElementById('otp_status');
-        statusEl.textContent = ok ? '✔ Verified' : '❌ Failed';
-        statusEl.classList.toggle('verified', ok);
+        document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
         if (ok) submitBtn.disabled = false;
+
       } catch (err) {
+        console.error('[DEBUG] otp/verify error', err);
         alert(`OTP verification failed: ${err.message}`);
-      } finally {
-        document.getElementById('overlay').style.display = 'none';
-        verifyBtn.disabled = false;
       }
     });
 

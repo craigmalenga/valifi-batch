@@ -137,7 +137,10 @@ def otp_request():
         return jsonify(error="mobile is required"), 400
 
     token = get_valifi_token()
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
     resp = requests.post(
         f"{VALIFI_API_URL}/otp/v1/request",
         json={"mobile": mobile},
@@ -155,7 +158,10 @@ def otp_verify():
         return jsonify(error="mobile and code are required"), 400
 
     token = get_valifi_token()
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
     resp = requests.post(
         f"{VALIFI_API_URL}/otp/v1/verify",
         json={"mobile": mobile, "code": code},
