@@ -180,21 +180,21 @@ def index():
 # ─── 6) Handle the form POST → TransUnion report ────────────────────────────────
 
 
+# ─── 6) Handle the form POST → TransUnion report ────────────────────────────────
 @app.route("/query", methods=["POST"])
 def query_valifi():
-    # 1) Validate required fields
     data = request.json or {}
-    for k in ("firstName","lastName","dateOfBirth","flat","street","postTown","postCode"):
+    # 1) Validate required fields
+    for k in ("firstName", "lastName", "dateOfBirth", "flat", "street", "postTown", "postCode"):
         if not data.get(k):
             return jsonify(error=f"{k} is required"), 400
 
-    # 2) Build the Valifi payload requesting a PDF
+    # 2) Build the Valifi payload requesting JSON + base64 PDF + summary
     payload = {
-        "includeJsonReport":    False,
+        "includeJsonReport":    True,
         "includePdfReport":     True,
         "includeSummaryReport": True,
         "clientReference":      data.get("clientReference", "report"),
-        "title":                data.get("title", ""),
         "forename":             data["firstName"],
         "middleName":           data.get("middleName", ""),
         "surname":              data["lastName"],
@@ -216,29 +216,21 @@ def query_valifi():
         "Content-Type":  "application/json"
     }
 
-    # 4) Request the TU report, streaming the PDF
+    # 4) Request the TU report (no streaming)
     resp = requests.post(
         f"{VALIFI_API_URL}/bureau/v1/tu/report",
         json=payload,
         headers=headers,
-        timeout=60,
-        stream=True
+        timeout=60
     )
 
-    # 5) If Valifi returns an error, pass it back as JSON
+    # 5) Propagate Valifi errors
     if resp.status_code != 200:
         return jsonify(resp.json()), resp.status_code
 
-    # 6) Otherwise read the PDF bytes
-    pdf_bytes = resp.content
+    # 6) Return Valifi’s JSON straight through
+    return jsonify(resp.json()), 200
 
-    # 7) Send the PDF back with a Save As dialog
-    return send_file(
-        io.BytesIO(pdf_bytes),
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name="transunion_report.pdf"
-    )
 
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
