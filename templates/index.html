@@ -191,9 +191,6 @@
       });
     };
 
-
-
-
     document.getElementById('next_to_step2')?.addEventListener('click', () => showStep('step2'));
     document.getElementById('back_to_step1')?.addEventListener('click', () => showStep('step1'));
     document.getElementById('next_to_step3')?.addEventListener('click', () => showStep('step3'));
@@ -397,62 +394,77 @@
       }
     });
 
-    // Form submit
+    // Final form submit → /query (+ upload to FLG + base64→PDF download)
     const form = document.getElementById('searchForm');
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
 
+      // build payload exactly as before
       const payload = {
-        title: document.getElementById('title').value.trim(),
-        firstName: document.getElementById('first_name').value.trim(),
-        middleName: document.getElementById('middle_name').value.trim(),
-        lastName: document.getElementById('last_name').value.trim(),
-        dateOfBirth: `${document.getElementById('dob_year').value.trim()}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
-        flat: document.getElementById('flat').value.trim(),
-        street: document.getElementById('street').value.trim(),
-        postTown: document.getElementById('post_town').value.trim(),
-        postCode: document.getElementById('post_code').value.trim(),
+        title:           document.getElementById('title').value.trim(),
+        firstName:       document.getElementById('first_name').value.trim(),
+        middleName:      document.getElementById('middle_name').value.trim(),
+        lastName:        document.getElementById('last_name').value.trim(),
+        dateOfBirth:     document.getElementById('date_of_birth').value.trim(),
+        flat:            document.getElementById('flat').value.trim(),
+        street:          document.getElementById('street').value.trim(),
+        postTown:        document.getElementById('post_town').value.trim(),
+        postCode:        document.getElementById('post_code').value.trim(),
         clientReference: 'report'
       };
 
       try {
+        // 1) Request the report
         const res = await fetch('/query', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body:    JSON.stringify(payload)
         });
         const result = await res.json();
-        const summary = result.data?.summaryReport || result.data;
-        document.getElementById('result').textContent = JSON.stringify(summary, null, 2);
+        console.log('[DEBUG] /query response:', res.status, result);
 
-        // Send to FLG
-        try {
-          const flgRes = await fetch('/upload_summary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(summary)
-          });
-          const flgData = await flgRes.json();
-          document.getElementById('flg_status').textContent = flgRes.ok
-            ? 'FLG upload succeeded'
-            : `FLG upload failed: ${flgData.error || flgRes.status}`;
-        } catch (err) {
-          console.error('[DEBUG] Error posting to FLG:', err);
-          document.getElementById('flg_status').textContent = 'Error posting to FLG, see console';
+        // 2) If it failed, show error and bail
+        if (!res.ok) {
+          alert(`Report request failed: ${result.error || res.status}`);
+          submitBtn.disabled = false;
+          return;
         }
 
+        // 3) Show the summary on-page
+        const summary = result.data?.summaryReport || result.data;
+        document.getElementById('result')
+                .textContent = JSON.stringify(summary, null, 2);
+
+        // 4) Post summary to FLG
+        console.log('[DEBUG] Posting summary to /upload_summary:', summary);
+        const flgRes = await fetch('/upload_summary', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(summary)
+        });
+        const flgData = await flgRes.json();
+        console.log('[DEBUG] /upload_summary response:', flgRes.status, flgData);
+        if (!flgRes.ok) {
+          document.getElementById('flg_status')
+                  .textContent = `FLG upload failed: ${flgData.error || flgRes.status}`;
+        } else {
+          document.getElementById('flg_status')
+                  .textContent = 'FLG upload succeeded';
+        }
+
+        // 5) Decode & save the PDF
         const b64 = result.data?.pdfReport;
         if (b64) {
           const binary = atob(b64);
-          const u8 = new Uint8Array(binary.length);
+          const u8     = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) {
             u8[i] = binary.charCodeAt(i);
           }
           const blob = new Blob([u8], { type: 'application/pdf' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement('a');
+          a.href     = url;
           a.download = 'transunion_report.pdf';
           document.body.appendChild(a);
           a.click();
@@ -461,12 +473,14 @@
         }
 
       } catch (err) {
-        console.error(err);
-        document.getElementById('result').textContent = 'Error: ' + err;
+        console.error('[DEBUG] Unexpected error in form submit:', err);
+        alert('An unexpected error occurred.  Check console for details.');
       } finally {
         submitBtn.disabled = false;
       }
     });
+
+    
 
   });
   </script>
