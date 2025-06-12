@@ -517,6 +517,12 @@
     });
 
 
+    // === NEW: hook up the "add lender" button in Step 6 ===
+    document.getElementById('add_lender_btn')
+      .addEventListener('click', () => {
+        showStep('step3');
+      });
+
   });
   </script>
 
