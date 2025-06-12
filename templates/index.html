@@ -452,16 +452,17 @@
           return;
         }
 
-        // 3) Show summary JSON (optional)
-        const summary = result.data?.summaryReport || result.data;
+        // 3) Show only the raw accounts array
+        const summaryReport = result.data?.summaryReport || result.data;
+        const accounts      = summaryReport.accounts || [];
         document.getElementById('result')
-                .textContent = JSON.stringify(summary, null, 2);
+                .textContent = JSON.stringify(accounts, null, 2);
 
         // 4) Post to FLG
         const flgRes  = await fetch('/upload_summary', {
           method:  'POST',
           headers: { 'Content-Type':'application/json' },
-          body:    JSON.stringify(summary)
+          body:    JSON.stringify({ accounts })
         });
         const flgData = await flgRes.json();
         document.getElementById('flg_status')
