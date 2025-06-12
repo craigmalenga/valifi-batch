@@ -277,18 +277,18 @@ def upload_summary():
     # ────────────────────────────────────────────────────────────────
 
     # 3. Build FLG-compatible XML (wrapped in <data> per docs)
+
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
-<data>
-  <lead>
-    <leadgroup>57862</leadgroup>
-    <key>{FLG_API_KEY}</key>
-    <title>{title}</title>
-    <firstname>{first}</firstname>
-    <lastname>{last}</lastname>
-    <dateOfBirth>{dob_iso}</dateOfBirth>
-    <data32>{data32_str}</data32>
-  </lead>
-</data>""".encode("ISO-8859-1")
+    <data>
+    <lead>
+        <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
+        <title>{title}</title>
+        <firstname>{first}</firstname>
+        <lastname>{last}</lastname>
+        <dateOfBirth>{dob_iso}</dateOfBirth>
+        <data32>{data32_str}</data32>
+    </lead>
+    </data>""".encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
