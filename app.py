@@ -266,10 +266,12 @@ def upload_summary():
             acc.get("address", ""),
             acc.get("currentBalance", ""),
             acc.get("currentStatus", ""),
+
             acc.get("defaultBalance") or "",
-            acc.get("dob", "").split("T")[0],
-            acc.get("startDate", "").split("T")[0],
-            acc.get("endDate", "").split("T")[0],
+            (acc.get("dob") or "").split("T")[0],
+            (acc.get("startDate") or "").split("T")[0],
+            (acc.get("endDate") or "").split("T")[0],
+
             acc.get("lenderName", ""),
             acc.get("monthlyPayment", "")
         ])
