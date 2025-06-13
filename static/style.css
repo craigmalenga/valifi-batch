@@ -243,3 +243,37 @@ input:hover, select:hover {
   transform: translate(-50%, -50%);
   text-align: center;
 }
+
+
+/* 1) Add breathing room under the Step 6 heading */
+#step6 h2 {
+  margin-bottom: 2rem;
+}
+
+/* 2) Ensure the Step 6 grid is full-width in desktop up to your container max-width */
+#step6 .container,
+#step6 {
+  width: 100%;
+  max-width: 800px; /* match the grey result section */
+  margin: auto;
+}
+
+/* 3) Resize logos to roughly 150% of the font size */
+#found_list img {
+  max-width: 100%;
+  height: 1.5em;    /* 150% of the surrounding font-size */
+  object-fit: contain;
+}
+
+/* 4) Bold lender names & dates */
+.lender-name,
+.lender-date {
+  font-weight: bold;
+}
+
+/* 5) Responsive: on small screens make the grid collapse */
+@media (max-width: 600px) {
+  #found_list {
+    grid-template-columns: 1fr !important;
+  }
+}

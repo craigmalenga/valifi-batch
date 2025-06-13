@@ -266,11 +266,11 @@ def upload_summary():
     if accounts and accounts[0].get("dob"):
         dob_iso = accounts[0]["dob"].split("T")[0]
 
-    # ─── Build data32: comma-delimited account fields ──────────────────
-    accounts = summary.get("accounts", [])
+
+    # ─── Build data32: comma-delimited account fields ──────────────────────────
+    accounts    = summary.get("accounts", [])
     data32_elems = []
     for acc in accounts:
-        # adjust fields/order as needed; here’s a representative list:
         data32_elems.extend([
             acc.get("accountNumber")   or "",
             acc.get("accountType")     or "",
@@ -280,17 +280,16 @@ def upload_summary():
             acc.get("currentStatus")   or "",
             acc.get("defaultBalance")  or "",
             # Dates: split off the 'T...' safely even if None
-            (acc.get("dob")        or "").split("T")[0],
-            (acc.get("startDate")  or "").split("T")[0],
-            (acc.get("endDate")    or "").split("T")[0],
-            acc.get("lenderName")      or "",
-            acc.get("monthlyPayment")  or ""
+            (acc.get("dob")       or "").split("T")[0],
+            (acc.get("startDate") or "").split("T")[0],
+            (acc.get("endDate")   or "").split("T")[0],
+            acc.get("lenderName")     or "",
+            acc.get("monthlyPayment") or ""
         ])
     data32_str = ",".join(data32_elems)
-    # ────────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
 
-    # 3. Build FLG-compatible XML (wrapped in <data> per docs)
-
+    # 3. Build FLG-compatible XML (wrapped in <data> per docs), including contact & address
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
     <data>
     <lead>
@@ -299,6 +298,11 @@ def upload_summary():
         <firstname>{first}</firstname>
         <lastname>{last}</lastname>
         <dateOfBirth>{dob_iso}</dateOfBirth>
+        <phone1>{summary.get("phone1","")}</phone1>
+        <email>{summary.get("email","")}</email>
+        <address>{summary.get("address","")}</address>
+        <towncity>{summary.get("towncity","")}</towncity>
+        <postcode>{summary.get("postcode","")}</postcode>
         <data32>{data32_str}</data32>
     </lead>
     </data>""".encode("ISO-8859-1")

@@ -177,7 +177,7 @@
       <!-- === STEP 6: What we’ve found === -->
       <div class="form-step" id="step6" style="display:none;">
         <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
-        <div id="found_list" style="display:grid; grid-template-columns:40% 30% 30%; gap:1rem;">   
+        <div id="found_list" style="display:grid; grid-template-columns:15% 65% 20%; gap:1rem;">   
           <!-- JS will inject lender icons + names here -->
         </div>
         <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
@@ -500,8 +500,21 @@
         const flgRes  = await fetch('/upload_summary', {
           method:  'POST',
           headers: { 'Content-Type':'application/json' },
-          body:    JSON.stringify(summaryReport)
+
+          body:    JSON.stringify({
+            name:         summaryReport.name,
+            dateOfBirth:  payload.dateOfBirth,
+            phone1:       payload.mobile,
+            email:        payload.email,
+            address:      payload.flat
+                            ? `${payload.flat} ${payload.street}`
+                            : payload.street,
+            towncity:     payload.postTown,
+            postcode:     payload.postCode,
+            accounts:     summaryReport.accounts
+          })
         });
+
         const flgData = await flgRes.json();
         document.getElementById('flg_status')
                 .textContent = flgRes.ok
@@ -577,8 +590,13 @@
           }
 
           // 3) name cell
+
           const nameDiv = document.createElement('div');
+          nameDiv.classList.add('lender-name');
           nameDiv.textContent = label;
+
+          const startDiv = document.createElement('div');
+          startDiv.classList.add('lender-date');
 
           // 4) “From Mmmm ’YY” cell
           const dateDiv = document.createElement('div');
