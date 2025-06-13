@@ -571,6 +571,64 @@
           URL.revokeObjectURL(url);
         }
 
+        // ─── Populate Step 6: one-row-per-lender, 15%▸65%▸20% grid ───
+        const foundList = document.getElementById('found_list');
+        foundList.innerHTML = '';
+
+        // pull accounts into a local var so we don't accidentally loop twice
+        const rows = summaryReport.accounts || [];
+        rows.forEach(acc => {
+          const raw = acc.lenderName || "";
+
+          // 1) fuzzy-match to your lendersList CSV
+          let best = { sim: 0, item: null };
+          lendersList.forEach(item => {
+            const sim = similarity(raw.toLowerCase(), item.name.toLowerCase());
+            if (sim > best.sim) best = { sim, item };
+          });
+          const useCSV = best.sim >= 0.8 && best.item;
+          const label  = useCSV ? best.item.name : raw;
+          const logo   = useCSV ? best.item.filename : null;
+
+          // 2) Icon cell
+          const iconDiv = document.createElement('div');
+          if (logo) {
+            const img = document.createElement('img');
+            img.src        = `/static/icons/${encodeURIComponent(logo)}`;
+            img.alt        = label;
+            img.classList.add('step6-logo');
+            iconDiv.appendChild(img);
+          } else {
+            const noLogo = document.createElement('div');
+            noLogo.className = 'no-logo';
+            noLogo.textContent = 'No Logo';
+            iconDiv.appendChild(noLogo);
+          }
+
+          // 3) Name cell
+          const nameDiv = document.createElement('div');
+          nameDiv.classList.add('lender-name');
+          nameDiv.textContent = label;
+
+          // 4) Date cell
+          const dateDiv = document.createElement('div');
+          dateDiv.classList.add('lender-date');
+          if (acc.startDate) {
+            const d      = new Date(acc.startDate);
+            const month  = d.toLocaleString('default', { month: 'long' });
+            const year   = String(d.getFullYear()).slice(-2);
+            dateDiv.textContent = `From ${month} '${year}`;
+          }
+
+          // 5) Wrap in one grid row
+          const row = document.createElement('div');
+          row.classList.add('found-row');
+          row.append(iconDiv, nameDiv, dateDiv);
+          foundList.appendChild(row);
+        });
+
+        showStep('step6');
+
         // Populate Step 6: icon (15%) / name (65%) / date (20%)
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';

@@ -246,60 +246,57 @@ input:hover, select:hover {
 
 /* — STEP 6 layout & styling — */
 
-/* 15% / 65% / 20% grid on desktop */
+/* Container: vertical stack of rows, full-width up to 800px */
 #found_list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;             /* half the previous gap */
   width: 100%;
-  max-width: 800px;        /* match grey pane */
+  max-width: 800px;        /* match the debug pane */
   margin: auto;
 }
 
-/* each lender-row is its own 15%▸65%▸20% grid */
+/* Each lender-row: its own 15%▸65%▸20% grid, thick green border */
 .found-row {
   display: grid;
   grid-template-columns: 15% 65% 20%;
   gap: 1rem;
-  border: 6px solid #ACBD31;  /* 3× thicker */
+  border: 6px solid #ACBD31;  /* 3× thicker than before */
   border-radius: 6px;
   padding: 0.5rem;
 }
 
-/* logo sizing ~150% of heading font-size */
+/* Logo sizing ~150% of heading font-size */
 .step6-logo {
   max-width: 100%;
-  height: 1.5em;         /* 150% of surrounding font */
+  height: 1.5em;
   object-fit: contain;
 }
 
-/* bold lender names & dates, center-aligned */
+/* Center & bold lender names & dates */
 .lender-name,
 .lender-date {
   font-weight: bold;
-  text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* more breathing room under the Step 6 heading */
-#step6 h2 {
-  margin-bottom: 2rem;
-}
-
-/* collapse to single-column on mobile */
-@media (max-width:600px) {
+/* Mobile view: collapse to single column + even smaller logos */
+@media (max-width: 600px) {
   #found_list {
-    grid-template-columns: 1fr !important;
+    flex-direction: column;
+    gap: 0.5rem;  /* keep the tighter gap */
+  }
+  .found-row {
+    grid-template-columns: 1fr;  /* one column per row */
   }
   .step6-logo {
-    height: 0.5em;         /* smaller logos on mobile */
+    height: 1em;  /* much smaller on mobile */
   }
 }
 
-
-/* ── Desktop: make the form+logos full-width like the debug pane ── */
+/* Desktop: make the form+logos full-width like the debug pane */
 @media (min-width: 601px) {
   .container {
     max-width: none;
