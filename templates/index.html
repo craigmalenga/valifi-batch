@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    .container { max-width: 800px; margin: auto; padding: 20px; }
+
+    /* allow full-width on desktop, margin auto still on mobile */
+    .container {
+      max-width: none;
+      width: 100%;
+      margin: auto;
+      padding: 20px;
+    }
+
     form {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -572,7 +580,7 @@
           const iconDiv = document.createElement('div');
           const img     = document.createElement('img');
           img.alt       = acc.lenderName;
-          img.src       = `/static/icons/${encodeURIComponent(acc.lenderName)}.png`;
+          img.src       = `/static/icons/${encodeURIComponent(logo)}`;
           img.classList.add('step6-logo');
           iconDiv.appendChild(img);
 

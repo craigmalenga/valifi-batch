@@ -248,21 +248,21 @@ input:hover, select:hover {
 
 /* 15% / 65% / 20% grid on desktop */
 #found_list {
-  display: grid;
-  grid-template-columns: 15% 65% 20%;
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;             /* half the previous gap */
   width: 100%;
-  max-width: 800px;     /* match grey debug pane */
+  max-width: 800px;        /* match grey pane */
   margin: auto;
 }
 
-/* each row boxed in green with spacing */
+/* each lender-row is its own 15%▸65%▸20% grid */
 .found-row {
   display: grid;
-  grid-template-columns: inherit;
-  border: 2px solid #ACBD31;
+  grid-template-columns: 15% 65% 20%;
+  gap: 1rem;
+  border: 6px solid #ACBD31;  /* 3× thicker */
   border-radius: 6px;
-  margin-bottom: 1rem;
   padding: 0.5rem;
 }
 
@@ -294,7 +294,7 @@ input:hover, select:hover {
     grid-template-columns: 1fr !important;
   }
   .step6-logo {
-    height: 0.3em;         /* smaller logos on mobile */
+    height: 0.5em;         /* smaller logos on mobile */
   }
 }
 
