@@ -500,7 +500,7 @@
         const flgRes  = await fetch('/upload_summary', {
           method:  'POST',
           headers: { 'Content-Type':'application/json' },
-          body:    JSON.stringify({ accounts })
+          body:    JSON.stringify(summaryReport)
         });
         const flgData = await flgRes.json();
         document.getElementById('flg_status')
