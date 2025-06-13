@@ -509,10 +509,8 @@
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';
 
-        (summary.accounts || []).forEach(acc => {
         accounts.forEach(acc => {
-
-          // 1) Icon
+          // 1) Icon cell
           const iconDiv = document.createElement('div');
           const img     = document.createElement('img');
           img.alt       = acc.lenderName;
@@ -520,24 +518,27 @@
           // img.src = `/static/icons/${acc.lenderName.toLowerCase()}.png`;
           iconDiv.appendChild(img);
 
-          // 2) Lender name
+          // 2) Lender name cell
           const nameDiv = document.createElement('div');
           nameDiv.textContent = acc.lenderName;
 
-          // 3) Contract start date
+          // 3) Contract start-date cell
           const startDiv = document.createElement('div');
           if (acc.startDate) {
-            const d = new Date(acc.startDate);
+            const d         = new Date(acc.startDate);
             const monthName = d.toLocaleString('default', { month: 'long' });
-            const yearShort = String(d.getFullYear()).slice(2);
+            const yearShort = String(d.getFullYear()).slice(-2);
             startDiv.textContent = `From ${monthName} '${yearShort}`;
           }
 
-          // Append in order: icon / name / start
+          // Append: icon / name / start
           foundList.append(iconDiv, nameDiv, startDiv);
         });
 
         showStep('step6');
+
+
+
 
       } catch (err) {
         console.error(err);
