@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
+
   <link rel="stylesheet" href="/static/style.css" />
   <style>
 
@@ -185,7 +188,7 @@
       <!-- === STEP 6: What we’ve found === -->
       <div class="form-step" id="step6" style="display:none;">
         <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
-        <div id="found_list" style="display:grid; grid-template-columns:15% 65% 20%; gap:1rem;">   
+        <div id="found_list">   
           <!-- JS will inject lender icons + names here -->
         </div>
         <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
