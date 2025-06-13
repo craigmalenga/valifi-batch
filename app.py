@@ -5,12 +5,24 @@ from flask import Flask, render_template, request, jsonify, send_file, Response
 import requests
 import io
 import xml.etree.ElementTree as ET
+import csv
 
 # ─── App & Logging setup ───────────────────────────────────────────────────────
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
 app.logger.setLevel(logging.INFO)
+
+# ─── New endpoint: serve lenders.csv ─────────────────────────────
+@app.route("/lenders", methods=["GET"])
+def get_lenders():
+    lenders = []
+    with open("lenders.csv", newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) >= 2:
+                lenders.append({ "name": row[0], "filename": row[1] })
+    return jsonify(lenders), 200
 
 # ─── 1) Load credentials from environment ────────────────────────────────────────
 VALIFI_API_URL  = os.getenv("VALIFI_API_URL", "").rstrip("/")   # e.g. "https://staging-app.valifi.click"

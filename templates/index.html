@@ -177,7 +177,7 @@
       <!-- === STEP 6: What we’ve found === -->
       <div class="form-step" id="step6" style="display:none;">
         <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
-        <div id="found_list" style="display:grid; grid-template-columns:20% 40% 40%; gap:1rem;">        
+        <div id="found_list" style="display:grid; grid-template-columns:40% 30% 30%; gap:1rem;">   
           <!-- JS will inject lender icons + names here -->
         </div>
         <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
@@ -193,6 +193,44 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
+
+    // ─── New: load lenders.csv into JS ─────────────────────────────
+    let lendersList = [];
+    fetch('/lenders')
+      .then(r => r.json())
+      .then(data => lendersList = data)
+      .catch(e => console.error("Failed to load lenders.csv", e));
+
+    // simple Levenshtein distance
+    function editDistance(s1, s2) {
+      const costs = [];
+      for (let i = 0; i <= s1.length; i++) {
+        let last = i;
+        for (let j = 0; j <= s2.length; j++) {
+          if (i === 0) costs[j] = j;
+          else if (j > 0) {
+            let cur = costs[j - 1];
+            if (s1[i - 1] !== s2[j - 1]) {
+              cur = Math.min(Math.min(cur, last), costs[j]) + 1;
+            }
+            costs[j - 1] = last;
+            last = cur;
+          }
+        }
+        if (i > 0) costs[s2.length] = last;
+      }
+      return costs[s2.length];
+    }
+    // similarity ratio 0–1
+    function similarity(a, b) {
+      const [s1, s2] = a.length >= b.length ? [a,b] : [b,a];
+      const len = s1.length;
+      if (!len) return 1;
+      return (len - editDistance(s1, s2)) / len;
+    }
+
+
+
     const lookupBtn  = document.getElementById('address_lookup_btn');
     const addrSel    = document.getElementById('address_select');
     const addrCont   = document.getElementById('address_container');
@@ -505,39 +543,57 @@
           URL.revokeObjectURL(url);
         }
 
-        // Populate Step 6 “found” list and advance (3-column: icon / name / start-date)
+        // Populate Step 6: fuzzy-match logos & display From Mmmm ’YY
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';
 
         accounts.forEach(acc => {
-          // 1) Icon cell
+          const raw = acc.lenderName || "";
+          // 1) find best CSV match >80%
+          let best = {sim:0, item:null};
+          lendersList.forEach(item => {
+            const sim = similarity(raw.toLowerCase(), item.name.toLowerCase());
+            if (sim > best.sim) best = {sim, item};
+          });
+          const useCSV = best.sim >= 0.8 && best.item;
+          const label  = useCSV ? best.item.name : raw;
+          const logo   = useCSV ? best.item.filename : null;
+
+          // 2) icon cell
           const iconDiv = document.createElement('div');
-          const img     = document.createElement('img');
-          img.alt       = acc.lenderName;
-          img.style.width = '100%';
-          // img.src = `/static/icons/${acc.lenderName.toLowerCase()}.png`;
-          iconDiv.appendChild(img);
-
-          // 2) Lender name cell
-          const nameDiv = document.createElement('div');
-          nameDiv.textContent = acc.lenderName;
-
-          // 3) Contract start-date cell
-          const startDiv = document.createElement('div');
-          if (acc.startDate) {
-            const d         = new Date(acc.startDate);
-            const monthName = d.toLocaleString('default', { month: 'long' });
-            const yearShort = String(d.getFullYear()).slice(-2);
-            startDiv.textContent = `From ${monthName} '${yearShort}`;
+          if (logo) {
+            const img = document.createElement('img');
+            img.src    = `/static/icons/${encodeURIComponent(logo)}`;
+            img.alt    = label;
+            img.style.width = '100%'; img.style.height='auto';
+            iconDiv.appendChild(img);
+          } else {
+            const noLogo = document.createElement('div');
+            noLogo.className = 'no-logo';
+            const span = document.createElement('span');
+            span.textContent = 'No Logo';
+            noLogo.appendChild(span);
+            iconDiv.appendChild(noLogo);
           }
 
-          // Append: icon / name / start
-          foundList.append(iconDiv, nameDiv, startDiv);
+          // 3) name cell
+          const nameDiv = document.createElement('div');
+          nameDiv.textContent = label;
+
+          // 4) “From Mmmm ’YY” cell
+          const dateDiv = document.createElement('div');
+          if (acc.startDate) {
+            const d = new Date(acc.startDate);
+            const month = d.toLocaleString('default',{month:'long'});
+            const year  = String(d.getFullYear()).slice(-2);
+            dateDiv.textContent = `From ${month} '${year}`;
+          }
+
+          // 5) append in 2fr 1fr 1fr grid
+          foundList.append(iconDiv, nameDiv, dateDiv);
         });
 
         showStep('step6');
-
-
 
 
       } catch (err) {
