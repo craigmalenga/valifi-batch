@@ -260,12 +260,16 @@ def upload_summary():
     rest      = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
 
-    # 2. Get DOB from first account
+    # 2. Parse DD/MM/YYYY (from client) → ISO for FLG XML
+    dob_raw = summary.get("dateOfBirth", "")   # "13/06/2025"
     dob_iso = ""
-    accounts = summary.get("accounts") or []
-    if accounts and accounts[0].get("dob"):
-        dob_iso = accounts[0]["dob"].split("T")[0]
-
+    if dob_raw:
+        parts = dob_raw.split("/")
+        if len(parts) == 3:
+            dd, mm, yyyy = parts
+            dob_iso = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
+        else:
+            dob_iso = dob_raw  # fallback
 
     # ─── Build data32: comma-delimited account fields ──────────────────────────
     accounts    = summary.get("accounts", [])
@@ -385,15 +389,15 @@ def update_flg_lead(lead_id):
 def delete_flg_lead(lead_id):
     """Delete a lead in FLG by ID."""
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<data>
-  <lead>
-    <key>{FLG_API_KEY}</key>
-    <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
-    <leadid>{lead_id}</leadid>
-    <action>delete</action>
-  </lead>
-</data>
-"""
+    <data>
+    <lead>
+        <key>{FLG_API_KEY}</key>
+        <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
+        <leadid>{lead_id}</leadid>
+        <action>delete</action>
+    </lead>
+    </data>
+    """
     resp = requests.post(
         FLG_API_URL,
         data=xml,

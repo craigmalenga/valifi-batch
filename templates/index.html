@@ -470,6 +470,7 @@
         lastName:     document.getElementById('last_name').value.trim(),
         email:        document.getElementById('email').value.trim(),      // ← new
         dateOfBirth:  `${year}-${month}-${day}`,
+        mobile:       document.getElementById('mobile').value.replace(/\D/g,''),
         flat:         document.getElementById('flat').value.trim(),
         street:       document.getElementById('street').value.trim(),
         postTown:     document.getElementById('post_town').value.trim(),
@@ -503,7 +504,12 @@
 
           body:    JSON.stringify({
             name:         summaryReport.name,
-            dateOfBirth:  payload.dateOfBirth,
+
+            dateOfBirth: (() => {
+              const [yyyy, mm, dd] = summaryReport.accounts[0]?.dob.split('T')[0].split('-') || [];
+              return dd && mm && yyyy ? `${dd}/${mm}/${yyyy}` : '';
+            })(),            
+
             phone1:       payload.mobile,
             email:        payload.email,
             address:      payload.flat
@@ -513,6 +519,7 @@
             postcode:     payload.postCode,
             accounts:     summaryReport.accounts
           })
+
         });
 
         const flgData = await flgRes.json();
@@ -556,63 +563,42 @@
           URL.revokeObjectURL(url);
         }
 
-        // Populate Step 6: fuzzy-match logos & display From Mmmm ’YY
+        // Populate Step 6: icon (15%) / name (65%) / date (20%)
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';
 
-        accounts.forEach(acc => {
-          const raw = acc.lenderName || "";
-          // 1) find best CSV match >80%
-          let best = {sim:0, item:null};
-          lendersList.forEach(item => {
-            const sim = similarity(raw.toLowerCase(), item.name.toLowerCase());
-            if (sim > best.sim) best = {sim, item};
-          });
-          const useCSV = best.sim >= 0.8 && best.item;
-          const label  = useCSV ? best.item.name : raw;
-          const logo   = useCSV ? best.item.filename : null;
-
-          // 2) icon cell
+        summaryReport.accounts.forEach(acc => {
+          // 1) Icon cell
           const iconDiv = document.createElement('div');
-          if (logo) {
-            const img = document.createElement('img');
-            img.src    = `/static/icons/${encodeURIComponent(logo)}`;
-            img.alt    = label;
-            img.style.width = '100%'; img.style.height='auto';
-            iconDiv.appendChild(img);
-          } else {
-            const noLogo = document.createElement('div');
-            noLogo.className = 'no-logo';
-            const span = document.createElement('span');
-            span.textContent = 'No Logo';
-            noLogo.appendChild(span);
-            iconDiv.appendChild(noLogo);
-          }
+          const img     = document.createElement('img');
+          img.alt       = acc.lenderName;
+          img.src       = `/static/icons/${encodeURIComponent(acc.lenderName)}.png`;
+          img.classList.add('step6-logo');
+          iconDiv.appendChild(img);
 
-          // 3) name cell
-
+          // 2) Lender name cell
           const nameDiv = document.createElement('div');
           nameDiv.classList.add('lender-name');
-          nameDiv.textContent = label;
+          nameDiv.textContent = acc.lenderName;
 
-          const startDiv = document.createElement('div');
-          startDiv.classList.add('lender-date');
-
-          // 4) “From Mmmm ’YY” cell
+          // 3) Date cell
           const dateDiv = document.createElement('div');
+          dateDiv.classList.add('lender-date');
           if (acc.startDate) {
-            const d = new Date(acc.startDate);
-            const month = d.toLocaleString('default',{month:'long'});
-            const year  = String(d.getFullYear()).slice(-2);
+            const d       = new Date(acc.startDate);
+            const month   = d.toLocaleString('default',{ month:'long' });
+            const year    = String(d.getFullYear()).slice(-2);
             dateDiv.textContent = `From ${month} '${year}`;
           }
 
-          // 5) append in 2fr 1fr 1fr grid
-          foundList.append(iconDiv, nameDiv, dateDiv);
+          // Wrap row in a box
+          const row = document.createElement('div');
+          row.classList.add('found-row');
+          [iconDiv, nameDiv, dateDiv].forEach(cell => row.appendChild(cell));
+          foundList.appendChild(row);
         });
 
         showStep('step6');
-
 
       } catch (err) {
         console.error(err);

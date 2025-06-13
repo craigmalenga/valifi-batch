@@ -244,36 +244,66 @@ input:hover, select:hover {
   text-align: center;
 }
 
+/* — STEP 6 layout & styling — */
 
-/* 1) Add breathing room under the Step 6 heading */
+/* 15% / 65% / 20% grid on desktop */
+#found_list {
+  display: grid;
+  grid-template-columns: 15% 65% 20%;
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;     /* match grey debug pane */
+  margin: auto;
+}
+
+/* each row boxed in green with spacing */
+.found-row {
+  display: grid;
+  grid-template-columns: inherit;
+  border: 2px solid #ACBD31;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+/* logo sizing ~150% of heading font-size */
+.step6-logo {
+  max-width: 100%;
+  height: 1.5em;         /* 150% of surrounding font */
+  object-fit: contain;
+}
+
+/* bold lender names & dates, center-aligned */
+.lender-name,
+.lender-date {
+  font-weight: bold;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* more breathing room under the Step 6 heading */
 #step6 h2 {
   margin-bottom: 2rem;
 }
 
-/* 2) Ensure the Step 6 grid is full-width in desktop up to your container max-width */
-#step6 .container,
-#step6 {
-  width: 100%;
-  max-width: 800px; /* match the grey result section */
-  margin: auto;
-}
-
-/* 3) Resize logos to roughly 150% of the font size */
-#found_list img {
-  max-width: 100%;
-  height: 1.5em;    /* 150% of the surrounding font-size */
-  object-fit: contain;
-}
-
-/* 4) Bold lender names & dates */
-.lender-name,
-.lender-date {
-  font-weight: bold;
-}
-
-/* 5) Responsive: on small screens make the grid collapse */
-@media (max-width: 600px) {
+/* collapse to single-column on mobile */
+@media (max-width:600px) {
   #found_list {
     grid-template-columns: 1fr !important;
+  }
+  .step6-logo {
+    height: 0.3em;         /* smaller logos on mobile */
+  }
+}
+
+
+/* ── Desktop: make the form+logos full-width like the debug pane ── */
+@media (min-width: 601px) {
+  .container {
+    max-width: none;
+    width: 100%;
+    padding: 20px;
   }
 }
