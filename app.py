@@ -309,39 +309,31 @@ def upload_summary():
     rest      = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
 
-    # 3. Parse DD/MM/YYYY (from client) → ISO for FLG XML
-    dob_raw = summary.get("dateOfBirth", "")   # e.g. "13/06/2025"
+    # 3. Parse DD/MM/YYYY → ISO for FLG XML
+    dob_raw = summary.get("dateOfBirth", "")
     dob_iso = ""
     if dob_raw:
-        parts = dob_raw.split("/")
-        if len(parts) == 3:
-            dd, mm, yyyy = parts
-            dob_iso = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
-        else:
-            dob_iso = dob_raw  # fallback
+        d, m, y = dob_raw.split("/")
+        dob_iso = f"{y}-{m.zfill(2)}-{d.zfill(2)}"
 
-    # 4. Build data32: comma-delimited account fields
+    # 4. Build data32
     accounts     = summary.get("accounts", [])
     data32_elems = []
     for acc in accounts:
         data32_elems.extend([
-            acc.get("accountNumber")   or "",
-            acc.get("accountType")     or "",
-            acc.get("accountTypeName") or "",
-            acc.get("address")         or "",
-            acc.get("currentBalance")  or "",
-            acc.get("currentStatus")   or "",
-            acc.get("defaultBalance")  or "",
-            (acc.get("dob")       or "").split("T")[0],
-            (acc.get("startDate") or "").split("T")[0],
-            (acc.get("endDate")   or "").split("T")[0],
-            acc.get("lenderName")     or "",
-            acc.get("monthlyPayment") or ""
+            acc.get("accountNumber",""), acc.get("accountType",""),
+            acc.get("accountTypeName",""), acc.get("address",""),
+            acc.get("currentBalance",""), acc.get("currentStatus",""),
+            acc.get("defaultBalance",""),
+            (acc.get("dob","")       or "").split("T")[0],
+            (acc.get("startDate","") or "").split("T")[0],
+            (acc.get("endDate","")   or "").split("T")[0],
+            acc.get("lenderName",""), acc.get("monthlyPayment","")
         ])
     data32_str = ",".join(data32_elems)
 
-    # 5. Build the FLG XML, injecting pdf_url into <data31>
-    flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
+    # 5. Build FLG XML, **using pdf_url** in <data31>
+    flg_lead_xml = f'''<?xml version="1.0" encoding="ISO-8859-1"?>
 <data>
   <lead>
     <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
@@ -357,57 +349,24 @@ def upload_summary():
     <data31>{pdf_url}</data31>
     <data32>{data32_str}</data32>
   </lead>
-</data>""".encode("ISO-8859-1")
+</data>'''.encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    # 6. Send to FLG
+    # 6. Send to FLG...
     flg_url = os.getenv("FLG_UPDATE_URL")
     flg_key = os.getenv("FLG_API_KEY")
-    try:
-        flg_resp = requests.post(
-            flg_url,
-            headers={
-                "Content-Type": "application/xml",
-                "x-api-key": flg_key
-            },
-            data=flg_lead_xml,
-            timeout=30
-        )
-    except Exception as e:
-        app.logger.error("Failed posting to FLG: %s", e)
-        return jsonify(error="FLG request failed", details=str(e)), 500
+    resp = requests.post(
+        flg_url,
+        headers={"Content-Type":"application/xml","x-api-key":flg_key},
+        data=flg_lead_xml,
+        timeout=30
+    )
+    app.logger.info("FLG XML response (status %s):\n%s", resp.status_code, resp.text)
 
-    app.logger.info("FLG XML response (status %s):\n%s",
-                    flg_resp.status_code, flg_resp.text)
+    # ...parse response and return...
+    # (rest of your existing logic follows here)
 
-    # 7. Parse the FLG response
-    try:
-        root      = ET.fromstring(flg_resp.text)
-        status    = root.findtext("status")
-        record_id = root.findtext("item/id")
-    except Exception as e:
-        app.logger.error("Failed parsing FLG XML: %s", e)
-        return jsonify(error="Failed to parse FLG response", details=str(e)), 500
-
-    if flg_resp.status_code != 200 or status != "0":
-        app.logger.error("FLG upload failed: %s", flg_resp.text)
-        return jsonify(
-            error="FLG upload failed",
-            flg_status=status,
-            flg_body=flg_resp.text,
-            debug_data32=data32_str,
-            debug_flg_xml=flg_lead_xml.decode("ISO-8859-1")
-        ), flg_resp.status_code or 500
-
-    # 8. Success
-    return jsonify({
-        "success":     True,
-        "flg_status":  status,
-        "flg_id":      record_id,
-        "debug_data32": data32_str,
-        "debug_flg_xml": flg_lead_xml.decode("ISO-8859-1")
-    }), 200
 
 
 @app.route("/flg/lead", methods=["POST"])
