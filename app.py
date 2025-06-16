@@ -291,20 +291,26 @@ def query_valifi():
 
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
-    summary = request.json
-    if not summary:
-        app.logger.warning("upload_summary called with no JSON body")
-        return jsonify(error="No summary provided"), 400
+    # 0. Parse JSON body (fallback to empty dict)
+    summary = request.json or {}
 
-    # 1. Extract & split name
+    # 1. Extract the PDF URL robustly (top-level or nested under "data")
+    pdf_url = (
+        summary.get("pdfUrl")
+        or summary.get("data", {}).get("pdfUrl", "")
+    )
+    if not pdf_url:
+        app.logger.warning("upload_summary: no pdfUrl provided in request JSON")
+
+    # 2. Extract & split full name
     full_name = (summary.get("name") or "").strip()
     parts     = full_name.split(" ", 1)
     title     = parts[0] if len(parts) > 1 else ""
     rest      = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
 
-    # 2. Parse DD/MM/YYYY (from client) → ISO for FLG XML
-    dob_raw = summary.get("dateOfBirth", "")   # "13/06/2025"
+    # 3. Parse DD/MM/YYYY (from client) → ISO for FLG XML
+    dob_raw = summary.get("dateOfBirth", "")   # e.g. "13/06/2025"
     dob_iso = ""
     if dob_raw:
         parts = dob_raw.split("/")
@@ -314,8 +320,8 @@ def upload_summary():
         else:
             dob_iso = dob_raw  # fallback
 
-    # ─── Build data32: comma-delimited account fields ──────────────────────────
-    accounts    = summary.get("accounts", [])
+    # 4. Build data32: comma-delimited account fields
+    accounts     = summary.get("accounts", [])
     data32_elems = []
     for acc in accounts:
         data32_elems.extend([
@@ -326,7 +332,6 @@ def upload_summary():
             acc.get("currentBalance")  or "",
             acc.get("currentStatus")   or "",
             acc.get("defaultBalance")  or "",
-            # Dates: split off the 'T...' safely even if None
             (acc.get("dob")       or "").split("T")[0],
             (acc.get("startDate") or "").split("T")[0],
             (acc.get("endDate")   or "").split("T")[0],
@@ -334,30 +339,29 @@ def upload_summary():
             acc.get("monthlyPayment") or ""
         ])
     data32_str = ",".join(data32_elems)
-    # ──────────────────────────────────────────────────────────────────────────
 
-    # 3. Build FLG-compatible XML (wrapped in <data> per docs), including contact & address
+    # 5. Build the FLG XML, injecting pdf_url into <data31>
     flg_lead_xml = f"""<?xml version="1.0" encoding="ISO-8859-1"?>
-    <data>
-    <lead>
-        <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
-        <title>{title}</title>
-        <firstname>{first}</firstname>
-        <lastname>{last}</lastname>
-        <dateOfBirth>{dob_iso}</dateOfBirth>
-        <phone1>{summary.get("phone1","")}</phone1>
-        <email>{summary.get("email","")}</email>
-        <address>{summary.get("address","")}</address>
-        <towncity>{summary.get("towncity","")}</towncity>
-        <postcode>{summary.get("postcode","")}</postcode>
-        <data31>{summary.get("pdfUrl","")}</data31>
-        <data32>{data32_str}</data32>
-    </lead>
-    </data>""".encode("ISO-8859-1")
+<data>
+  <lead>
+    <leadgroup>{FLG_LEADGROUP_ID}</leadgroup>
+    <title>{title}</title>
+    <firstname>{first}</firstname>
+    <lastname>{last}</lastname>
+    <dateOfBirth>{dob_iso}</dateOfBirth>
+    <phone1>{summary.get("phone1","")}</phone1>
+    <email>{summary.get("email","")}</email>
+    <address>{summary.get("address","")}</address>
+    <towncity>{summary.get("towncity","")}</towncity>
+    <postcode>{summary.get("postcode","")}</postcode>
+    <data31>{pdf_url}</data31>
+    <data32>{data32_str}</data32>
+  </lead>
+</data>""".encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
-    # 4. Send to FLG
+    # 6. Send to FLG
     flg_url = os.getenv("FLG_UPDATE_URL")
     flg_key = os.getenv("FLG_API_KEY")
     try:
@@ -377,7 +381,7 @@ def upload_summary():
     app.logger.info("FLG XML response (status %s):\n%s",
                     flg_resp.status_code, flg_resp.text)
 
-    # 5. Parse XML result
+    # 7. Parse the FLG response
     try:
         root      = ET.fromstring(flg_resp.text)
         status    = root.findtext("status")
@@ -388,24 +392,20 @@ def upload_summary():
 
     if flg_resp.status_code != 200 or status != "0":
         app.logger.error("FLG upload failed: %s", flg_resp.text)
-
         return jsonify(
             error="FLG upload failed",
             flg_status=status,
             flg_body=flg_resp.text,
             debug_data32=data32_str,
-            debug_lenders=",".join(acc.get("lenderName","") for acc in accounts),
             debug_flg_xml=flg_lead_xml.decode("ISO-8859-1")
         ), flg_resp.status_code or 500
 
-
-    # 6. Success
+    # 8. Success
     return jsonify({
-        "success": True,
-        "flg_status": status,
-        "flg_id": record_id,
+        "success":     True,
+        "flg_status":  status,
+        "flg_id":      record_id,
         "debug_data32": data32_str,
-        "debug_lenders": ",".join(acc.get("lenderName","") for acc in accounts),
         "debug_flg_xml": flg_lead_xml.decode("ISO-8859-1")
     }), 200
 
