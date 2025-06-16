@@ -6,6 +6,11 @@ import requests
 import io
 import xml.etree.ElementTree as ET
 import csv
+ 
+import boto3
+import base64
+from datetime import datetime
+
 
 # ─── App & Logging setup ───────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -28,6 +33,21 @@ def get_lenders():
 VALIFI_API_URL  = os.getenv("VALIFI_API_URL", "").rstrip("/")   # e.g. "https://staging-app.valifi.click"
 VALIFI_API_USER = os.getenv("VALIFI_API_USER", "")               # e.g. "belmondclaims-api"
 VALIFI_API_PASS = os.getenv("VALIFI_API_PASS", "")               # e.g. "!jdu6Rdnmh9b3"
+
+
+# Still near the top of app.py, below your other os.getenv() calls:
+AWS_ACCESS_KEY_ID     = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION            = os.getenv("AWS_REGION")
+AWS_S3_BUCKET         = os.getenv("AWS_S3_BUCKET")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION,
+)
+
 
 # ─── FLG API configuration ────────────────────────────────────────────
 FLG_API_URL      = os.getenv(
@@ -189,25 +209,23 @@ def index():
     return render_template("index.html")
 
 
-# ─── 6) Handle the form POST → TransUnion report ────────────────────────────────
 
-
-# ─── 6) Handle the form POST → TransUnion report ────────────────────────────────
+# ─── /query endpoint ────────────────────────────────────────────────
 @app.route("/query", methods=["POST"])
 def query_valifi():
     data = request.json or {}
-    # 1) Validate required fields
+
+    # 1) Validate
     for k in ("firstName", "lastName", "dateOfBirth", "flat", "street", "postTown", "postCode"):
         if not data.get(k):
             return jsonify(error=f"{k} is required"), 400
 
-
-    # 2) Build the Valifi payload requesting JSON + base64 PDF + summary
+    # 2) Build Valifi payload
     payload = {
         "includeJsonReport":    True,
         "includePdfReport":     True,
         "includeSummaryReport": True,
-        "title":                data.get("title", ""), 
+        "title":                data.get("title", ""),
         "clientReference":      data.get("clientReference", "report"),
         "forename":             data["firstName"],
         "middleName":           data.get("middleName", ""),
@@ -223,14 +241,14 @@ def query_valifi():
         "previousPreviousAddress": None
     }
 
-    # 3) Fetch a fresh Bearer token
+    # 3) Fetch Bearer token
     token = get_valifi_token()
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type":  "application/json"
     }
 
-    # 4) Request the TU report (no streaming)
+    # 4) Request the TU report
     resp = requests.post(
         f"{VALIFI_API_URL}/bureau/v1/tu/report",
         json=payload,
@@ -238,13 +256,33 @@ def query_valifi():
         timeout=60
     )
 
-    # 5) Propagate Valifi errors
+    # 5) Propagate errors
     if resp.status_code != 200:
         return jsonify(resp.json()), resp.status_code
 
-    # 6) Return Valifi’s JSON straight through
-    return jsonify(resp.json()), 200
+    # 6) Decode, upload PDF, attach S3 URL
+    result = resp.json()
+    rpt = result.get("data", {})
+    b64  = rpt.get("pdfReport")
+    if b64:
+        pdf_bytes = base64.b64decode(b64)
+        now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        key = f"reports/{payload['clientReference']}-{now}.pdf"
 
+        s3.put_object(
+            Bucket=AWS_S3_BUCKET,
+            Key=key,
+            Body=pdf_bytes,
+            ContentType="application/pdf",
+            ACL="public-read"   # remove or change if not desired
+        )
+
+        rpt["pdfS3Url"] = (
+            f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
+        )
+
+    # 7) Return the full JSON + pdfS3Url
+    return jsonify(result), 200
 
 @app.route("/upload_summary", methods=["POST"])
 def upload_summary():
