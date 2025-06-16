@@ -330,7 +330,7 @@ def upload_summary():
             (acc.get("endDate","")   or "").split("T")[0],
             acc.get("lenderName",""), acc.get("monthlyPayment","")
         ])
-    data32_str = ",".join(data32_elems)
+    data32_str = ",".join(elem if elem is not None else "" for elem in data32_elems)
 
     # 5. Build FLG XML, **using pdf_url** in <data31>
     flg_lead_xml = f'''<?xml version="1.0" encoding="ISO-8859-1"?>
