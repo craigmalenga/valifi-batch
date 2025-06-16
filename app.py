@@ -359,7 +359,7 @@ def upload_summary():
     <data31>{pdf_url}</data31>
     <data32>{data32_str}</data32>
   </lead>
-</data>""".encode("ISO-8859-1")
+</data>'''.encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
