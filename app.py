@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 import csv
 import uuid
 
- import boto3
+import boto3
 import botocore
 import base64
 from datetime import datetime
