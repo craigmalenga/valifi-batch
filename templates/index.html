@@ -170,6 +170,28 @@
         </div>
       </div>
 
+      <!-- === STEP 4.5: Proof of Identity === -->
+      <div class="form-step" id="stepIdentity" style="display:none;">
+        <div class="step-title">Proof of Identity</div>
+        <p>Please confirm your identity by validating your details.</p>
+        <div class="form-group">
+          <button type="button" class="button-right" id="verify_identity">
+            Verify Identity
+          </button>
+        </div>
+        <div id="identity_status" style="text-align:center; margin-top:0.5rem;"></div>
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step4">
+            Go Back
+          </button>
+          <button type="button" class="button-right" id="next_to_step5" disabled>
+            Proceed
+          </button>
+        </div>
+      </div>
+
+
+
       <!-- === STEP 5: Submit Final === -->
       <div class="form-step" id="step5" style="display:none;">
         <div class="step-title">Review and Submit</div>
@@ -415,9 +437,11 @@
 
 
 
-    // Verify OTP
+
+    // ─── Verify OTP (replace existing block) ────────────────────────
     verifyBtn.addEventListener('click', async () => {
       alert('🔐 [DEBUG] Verify OTP clicked');
+      console.log('[DEBUG] Starting OTP verification…');
 
       // grab & clean inputs
       const rawMobile = document.getElementById('mobile').value;
@@ -435,12 +459,11 @@
       }
 
       console.log('[DEBUG] Verifying OTP for:', mobile, 'code:', code);
-
       try {
         const res = await fetch('/otp/verify', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile, code })
+          body:    JSON.stringify({ mobile, code })
         });
         console.log('[DEBUG] otp/verify status:', res.status);
         const data = await res.json();
@@ -452,16 +475,18 @@
 
         const ok = data.data?.result === 'PASS';
         document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
+
         if (ok) {
-          // move into the new Proof-of-Identity step
+          console.log('[DEBUG] OTP passed—showing Identity step');
           showStep('stepIdentity');
         }
-
       } catch (err) {
         console.error('[DEBUG] otp/verify error', err);
         alert(`OTP verification failed: ${err.message}`);
       }
     });
+
+
 
     // Back-button from Identity → OTP
     document.getElementById('back_to_step4')
