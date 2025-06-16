@@ -364,8 +364,37 @@ def upload_summary():
     )
     app.logger.info("FLG XML response (status %s):\n%s", resp.status_code, resp.text)
 
-    # ...parse response and return...
-    # (rest of your existing logic follows here)
+    # 7. Parse XML result
+    try:
+        root      = ET.fromstring(flg_resp.text)
+        status    = root.findtext("status")
+        record_id = root.findtext("item/id")
+    except Exception as e:
+        app.logger.error("Failed parsing FLG XML: %s", e)
+        return jsonify(error="Failed to parse FLG response", details=str(e)), 500
+
+    if flg_resp.status_code != 200 or status != "0":
+        app.logger.error("FLG upload failed: %s", flg_resp.text)
+
+        return jsonify(
+            error="FLG upload failed",
+            flg_status=status,
+            flg_body=flg_resp.text,
+            debug_data32=data32_str,
+            debug_lenders=",".join(acc.get("lenderName","") for acc in accounts),
+            debug_flg_xml=flg_lead_xml.decode("ISO-8859-1")
+        ), flg_resp.status_code or 500
+
+
+    # 8. Success
+    return jsonify({
+        "success": True,
+        "flg_status": status,
+        "flg_id": record_id,
+        "debug_data32": data32_str,
+        "debug_lenders": ",".join(acc.get("lenderName","") for acc in accounts),
+        "debug_flg_xml": flg_lead_xml.decode("ISO-8859-1")
+    }), 200
 
 
 
