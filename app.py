@@ -356,13 +356,13 @@ def upload_summary():
     # 6. Send to FLG...
     flg_url = os.getenv("FLG_UPDATE_URL")
     flg_key = os.getenv("FLG_API_KEY")
-    resp = requests.post(
+    flg_resp = requests.post(
         flg_url,
         headers={"Content-Type":"application/xml","x-api-key":flg_key},
         data=flg_lead_xml,
         timeout=30
     )
-    app.logger.info("FLG XML response (status %s):\n%s", resp.status_code, resp.text)
+    app.logger.info("FLG XML response (status %s):\n%s", flg_resp.status_code, flg_resp.text)
 
     # 7. Parse XML result
     try:
