@@ -338,6 +338,9 @@ def upload_summary():
     data32_str = ",".join(elem if elem is not None else "" for elem in data32_elems)
 
     # 5. Build FLG XML, **using pdf_url** in <data31>
+
+    dd, mm, yy = dob_iso.split("-")[2], dob_iso.split("-")[1], dob_iso.split("-")[0]
+
     flg_lead_xml = f'''<?xml version="1.0" encoding="ISO-8859-1"?>
 <data>
   <lead>
@@ -345,7 +348,9 @@ def upload_summary():
     <title>{title}</title>
     <firstname>{first}</firstname>
     <lastname>{last}</lastname>
-    <dateOfBirth>{dob_iso}</dateOfBirth>
+    <dobday>{dd}</dobday>
+    <dobmonth>{mm}</dobmonth>
+    <dobyear>{yy}</dobyear>
     <phone1>{summary.get("phone1","")}</phone1>
     <email>{summary.get("email","")}</email>
     <address>{summary.get("address","")}</address>
@@ -354,7 +359,7 @@ def upload_summary():
     <data31>{pdf_url}</data31>
     <data32>{data32_str}</data32>
   </lead>
-</data>'''.encode("ISO-8859-1")
+</data>""".encode("ISO-8859-1")
 
     app.logger.debug("FLG XML payload:\n%s", flg_lead_xml.decode("ISO-8859-1"))
 
