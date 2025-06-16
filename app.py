@@ -224,7 +224,7 @@ def query_valifi():
         "includeJsonReport":    True,
         "includePdfReport":     True,
         "includeSummaryReport": True,
-        "title":                data.get("title", ""),
+        "title":                data.get("title", "") or "",
         "clientReference":      data.get("clientReference", "report"),
         "forename":             data["firstName"],
         "middleName":           data.get("middleName", ""),
@@ -239,6 +239,9 @@ def query_valifi():
         "previousAddress":         None,
         "previousPreviousAddress": None
     }
+
+    if payload["title"].lower() == "other":
+        payload["title"] = ""
 
     # 3) Fetch Bearer token
     token = get_valifi_token()
@@ -306,6 +309,8 @@ def upload_summary():
     full_name = (summary.get("name") or "").strip()
     parts     = full_name.split(" ", 1)
     title     = parts[0] if len(parts) > 1 else ""
+    if title.lower() == "other":
+        title = ""
     rest      = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
 
