@@ -201,6 +201,44 @@ def otp_verify():
     )
     return jsonify(resp.json()), resp.status_code
 
+# ─── 4.1) New endpoint: Identity validation (Mobile ID) ──────────────────────────
+@app.route("/validate-identity", methods=["POST"])
+def validate_identity():
+    data = request.json or {}
+    # 1) Build payload for Mobile ID
+    payload = {
+        "includeJsonReport":    True,
+        "includeMobileKYC":     True,
+        "clientReference":      data.get("clientReference", "identityCheck"),
+        "title":                data.get("title", ""),
+        "forename":             data.get("firstName", ""),
+        "middleName":           data.get("middleName", ""),
+        "surname":              data.get("lastName", ""),
+        "dateOfBirth":          data.get("dateOfBirth"),      # e.g. "YYYY-MM-DD"
+        "mobileNumber":         data.get("mobile"),
+        "emailAddress":         data.get("email"),
+        "currentAddress": {
+            "flat":     data.get("flat", ""),
+            "street":   data.get("street", ""),
+            "postTown": data.get("postTown", ""),
+            "postCode": data.get("postCode", "")
+        }
+    }
+    # 2) Call Valifi TU Validate API
+    token = get_valifi_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json"
+    }
+    resp = requests.post(
+        f"{VALIFI_API_URL}/bureau/v1/tu/validate",
+        json=payload,
+        headers=headers,
+        timeout=30
+    )
+    return jsonify(resp.json()), resp.status_code
+
+
 
 # ─── 5) Render the HTML form ────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])

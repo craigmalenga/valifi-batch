@@ -452,13 +452,56 @@
 
         const ok = data.data?.result === 'PASS';
         document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
-        if (ok) submitBtn.disabled = false;
+        if (ok) {
+          // move into the new Proof-of-Identity step
+          showStep('stepIdentity');
+        }
 
       } catch (err) {
         console.error('[DEBUG] otp/verify error', err);
         alert(`OTP verification failed: ${err.message}`);
       }
     });
+
+    // Back-button from Identity → OTP
+    document.getElementById('back_to_step4')
+            .addEventListener('click', () => showStep('step4'));
+
+    // Proof-of-Identity click
+    document.getElementById('verify_identity')
+      .addEventListener('click', async () => {
+        const payload = {
+          title:       document.getElementById('title').value.trim(),
+          firstName:   document.getElementById('first_name').value.trim(),
+          middleName:  document.getElementById('middle_name').value.trim(),
+          lastName:    document.getElementById('last_name').value.trim(),
+          dateOfBirth:`${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
+          email:       document.getElementById('email').value.trim(),
+          mobile:      document.getElementById('mobile').value.replace(/\D/g,''),
+          flat:        document.getElementById('flat').value.trim(),
+          street:      document.getElementById('street').value.trim(),
+          postTown:    document.getElementById('post_town').value.trim(),
+          postCode:    document.getElementById('post_code').value.trim(),
+          clientReference: 'identityCheck'
+        };
+        const res = await fetch('/validate-identity', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.data?.summaryReport?.data?.OtherChecks?.IdentityResult === 'Pass') {
+          document.getElementById('identity_status').textContent = '✔ Identity verified';
+          document.getElementById('next_to_step5').disabled = false;
+        } else {
+          document.getElementById('identity_status').textContent = '❌ Identity verification failed';
+        }
+      });
+
+    // Proceed from Identity → final Submit
+    document.getElementById('next_to_step5')
+            .addEventListener('click', () => showStep('step5'));
+
 
     // Final form submit → /query (+ upload to FLG + base64→PDF download)
     const form = document.getElementById('searchForm');
