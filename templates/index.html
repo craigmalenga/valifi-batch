@@ -463,23 +463,25 @@
       }
     });
 
-    // Final form submit → /query (+ upload to FLG + base64→PDF download)
-    const form = document.getElementById('searchForm');
+
+
+    const form      = document.getElementById('searchForm');
+    const submitBtn = document.querySelector('button[type="submit"]');
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
       submitBtn.disabled = true;
 
-      // 1) Build payload, including your DOB selects + new email
+      // 1) Build payload
       const day   = document.getElementById('dob_day').value.toString().padStart(2,'0');
       const month = document.getElementById('dob_month').value.toString().padStart(2,'0');
       const year  = document.getElementById('dob_year').value.trim();
-
       const payload = {
         title:        document.getElementById('title').value.trim(),
         firstName:    document.getElementById('first_name').value.trim(),
         middleName:   document.getElementById('middle_name').value.trim(),
         lastName:     document.getElementById('last_name').value.trim(),
-        email:        document.getElementById('email').value.trim(),      // ← new
+        email:        document.getElementById('email').value.trim(),
         dateOfBirth:  `${year}-${month}-${day}`,
         mobile:       document.getElementById('mobile').value.replace(/\D/g,''),
         flat:         document.getElementById('flat').value.trim(),
@@ -502,62 +504,24 @@
           return;
         }
 
-        // 3) Show only the raw accounts array
-        const summaryReport = result.data?.summaryReport || result.data;
-        const accounts      = summaryReport.accounts || [];
-        document.getElementById('result')
-                .textContent = JSON.stringify(accounts, null, 2);
+        // ── REMOVE raw JSON & FLG-debug display ──
+        // document.getElementById('result')
+        //         .textContent = JSON.stringify(result.data?.summaryReport.accounts || [], null, 2);
+        // document.getElementById('flg_status')
+        //         .textContent = flgRes.ok
+        //           ? 'FLG upload succeeded'
+        //           : `FLG upload failed: ${flgData.error||flgRes.status}`;
+        // const debugDiv = document.createElement('div');
+        // …debugDiv.innerHTML = `…`;
+        // document.getElementById('flg_status').insertAdjacentElement('afterend', debugDiv);
+        // console.log('FLG data32:', flgData.debug_data32);
+        // console.log('FLG XML payload:', flgData.debug_flg_xml);
 
-        // 4) Post to FLG
-        const flgRes  = await fetch('/upload_summary', {
-          method:  'POST',
-          headers: { 'Content-Type':'application/json' },
+        // clear any old debug/output – only Step 6 rows from here on
+        document.getElementById('result').textContent     = '';
+        document.getElementById('flg_status').textContent = '';
 
-          body:    JSON.stringify({
-            name:         summaryReport.name,
-
-            dateOfBirth: (() => {
-              const [yyyy, mm, dd] = summaryReport.accounts[0]?.dob.split('T')[0].split('-') || [];
-              return dd && mm && yyyy ? `${dd}/${mm}/${yyyy}` : '';
-            })(),            
-
-            phone1:       payload.mobile,
-            email:        payload.email,
-            address:      payload.flat
-                            ? `${payload.flat} ${payload.street}`
-                            : payload.street,
-            towncity:     payload.postTown,
-            postcode:     payload.postCode,
-            accounts:     summaryReport.accounts
-          })
-
-        });
-
-        const flgData = await flgRes.json();
-        document.getElementById('flg_status')
-                .textContent = flgRes.ok
-                  ? 'FLG upload succeeded'
-                  : `FLG upload failed: ${flgData.error||flgRes.status}`;
-
-        // TEMPORARY DEBUG OUTPUT:
-        const debugDiv = document.createElement('div');
-        debugDiv.style = "margin-top:1em; padding:0.5em; background:#f9f9f9; border:1px dashed #ccc;";
-        debugDiv.innerHTML = `
-          <h4>🔍 FLG Debug Info</h4>
-          <p><strong>Comma-delimited data32:</strong></p>
-          <pre style="white-space:pre-wrap;">${flgData.debug_data32}</pre>
-          <p><strong>Lender Names:</strong> ${flgData.debug_lenders}</p>
-          <p><strong>Full FLG XML Payload:</strong></p>
-          <pre style="white-space:pre-wrap;">${flgData.debug_flg_xml}</pre>
-        `;
-        document.getElementById('flg_status').insertAdjacentElement('afterend', debugDiv);
-
-        // Also log to console:
-        console.log('FLG data32:', flgData.debug_data32);
-        console.log('FLG XML payload:', flgData.debug_flg_xml);
-
-
-        // 5) Decode & download PDF
+        // 3) Decode & download PDF (if provided)
         const b64 = result.data?.pdfReport;
         if (b64) {
           const binary = atob(b64);
@@ -574,31 +538,29 @@
           URL.revokeObjectURL(url);
         }
 
-        // ─── Populate Step 6: one-row-per-lender, 15%▸65%▸20% grid ───
-        const foundList = document.getElementById('found_list');
+        // 4) Populate Step 6: one-row-per-lender, 20%▸60%▸20% grid
+        const foundList    = document.getElementById('found_list');
         foundList.innerHTML = '';
+        const summaryReport = result.data?.summaryReport || result.data;
+        const rows         = summaryReport.accounts || [];
 
-        // pull accounts into a local var so we don't accidentally loop twice
-        const rows = summaryReport.accounts || [];
         rows.forEach(acc => {
-          const raw = acc.lenderName || "";
-
-          // 1) fuzzy-match to your lendersList CSV
+          // fuzzy-match logic…
           let best = { sim: 0, item: null };
           lendersList.forEach(item => {
-            const sim = similarity(raw.toLowerCase(), item.name.toLowerCase());
+            const sim = similarity(acc.lenderName.toLowerCase(), item.name.toLowerCase());
             if (sim > best.sim) best = { sim, item };
           });
           const useCSV = best.sim >= 0.8 && best.item;
-          const label  = useCSV ? best.item.name : raw;
+          const label  = useCSV ? best.item.name : acc.lenderName;
           const logo   = useCSV ? best.item.filename : null;
 
-          // 2) Icon cell
+          // icon cell
           const iconDiv = document.createElement('div');
           if (logo) {
             const img = document.createElement('img');
-            img.src        = `/static/icons/${encodeURIComponent(logo)}`;
-            img.alt        = label;
+            img.src  = `/static/icons/${encodeURIComponent(logo)}`;
+            img.alt  = label;
             img.classList.add('step6-logo');
             iconDiv.appendChild(img);
           } else {
@@ -608,12 +570,12 @@
             iconDiv.appendChild(noLogo);
           }
 
-          // 3) Name cell
+          // name cell
           const nameDiv = document.createElement('div');
           nameDiv.classList.add('lender-name');
           nameDiv.textContent = label;
 
-          // 4) Date cell
+          // date cell
           const dateDiv = document.createElement('div');
           dateDiv.classList.add('lender-date');
           if (acc.startDate) {
@@ -623,7 +585,7 @@
             dateDiv.textContent = `From ${month} '${year}`;
           }
 
-          // 5) Wrap in one grid row
+          // wrap & append
           const row = document.createElement('div');
           row.classList.add('found-row');
           row.append(iconDiv, nameDiv, dateDiv);
@@ -639,6 +601,8 @@
         submitBtn.disabled = false;
       }
     });
+
+
 
 
     // === NEW: hook up the "add lender" button in Step 6 ===

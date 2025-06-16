@@ -296,8 +296,26 @@ input:hover, select:hover {
 /* Logo sizing ~150% of heading font-size */
 .step6-logo {
   max-width: 100%;
-  height: 1.5em;
+  height: 3em;     /* ↑ doubled from 1.5em */
   object-fit: contain;
+}
+
+/* make every .found-row a 20%|60%|20% grid (logo|name|date) */
+.found-row {
+  display: grid;
+  grid-template-columns: 20% 60% 20%;
+}
+/* column 1: center logo; columns 2+3: left-justify text */
+.found-row > div:nth-child(1) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.found-row > div:nth-child(2),
+.found-row > div:nth-child(3) {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 /* Center & bold lender names & dates */
@@ -340,3 +358,18 @@ input:hover, select:hover {
 }
 
 
+@media (max-width: 600px) {
+  /* make form and wrapper elements 100% wide */
+  html, body, .container, form, .form-step {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 1rem;   /* optional side padding */
+  }
+
+  /* mobile: logo height ×2 (was 1em → now 2em) */
+  .step6-logo {
+    height: 2em;
+  }
+}
