@@ -6,8 +6,9 @@ import requests
 import io
 import xml.etree.ElementTree as ET
 import csv
- 
-import boto3
+import uuid
+
+ import boto3
 import botocore
 import base64
 from datetime import datetime
@@ -49,7 +50,6 @@ s3 = boto3.client(
     region_name=AWS_REGION,
 )
 
-
 # ─── FLG API configuration ────────────────────────────────────────────
 FLG_API_URL      = os.getenv(
     "FLG_API_URL",
@@ -60,8 +60,6 @@ FLG_API_KEY      = os.getenv(
     "T9jrI9IdgOlnODCEuziNDcn5Vt7m4sgA"   # your FLG key
 )
 FLG_LEADGROUP_ID = os.getenv("FLG_LEADGROUP_ID", "57862")
-
-
 
 # ─── 2) Helper: Authenticate via Basic Auth to get a Bearer token ──────────────
 def get_valifi_token():
@@ -267,8 +265,8 @@ def query_valifi():
     b64  = rpt.get("pdfReport")
     if b64:
         pdf_bytes = base64.b64decode(b64)
-        now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        key = f"reports/{payload['clientReference']}-{now}.pdf"
+        filename = f"{uuid.uuid4().hex}.pdf"
+        key = f"reports/{filename}"
 
         app.logger.info("Uploading PDF to S3 → bucket=%s key=%s", AWS_S3_BUCKET, key)
         try:
@@ -286,9 +284,7 @@ def query_valifi():
                 details=str(e)
             ), 500
 
-        rpt["pdfS3Url"] = (
-            f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
-        )
+        rpt["pdfUrl"] = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
 
     # 7) Return the full JSON + pdfS3Url
     return jsonify(result), 200
@@ -354,6 +350,7 @@ def upload_summary():
         <address>{summary.get("address","")}</address>
         <towncity>{summary.get("towncity","")}</towncity>
         <postcode>{summary.get("postcode","")}</postcode>
+        <data31>{summary.get("pdfUrl","")}</data31>
         <data32>{data32_str}</data32>
     </lead>
     </data>""".encode("ISO-8859-1")
