@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 import csv
  
 import boto3
+import botocore
 import base64
 from datetime import datetime
 
@@ -269,20 +270,21 @@ def query_valifi():
         now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         key = f"reports/{payload['clientReference']}-{now}.pdf"
 
-
         app.logger.info("Uploading PDF to S3 → bucket=%s key=%s", AWS_S3_BUCKET, key)
         try:
             s3.put_object(
                 Bucket=AWS_S3_BUCKET,
                 Key=key,
                 Body=pdf_bytes,
-                ContentType="application/pdf",
-                ACL="public-read"
+                ContentType="application/pdf"
             )
             app.logger.info("✅ S3 upload succeeded")
         except botocore.exceptions.ClientError as e:
             app.logger.error("❌ S3 upload failed: %s", e)
-            return jsonify(error="Could not upload PDF to S3", details=str(e)), 500
+            return jsonify(
+                error="Could not upload PDF to S3",
+                details=str(e)
+            ), 500
 
         rpt["pdfS3Url"] = (
             f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
