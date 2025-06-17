@@ -492,6 +492,17 @@
     document.getElementById('back_to_step4')
             .addEventListener('click', () => showStep('step4'));
 
+
+    function normalizeUkMobile(raw) {
+      return raw
+        .trim()
+        // replace any leading +44, 0044 or 44 with a single "0"
+        .replace(/^(\+44|0044|44)/, '0')
+        // strip any remaining non-digits
+        .replace(/\D/g, '');
+    }
+
+
     // Proof-of-Identity click
     document.getElementById('verify_identity')
       .addEventListener('click', async () => {
@@ -512,7 +523,9 @@
 
 
           email:       document.getElementById('email').value.trim(),
-          mobile:      document.getElementById('mobile').value.replace(/\D/g,''),
+
+          mobile:      mobileForValidate,
+
           flat:        document.getElementById('flat').value.trim(),
           street:      document.getElementById('street').value.trim(),
           postTown:    document.getElementById('post_town').value.trim(),
