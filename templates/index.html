@@ -509,6 +509,9 @@
           postCode:    document.getElementById('post_code').value.trim(),
           clientReference: 'identityCheck'
         };
+
+        console.log('[DEBUG] Identity check payload:', payload);
+
         const res = await fetch('/validate-identity', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
