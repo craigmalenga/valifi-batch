@@ -495,14 +495,22 @@
     // Proof-of-Identity click
     document.getElementById('verify_identity')
       .addEventListener('click', async () => {
+        // ─── assemble full ISO-8601 DOB ─────────────────────────────
+        const day   = document.getElementById('dob_day').value.toString().padStart(2, '0');
+        const month = document.getElementById('dob_month').value.toString().padStart(2, '0');
+        const year  = document.getElementById('dob_year').value.trim();
+
         const payload = {
+
+
           title:       document.getElementById('title').value.trim(),
           firstName:   document.getElementById('first_name').value.trim(),
           middleName:  document.getElementById('middle_name').value.trim(),
           lastName:    document.getElementById('last_name').value.trim(),
-
-          dateOfBirth: `${year}-${month}-${day}T00:00:00`,          
           
+          dateOfBirth: `${year}-${month}-${day}T00:00:00`,
+
+
           email:       document.getElementById('email').value.trim(),
           mobile:      document.getElementById('mobile').value.replace(/\D/g,''),
           flat:        document.getElementById('flat').value.trim(),
