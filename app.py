@@ -236,6 +236,10 @@ def validate_identity():
         headers=headers,
         timeout=30
     )
+    
+    app.logger.debug("⏩ TU Validate payload: %s", payload)
+    app.logger.debug("⏪ TU Validate response [%s]: %s", resp.status_code, resp.text)
+    
     return jsonify(resp.json()), resp.status_code
 
 

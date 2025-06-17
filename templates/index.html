@@ -500,7 +500,9 @@
           firstName:   document.getElementById('first_name').value.trim(),
           middleName:  document.getElementById('middle_name').value.trim(),
           lastName:    document.getElementById('last_name').value.trim(),
-          dateOfBirth:`${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2,'0')}-${String(document.getElementById('dob_day').value).padStart(2,'0')}`,
+
+          dateOfBirth: `${year}-${month}-${day}T00:00:00`,          
+          
           email:       document.getElementById('email').value.trim(),
           mobile:      document.getElementById('mobile').value.replace(/\D/g,''),
           flat:        document.getElementById('flat').value.trim(),
