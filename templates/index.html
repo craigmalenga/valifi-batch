@@ -2,52 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
+  <title>Credit Report Service</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <style>
-
-    /* allow full-width on desktop, margin auto still on mobile */
-    .container {
-      max-width: none;
-      width: 100%;
-      margin: auto;
-      padding: 20px;
-    }
-
-    form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem 2rem;
-      align-items: start;
-    }
-    form h2 { grid-column: span 2; margin-top: 1.5rem; }
-    .form-group { display: flex; flex-direction: column; }
-    .lookup-postcode, #address_error, #clear_btn, button[type="submit"] {
-      grid-column: span 2;
-    }
-    .lookup-postcode {
-      display: flex; gap: 0.5rem; align-items: flex-end;
-    }
-    #address_error { color: #b00; display: none; }
-    @media (max-width:600px) {
-      form { grid-template-columns: 1fr; }
-      .lookup-postcode, #address_error, #clear_btn, button[type="submit"] {
-        grid-column: span 1;
-      }
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-
     <form id="searchForm" autocomplete="on" novalidate>
+      <!-- Progress Indicator -->
+      <div class="progress-bar">
+        <div class="progress-step active" data-step="1">Personal Info</div>
+        <div class="progress-step" data-step="2">Address</div>
+        <div class="progress-step" data-step="3">Mobile</div>
+        <div class="progress-step" data-step="4">Verify OTP</div>
+        <div class="progress-step" data-step="mobileid">Trust Check</div>
+        <div class="progress-step" data-step="identity">Identity</div>
+        <div class="progress-step" data-step="5">Submit</div>
+      </div>
+
       <!-- === STEP 1: Personal Info === -->
       <div class="form-step" id="step1">
         <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
-
+        
         <div class="form-group">
           <label>Title *</label>
           <div class="title-button-group" id="title_buttons">
@@ -58,40 +34,44 @@
             <button type="button" data-value="Other">Other</button>
           </div>
           <input type="hidden" id="title" name="title" required />
+          <span class="error-message" id="title_error"></span>
         </div>
 
         <div class="form-group">
           <label for="first_name">First Name (as on documents) *</label>
-          <input type="text" id="first_name" required>
+          <input type="text" id="first_name" required autocomplete="given-name">
+          <span class="error-message" id="first_name_error"></span>
         </div>
 
         <div class="form-group">
           <label for="middle_name">Middle Name(s) – optional</label>
-          <input type="text" id="middle_name">
+          <input type="text" id="middle_name" autocomplete="additional-name">
         </div>
 
         <div class="form-group">
           <label for="last_name">Last Name *</label>
-          <input type="text" id="last_name" required>
+          <input type="text" id="last_name" required autocomplete="family-name">
+          <span class="error-message" id="last_name_error"></span>
         </div>
         
         <div class="form-group">
           <label for="dob_day">Date of Birth *</label>
-          <div style="display:flex; gap:0.5rem;">
+          <div class="dob-container">
             <select id="dob_day" required>
               <option value="">Day</option>
             </select>
             <select id="dob_month" required>
               <option value="">Month</option>
             </select>
-            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" required />
+            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" required pattern="\d{4}" />
           </div>
+          <span class="error-message" id="dob_error"></span>
         </div>
 
-        <!-- 2A: New Email Address field -->
         <div class="form-group">
           <label for="email">Email Address *</label>
-          <input type="email" id="email" name="email" required />
+          <input type="email" id="email" name="email" required autocomplete="email" />
+          <span class="error-message" id="email_error"></span>
         </div>
 
         <div class="button-row">
@@ -102,33 +82,42 @@
 
       <!-- === STEP 2: Address === -->
       <div class="form-step" id="step2" style="display:none;">
-        <div class="step-title">What’s your address?</div>
+        <h2 class="step-title">What's your address?</h2>
 
-        <div style="display:flex; gap:0.5rem;">
-          <input type="text" id="lookup_postcode" placeholder="Enter postcode…" style="flex:1;" />
+        <div class="postcode-lookup">
+          <input type="text" id="lookup_postcode" placeholder="Enter postcode…" autocomplete="postal-code" />
           <button type="button" class="button-right" id="address_lookup_btn">Find Address</button>
         </div>
 
-        <div id="address_container" style="margin-top: 1rem; display:none;">
+        <div id="address_container" style="display:none;">
           <label for="address_select">Select Address</label>
-          <select id="address_select" name="address_select" style="width: 100%;">
+          <select id="address_select" name="address_select">
             <option value="">Pick an address…</option>
           </select>
         </div>
 
-        <div id="address_error" style="color: red; display: none; margin-top:0.5rem;"></div>
+        <div id="address_error" class="error-message"></div>
 
-        <div class="form-group"><label for="flat">Flat / Unit</label>
-          <input type="text" id="flat" name="flat" placeholder="e.g. 1" required/>
-        </div>
-        <div class="form-group"><label for="street">Street *</label>
-          <input type="text" id="street" name="street" placeholder="e.g. Example Street" required/>
-        </div>
-        <div class="form-group"><label for="post_town">Post Town *</label>
-          <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required/>
-        </div>
-        <div class="form-group"><label for="post_code">Post Code *</label>
-          <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required/>
+        <div class="address-fields">
+          <div class="form-group">
+            <label for="flat">Flat / Unit</label>
+            <input type="text" id="flat" name="flat" placeholder="e.g. 1" autocomplete="address-line1"/>
+          </div>
+          <div class="form-group">
+            <label for="street">Street *</label>
+            <input type="text" id="street" name="street" placeholder="e.g. Example Street" required autocomplete="address-line2"/>
+            <span class="error-message" id="street_error"></span>
+          </div>
+          <div class="form-group">
+            <label for="post_town">Post Town *</label>
+            <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required autocomplete="address-level2"/>
+            <span class="error-message" id="post_town_error"></span>
+          </div>
+          <div class="form-group">
+            <label for="post_code">Post Code *</label>
+            <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required autocomplete="postal-code"/>
+            <span class="error-message" id="post_code_error"></span>
+          </div>
         </div>
 
         <div class="button-row">
@@ -139,610 +128,142 @@
 
       <!-- === STEP 3: Mobile Entry === -->
       <div class="form-step" id="step3" style="display:none;">
-        <div class="step-title">Mobile Verification</div>
+        <h2 class="step-title">Mobile Verification</h2>
 
         <div class="form-group">
           <label for="mobile">Mobile Number *</label>
-          <input type="tel" id="mobile" name="mobile" required autocomplete="tel">
-          <button type="button" class="button-right" id="send_otp">Send OTP</button>
+          <input type="tel" id="mobile" name="mobile" required autocomplete="tel" placeholder="07XXX XXXXXX">
+          <span class="error-message" id="mobile_error"></span>
         </div>
+        
+        <button type="button" class="button-primary full-width" id="send_otp">Send OTP</button>
+        <div id="otp_message" class="info-message" style="display:none;"></div>
 
         <div class="button-row">
           <button type="button" class="button-left" id="back_to_step2">Go Back</button>
-          <button type="button" class="button-right" id="next_to_step4">Proceed</button>
+          <button type="button" class="button-right" id="next_to_step4" disabled>Proceed</button>
         </div>
       </div>
 
       <!-- === STEP 4: OTP Verification === -->
       <div class="form-step" id="step4" style="display:none;">
-        <div class="step-title">Verify OTP Code</div>
+        <h2 class="step-title">Verify OTP Code</h2>
 
         <div class="form-group" id="otp_group">
           <label for="otp">Enter OTP *</label>
-          <input type="text" id="otp" name="otp" autocomplete="one-time-code" inputmode="numeric">
-          <button type="button" class="button-right" id="verify_otp">Verify OTP</button>
-          <span id="otp_status"></span>
+          <input type="text" id="otp" name="otp" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="XXXXXX">
+          <span class="error-message" id="otp_error"></span>
         </div>
+        
+        <button type="button" class="button-primary full-width" id="verify_otp">Verify OTP</button>
+        <div id="otp_status" class="status-message"></div>
 
         <div class="button-row">
           <button type="button" class="button-left" id="back_to_step3">Go Back</button>
-          <button type="button" class="button-right" id="next_to_step5">Proceed</button>
+          <button type="button" class="button-right" id="next_to_stepMobileId" disabled>Proceed</button>
+        </div>
+      </div>
+
+      <!-- === NEW STEP: MobileID Trust Assessment === -->
+      <div class="form-step" id="stepMobileId" style="display:none;">
+        <h2 class="step-title">Trust & Security Check</h2>
+        <p class="step-description">
+          We're now verifying that your mobile number is securely associated with your identity. 
+          This helps protect against fraud and ensures your information is safe.
+        </p>
+        
+        <div class="trust-check-container">
+          <button type="button" class="button-primary full-width" id="check_mobile_trust">
+            Verify Mobile Trust
+          </button>
+          
+          <div id="trust_status" class="trust-status-container" style="display:none;">
+            <div class="trust-indicator">
+              <span class="trust-icon"></span>
+              <span class="trust-text"></span>
+            </div>
+            
+            <div class="trust-details" style="display:none;">
+              <h4>Trust Assessment Details:</h4>
+              <ul id="trust_details_list"></ul>
+            </div>
+            
+            <div class="trust-warning" id="trust_warning" style="display:none;">
+              <strong>⚠️ Security Alert:</strong>
+              <p id="trust_warning_text"></p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="button-row">
+          <button type="button" class="button-left" id="back_to_step4_from_mobile">Go Back</button>
+          <button type="button" class="button-right" id="next_to_stepIdentity_from_mobile" disabled>Proceed</button>
         </div>
       </div>
 
       <!-- === STEP 4.5: Proof of Identity === -->
       <div class="form-step" id="stepIdentity" style="display:none;">
-        <div class="step-title">Proof of Identity</div>
-        <p>Please confirm your identity by validating your details.</p>
-        <div class="form-group">
-          <button type="button" class="button-right" id="verify_identity">
-            Verify Identity
-          </button>
-        </div>
-        <div id="identity_status" style="text-align:center; margin-top:0.5rem;"></div>
+        <h2 class="step-title">Proof of Identity</h2>
+        <p class="step-description">Please confirm your identity by validating your details.</p>
+        
+        <button type="button" class="button-primary full-width" id="verify_identity">Verify Identity</button>
+        <div id="identity_status" class="status-message"></div>
+        
         <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step4">
-            Go Back
-          </button>
-          <button type="button" class="button-right" id="next_to_step5" disabled>
-            Proceed
-          </button>
+          <button type="button" class="button-left" id="back_to_stepMobileId">Go Back</button>
+          <button type="button" class="button-right" id="next_to_step5" disabled>Proceed</button>
         </div>
       </div>
 
-
-
       <!-- === STEP 5: Submit Final === -->
       <div class="form-step" id="step5" style="display:none;">
-        <div class="step-title">Review and Submit</div>
+        <h2 class="step-title">Review and Submit</h2>
+        
+        <div class="review-summary" id="review_summary">
+          <!-- Populated by JS -->
+        </div>
 
-        <p style="text-align:center;">Click below to retrieve your credit report.</p>
+        <p class="step-description">Click below to retrieve your credit report.</p>
 
         <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step4">Go Back</button>
+          <button type="button" class="button-left" id="back_to_stepIdentity">Go Back</button>
           <button type="submit" class="button-right">Get Report</button>
         </div>
       </div>
 
-      <!-- === STEP 6: What we’ve found === -->
+      <!-- === STEP 6: What we've found === -->
       <div class="form-step" id="step6" style="display:none;">
-        <h2 style="color: rebeccapurple;">Here’s what our checks have already found</h2>
-        <div id="found_list">   
-          <!-- JS will inject lender icons + names here -->
+        <h2 class="section-heading">Here's what our checks have already found</h2>
+        
+        <div id="found_list" class="lenders-list">
+          <!-- JS will inject lender items here -->
         </div>
-        <button type="button" id="add_lender_btn">Click here to add additional lenders if you believe our initial checks missed anything.</button>
-        <p style="font-size:0.9em; color:#555;">
-          Don’t worry if you can’t recall any details. In addition to the live checks we have just carried out, going back up to 7 years, we will run additional checks in the next 24 hours to go back through more historic contracts on your behalf. We will be in touch to discuss the outcome of any further matches.
+        
+        <button type="button" class="button-primary full-width" id="add_lender_btn">
+          Click here to add additional lenders if you believe our initial checks missed anything.
+        </button>
+        
+        <p class="info-note">
+          Don't worry if you can't recall any details. In addition to the live checks we have just carried out, 
+          going back up to 7 years, we will run additional checks in the next 24 hours to go back through more 
+          historic contracts on your behalf. We will be in touch to discuss the outcome of any further matches.
         </p>
       </div>
 
     </form>
-    <div id="result"></div>
-    <div id="flg_status" style="margin-top:10px; color:#006; font-weight:bold;"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading_overlay" class="loading-overlay" style="display:none;">
+      <div class="spinner"></div>
+      <div class="loading-text">Processing...</div>
+    </div>
+    
+    <!-- Results & Debug -->
+    <div id="result" class="result-container" style="display:none;"></div>
+    <div id="flg_status" class="status-container"></div>
+    <div id="debug_container" class="debug-container" style="display:none;"></div>
   </div>
 
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-
-    // ─── New: load lenders.csv into JS ─────────────────────────────
-    let lendersList = [];
-    fetch('/lenders')
-      .then(r => r.json())
-      .then(data => lendersList = data)
-      .catch(e => console.error("Failed to load lenders.csv", e));
-
-    // simple Levenshtein distance
-    function editDistance(s1, s2) {
-      const costs = [];
-      for (let i = 0; i <= s1.length; i++) {
-        let last = i;
-        for (let j = 0; j <= s2.length; j++) {
-          if (i === 0) costs[j] = j;
-          else if (j > 0) {
-            let cur = costs[j - 1];
-            if (s1[i - 1] !== s2[j - 1]) {
-              cur = Math.min(Math.min(cur, last), costs[j]) + 1;
-            }
-            costs[j - 1] = last;
-            last = cur;
-          }
-        }
-        if (i > 0) costs[s2.length] = last;
-      }
-      return costs[s2.length];
-    }
-    // similarity ratio 0–1
-    function similarity(a, b) {
-      const [s1, s2] = a.length >= b.length ? [a,b] : [b,a];
-      const len = s1.length;
-      if (!len) return 1;
-      return (len - editDistance(s1, s2)) / len;
-    }
-
-
-
-    const lookupBtn  = document.getElementById('address_lookup_btn');
-    const addrSel    = document.getElementById('address_select');
-    const addrCont   = document.getElementById('address_container');
-    const addrErr    = document.getElementById('address_error');
-    const sendOtpBtn = document.getElementById('send_otp');
-    const verifyBtn  = document.getElementById('verify_otp');
-    const otpGroup   = document.getElementById('otp_group');
-    const submitBtn  = document.querySelector('button[type="submit"]');
-    const clearBtn   = document.getElementById('clear_btn');
-    
-    
-    // Step navigation logic
-    const showStep = (idToShow) => {
-      document.querySelectorAll('.form-step').forEach(div => {
-        div.style.display = (div.id === idToShow) ? 'block' : 'none';
-      });
-    };
-
-    document.getElementById('next_to_step2')?.addEventListener('click', () => showStep('step2'));
-    document.getElementById('back_to_step1')?.addEventListener('click', () => showStep('step1'));
-    document.getElementById('next_to_step3')?.addEventListener('click', () => showStep('step3'));
-    document.getElementById('back_to_step2')?.addEventListener('click', () => showStep('step2'));
-    document.getElementById('next_to_step4')?.addEventListener('click', () => showStep('step4'));
-    document.getElementById('back_to_step3')?.addEventListener('click', () => showStep('step3'));
-    document.getElementById('next_to_step5')?.addEventListener('click', () => showStep('step5'));
-    document.getElementById('back_to_step4')?.addEventListener('click', () => showStep('step4'));
-
-    document.getElementById('clear_step1')?.addEventListener('click', () => {
-      document.getElementById('searchForm').reset();
-      showStep('step1');
-    });
-
-    // Populate DOB dropdowns
-    const daySel = document.getElementById('dob_day');
-    const monthSel = document.getElementById('dob_month');
-
-    if (daySel && monthSel) {
-      for (let i = 1; i <= 31; i++) {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = i;
-        daySel.appendChild(opt);
-      }
-
-      ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        .forEach((m, i) => {
-          const opt = document.createElement('option');
-          opt.value = i + 1;
-          opt.textContent = m;
-          monthSel.appendChild(opt);
-        });
-    }
-
-    // Manual address toggle
-    const manualBtn = document.getElementById('enter_manual_btn');
-    const manualAddress = document.getElementById('manual_address');
-    if (manualBtn && manualAddress) {
-      manualBtn.addEventListener('click', () => {
-        manualAddress.style.display = 'block';
-      });
-    }
-
-    // Title button group logic
-    document.querySelectorAll('#title_buttons button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#title_buttons button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('title').value = btn.dataset.value;
-      });
-    });
-
-    clearBtn?.addEventListener('click', () => {
-      document.getElementById('searchForm').reset();
-      addrCont.style.display = 'none';
-      addrErr.style.display = 'none';
-      otpGroup.style.display = 'block';
-      otpGroup.querySelector('#otp_status').textContent = '';
-      submitBtn.disabled = true;
-    });
-
-    // Address lookup
-    document.getElementById('address_lookup_btn')?.addEventListener('click', async () => {
-      const pc = document.getElementById('lookup_postcode').value.trim();
-      const addrSel = document.getElementById('address_select');
-      addrErr.style.display = 'none';
-      addrSel.innerHTML = '<option value="">Pick an address…</option>';
-
-      if (!pc) return alert('Please enter a postcode');
-
-      try {
-        const res = await fetch('/lookup-address', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ postCode: pc })
-        });
-        const data = await res.json();
-
-        if (!res.ok || !Array.isArray(data.addresses)) throw new Error(data.error || 'Lookup failed');
-        if (data.addresses.length === 0) {
-          addrCont.style.display = 'none';
-          addrErr.textContent = 'No addresses found';
-          addrErr.style.display = 'block';
-          return;
-        }
-
-        data.addresses.forEach(a => {
-          const opt = document.createElement('option');
-          opt.value = JSON.stringify(a);
-          const label = a.name || a.flat || a.house || a.number || '';
-          opt.textContent = `${label} ${a.street1}, ${a.postTown}`;
-          addrSel.appendChild(opt);
-        });
-
-        addrCont.style.display = 'block';
-      } catch (err) {
-        addrCont.style.display = 'none';
-        addrErr.textContent = err.message || 'Network error';
-        addrErr.style.display = 'block';
-      }
-    });
-
-    // Populate fields after selecting address
-    document.getElementById('address_select')?.addEventListener('change', e => {
-      const a = JSON.parse(e.target.value || '{}');
-      if (!a.name && !a.flat && !a.house && !a.number) return;
-      const flatVal = a.name || a.flat || a.house || a.number || '';
-      document.getElementById('flat').value = flatVal;
-      document.getElementById('street').value = a.street1 || '';
-      document.getElementById('post_town').value = a.postTown || '';
-      document.getElementById('post_code').value = a.postcode || '';
-      manualAddress.style.display = 'block';
-    });
-
-
-    // Send OTP
-    sendOtpBtn.addEventListener('click', async () => {
-      alert('📩 [DEBUG] Send OTP clicked');
-
-      // grab raw input and strip non-digits
-      const raw    = document.getElementById('mobile').value;
-      const mobile = raw.replace(/\D/g, '');
-
-      if (!mobile) {
-        alert('Please enter a valid mobile number (digits only)');
-        return;
-      }
-
-      console.log('[DEBUG] Sending OTP to:', mobile);
-
-      try {
-        const res = await fetch('/otp/request', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ mobile })
-        });
-        console.log('[DEBUG] otp/request status:', res.status);
-
-        const data = await res.json();
-        console.log('[DEBUG] otp/request JSON:', data);
-
-        if (!res.ok) {
-          alert(`OTP request failed: ${data.error || res.status}`);
-          return;
-        }
-
-        // on success, reveal the OTP input group
-        otpGroup.style.display = 'block';
-
-      } catch (err) {
-        console.error('[DEBUG] otp/request error', err);
-        alert('Network error sending OTP');
-      }
-    });
-
-
-
-
-    // ─── Verify OTP (replace existing block) ────────────────────────
-    verifyBtn.addEventListener('click', async () => {
-      alert('🔐 [DEBUG] Verify OTP clicked');
-      console.log('[DEBUG] Starting OTP verification…');
-
-      // grab & clean inputs
-      const rawMobile = document.getElementById('mobile').value;
-      const mobile    = rawMobile.replace(/\D/g, '');
-      const rawCode   = document.getElementById('otp').value;
-      const code      = rawCode.replace(/\D/g, '');
-
-      if (!mobile) {
-        alert('Please enter a valid mobile number (digits only)');
-        return;
-      }
-      if (!code) {
-        alert('Please enter the 6-digit OTP (digits only)');
-        return;
-      }
-
-      console.log('[DEBUG] Verifying OTP for:', mobile, 'code:', code);
-      try {
-        const res = await fetch('/otp/verify', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ mobile, code })
-        });
-        console.log('[DEBUG] otp/verify status:', res.status);
-        const data = await res.json();
-        console.log('[DEBUG] otp/verify JSON:', data);
-
-        if (!res.ok) {
-          throw new Error(data.error || `Status ${res.status}`);
-        }
-
-        const ok = data.data?.result === 'PASS';
-        document.getElementById('otp_status').textContent = ok ? '✔ Verified' : '❌ Failed';
-
-        if (ok) {
-          console.log('[DEBUG] OTP passed—showing Identity step');
-          showStep('stepIdentity');
-        }
-      } catch (err) {
-        console.error('[DEBUG] otp/verify error', err);
-        alert(`OTP verification failed: ${err.message}`);
-      }
-    });
-
-
-
-    // Back-button from Identity → OTP
-    document.getElementById('back_to_step4')
-            .addEventListener('click', () => showStep('step4'));
-
-
-    function normalizeUkMobile(raw) {
-      return raw
-        .trim()
-        // replace any leading +44, 0044 or 44 with a single "0"
-        .replace(/^(\+44|0044|44)/, '0')
-        // strip any remaining non-digits
-        .replace(/\D/g, '');
-    }
-
-
-    // Proof-of-Identity click
-    document.getElementById('verify_identity')
-      .addEventListener('click', async () => {
-        // ─── assemble full ISO-8601 DOB ─────────────────────────────
-        const day   = document.getElementById('dob_day').value.toString().padStart(2, '0');
-        const month = document.getElementById('dob_month').value.toString().padStart(2, '0');
-        const year  = document.getElementById('dob_year').value.trim();
-
-        const payload = {
-
-
-          title:       document.getElementById('title').value.trim(),
-          firstName:   document.getElementById('first_name').value.trim(),
-          middleName:  document.getElementById('middle_name').value.trim(),
-          lastName:    document.getElementById('last_name').value.trim(),
-          
-          dateOfBirth: `${year}-${month}-${day}T00:00:00`,
-
-
-          email:       document.getElementById('email').value.trim(),
-
-          mobile:      mobileForValidate,
-
-          flat:        document.getElementById('flat').value.trim(),
-          street:      document.getElementById('street').value.trim(),
-          postTown:    document.getElementById('post_town').value.trim(),
-          postCode:    document.getElementById('post_code').value.trim(),
-          clientReference: 'identityCheck'
-        };
-
-        console.log('[DEBUG] Identity check payload:', payload);
-
-        const res = await fetch('/validate-identity', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok && data.data?.summaryReport?.data?.OtherChecks?.IdentityResult === 'Pass') {
-          document.getElementById('identity_status').textContent = '✔ Identity verified';
-          document.getElementById('next_to_step5').disabled = false;
-        } else {
-          document.getElementById('identity_status').textContent = '❌ Identity verification failed';
-        }
-      });
-
-    // Proceed from Identity → final Submit
-    document.getElementById('next_to_step5')
-            .addEventListener('click', () => showStep('step5'));
-
-
-    // Final form submit → /query (+ upload to FLG + base64→PDF download)
-    const form = document.getElementById('searchForm');
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      submitBtn.disabled = true;
-
-      // 1) Build payload, including your DOB selects + new email
-      const day   = document.getElementById('dob_day').value.toString().padStart(2,'0');
-      const month = document.getElementById('dob_month').value.toString().padStart(2,'0');
-      const year  = document.getElementById('dob_year').value.trim();
-
-      const payload = {
-        title:        document.getElementById('title').value.trim(),
-        firstName:    document.getElementById('first_name').value.trim(),
-        middleName:   document.getElementById('middle_name').value.trim(),
-        lastName:     document.getElementById('last_name').value.trim(),
-        email:        document.getElementById('email').value.trim(),      // ← new
-        dateOfBirth:  `${year}-${month}-${day}`,
-        mobile:       document.getElementById('mobile').value.replace(/\D/g,''),
-        flat:         document.getElementById('flat').value.trim(),
-        street:       document.getElementById('street').value.trim(),
-        postTown:     document.getElementById('post_town').value.trim(),
-        postCode:     document.getElementById('post_code').value.trim(),
-        clientReference: 'report'
-      };
-
-      try {
-        // 2) Fetch summary + PDF
-        const res    = await fetch('/query', {
-          method:  'POST',
-          headers: { 'Content-Type':'application/json' },
-          body:    JSON.stringify(payload)
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          alert(`Report request failed: ${result.error||res.status}`);
-          return;
-        }
-
-        // 3) Show only the raw accounts array
-        const summaryReport = result.data?.summaryReport || result.data;
-        const accounts      = summaryReport.accounts || [];
-        document.getElementById('result')
-                .textContent = JSON.stringify(accounts, null, 2);
-
-        // 4) Post to FLG
-        const flgRes  = await fetch('/upload_summary', {
-          method:  'POST',
-          headers: { 'Content-Type':'application/json' },
-
-          body:    JSON.stringify({
-            name:         summaryReport.name,
-
-            dateOfBirth: (() => {
-              const [yyyy, mm, dd] = summaryReport.accounts[0]?.dob.split('T')[0].split('-') || [];
-              return dd && mm && yyyy ? `${dd}/${mm}/${yyyy}` : '';
-            })(),            
-
-            phone1:       payload.mobile,
-            email:        payload.email,
-            address:      payload.flat
-                            ? `${payload.flat} ${payload.street}`
-                            : payload.street,
-            towncity:     payload.postTown,
-            postcode:     payload.postCode,
-            accounts:     summaryReport.accounts,
-            pdfUrl:       result.data.pdfUrl
-          })
-
-        });
-
-        const flgData = await flgRes.json();
-        document.getElementById('flg_status')
-                .textContent = flgRes.ok
-                  ? 'FLG upload succeeded'
-                  : `FLG upload failed: ${flgData.error||flgRes.status}`;
-
-        // TEMPORARY DEBUG OUTPUT:
-        const debugDiv = document.createElement('div');
-        debugDiv.style = "margin-top:1em; padding:0.5em; background:#f9f9f9; border:1px dashed #ccc;";
-        debugDiv.innerHTML = `
-          <h4>🔍 FLG Debug Info</h4>
-          <p><strong>Comma-delimited data32:</strong></p>
-          <pre style="white-space:pre-wrap;">${flgData.debug_data32}</pre>
-          <p><strong>Lender Names:</strong> ${flgData.debug_lenders}</p>
-          <p><strong>Full FLG XML Payload:</strong></p>
-          <pre style="white-space:pre-wrap;">${flgData.debug_flg_xml}</pre>
-        `;
-        document.getElementById('flg_status').insertAdjacentElement('afterend', debugDiv);
-
-        // Also log to console:
-        console.log('FLG data32:', flgData.debug_data32);
-        console.log('FLG XML payload:', flgData.debug_flg_xml);
-
-
-        // 5) Decode & download PDF
-        const b64 = result.data?.pdfReport;
-        if (b64) {
-          const binary = atob(b64);
-          const u8     = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
-          const blob = new Blob([u8], { type:'application/pdf' });
-          const url  = URL.createObjectURL(blob);
-          const a    = document.createElement('a');
-          a.href     = url;
-          a.download = 'transunion_report.pdf';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-        }
-
-        // ─── Populate Step 6: one-row-per-lender, 15%▸65%▸20% grid ───
-        const foundList = document.getElementById('found_list');
-        foundList.innerHTML = '';
-
-        // pull accounts into a local var so we don't accidentally loop twice
-        const rows = summaryReport.accounts || [];
-        rows.forEach(acc => {
-          const raw = acc.lenderName || "";
-
-          // 1) fuzzy-match to your lendersList CSV
-          let best = { sim: 0, item: null };
-          lendersList.forEach(item => {
-            const sim = similarity(raw.toLowerCase(), item.name.toLowerCase());
-            if (sim > best.sim) best = { sim, item };
-          });
-          const useCSV = best.sim >= 0.8 && best.item;
-          const label  = useCSV ? best.item.name : raw;
-          const logo   = useCSV ? best.item.filename : null;
-
-          // 2) Icon cell
-          const iconDiv = document.createElement('div');
-          if (logo) {
-            const img = document.createElement('img');
-            img.src        = `/static/icons/${encodeURIComponent(logo)}`;
-            img.alt        = label;
-            img.classList.add('step6-logo');
-            iconDiv.appendChild(img);
-          } else {
-            const noLogo = document.createElement('div');
-            noLogo.className = 'no-logo';
-            noLogo.textContent = 'No Logo';
-            iconDiv.appendChild(noLogo);
-          }
-
-          // 3) Name cell
-          const nameDiv = document.createElement('div');
-          nameDiv.classList.add('lender-name');
-          nameDiv.textContent = label;
-
-          // 4) Date cell
-          const dateDiv = document.createElement('div');
-          dateDiv.classList.add('lender-date');
-          if (acc.startDate) {
-            const d      = new Date(acc.startDate);
-            const month  = d.toLocaleString('default', { month: 'long' });
-            const year   = String(d.getFullYear()).slice(-2);
-            dateDiv.textContent = `From ${month} '${year}`;
-          }
-
-          // 5) Wrap in one grid row
-          const row = document.createElement('div');
-          row.classList.add('found-row');
-          row.append(iconDiv, nameDiv, dateDiv);
-          foundList.appendChild(row);
-        });
-
-        showStep('step6');
-
-      } catch (err) {
-        console.error(err);
-        alert('Unexpected error—check console.');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-
-
-    // === NEW: hook up the "add lender" button in Step 6 ===
-    document.getElementById('add_lender_btn')
-      .addEventListener('click', () => {
-        showStep('step3');
-      });
-
-  });
-  </script>
-
-
-  
+  <script src="/static/js/app.js"></script>
 </body>
 </html>
