@@ -5,11 +5,11 @@ const AppState = {
     currentStep: 'step1',
     formData: {},
     lendersList: [],
-    trustAssessment: null,
+    identityScore: null,
     otpSent: false,
     otpVerified: false,
-    mobileIdVerified: false,
-    identityVerified: false
+    identityVerified: false,
+    minimumScore: 40  // Default, will be updated from server
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ const FormValidation = {
         }
         
         if (!postTown) {
-            Utils.showError('post_town_error', 'Post town is required');
+            Utils.showError('post_town_error', 'Town/City is required');
             isValid = false;
         } else {
             Utils.clearError('post_town_error');
@@ -256,8 +256,6 @@ const Navigation = {
             'step2': '2',
             'step3': '3',
             'step4': '4',
-            'stepMobileId': 'mobileid',
-            'stepIdentity': 'identity',
             'step5': '5',
             'step6': '6'
         };
@@ -269,7 +267,7 @@ const Navigation = {
             step.classList.remove('active', 'completed');
             
             // Mark previous steps as completed
-            const stepOrder = ['1', '2', '3', '4', 'mobileid', 'identity', '5', '6'];
+            const stepOrder = ['1', '2', '3', '4', '5', '6'];
             const currentIndex = stepOrder.indexOf(currentStepNumber);
             const stepIndex = stepOrder.indexOf(stepNumber);
             
@@ -296,24 +294,30 @@ const Navigation = {
         const data = AppState.formData;
         
         summary.innerHTML = `
-            <h3>Please Review Your Information:</h3>
+            <h3>Your Information</h3>
             <div class="review-item">
-                <strong>Name:</strong> ${data.title || ''} ${data.first_name || ''} ${data.middle_name || ''} ${data.last_name || ''}
+                <span class="review-label">Name:</span>
+                <span class="review-value">${data.title || ''} ${data.first_name || ''} ${data.middle_name || ''} ${data.last_name || ''}</span>
             </div>
             <div class="review-item">
-                <strong>Date of Birth:</strong> ${data.dob_day || ''}/${data.dob_month || ''}/${data.dob_year || ''}
+                <span class="review-label">Date of Birth:</span>
+                <span class="review-value">${data.dob_day || ''}/${data.dob_month || ''}/${data.dob_year || ''}</span>
             </div>
             <div class="review-item">
-                <strong>Email:</strong> ${data.email || ''}
+                <span class="review-label">Email:</span>
+                <span class="review-value">${data.email || ''}</span>
             </div>
             <div class="review-item">
-                <strong>Mobile:</strong> ${data.mobile || ''}
+                <span class="review-label">Mobile:</span>
+                <span class="review-value">${data.mobile || ''}</span>
             </div>
             <div class="review-item">
-                <strong>Address:</strong><br>
-                ${data.flat || ''} ${data.street || ''}<br>
-                ${data.post_town || ''}<br>
-                ${data.post_code || ''}
+                <span class="review-label">Address:</span>
+                <span class="review-value">
+                    ${[data.building_number, data.building_name, data.flat, data.street].filter(Boolean).join(', ')}<br>
+                    ${data.post_town || ''}<br>
+                    ${data.post_code || ''}
+                </span>
             </div>
         `;
     }
@@ -351,16 +355,6 @@ const API = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mobile, code })
-        });
-        
-        return response.json();
-    },
-
-    async checkMobileId(data) {
-        const response = await fetch('/mobile-id/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
         });
         
         return response.json();
@@ -416,12 +410,6 @@ const EventHandlers = {
         // Step 4 handlers
         this.initStep4();
         
-        // MobileID step handlers
-        this.initMobileIdStep();
-        
-        // Identity step handlers
-        this.initIdentityStep();
-        
         // Step 5 handlers
         this.initStep5();
         
@@ -453,7 +441,8 @@ const EventHandlers = {
             daySelect.appendChild(option);
         }
         
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
         months.forEach((month, index) => {
             const option = document.createElement('option');
             option.value = index + 1;
@@ -469,6 +458,36 @@ const EventHandlers = {
                 document.getElementById('title').value = button.dataset.value;
                 Utils.clearError('title_error');
             });
+        });
+        
+        // Year slider
+        const yearInput = document.getElementById('dob_year');
+        const yearSlider = document.getElementById('year_slider');
+        const sliderTooltip = document.getElementById('slider_tooltip');
+        
+        // Set slider max to current year - 18 (must be 18+)
+        const currentYear = new Date().getFullYear();
+        const maxYear = currentYear - 18;
+        yearSlider.max = maxYear;
+        yearInput.max = maxYear;
+        
+        // Sync year input with slider
+        yearInput.addEventListener('input', () => {
+            const year = parseInt(yearInput.value);
+            if (year >= 1900 && year <= maxYear) {
+                yearSlider.value = year;
+            }
+        });
+        
+        // Sync slider with year input
+        yearSlider.addEventListener('input', () => {
+            yearInput.value = yearSlider.value;
+            sliderTooltip.textContent = yearSlider.value;
+            sliderTooltip.classList.add('show');
+        });
+        
+        yearSlider.addEventListener('change', () => {
+            sliderTooltip.classList.remove('show');
         });
         
         // Clear button
@@ -487,12 +506,26 @@ const EventHandlers = {
     },
 
     initStep2() {
+        // Toggle manual address entry
+        const manualToggle = document.getElementById('manual_address_toggle');
+        const manualFields = document.getElementById('manual_address_fields');
+        
+        manualToggle.addEventListener('click', () => {
+            if (manualFields.style.display === 'none') {
+                manualFields.style.display = 'block';
+                manualToggle.textContent = 'Use postcode lookup';
+            } else {
+                manualFields.style.display = 'none';
+                manualToggle.textContent = 'Enter address manually';
+            }
+        });
+        
         // Address lookup
         document.getElementById('address_lookup_btn').addEventListener('click', async () => {
             const postcode = document.getElementById('lookup_postcode').value.trim();
             
             if (!postcode) {
-                alert('Please enter a postcode');
+                Utils.showError('address_error', 'Please enter a postcode');
                 return;
             }
             
@@ -504,7 +537,7 @@ const EventHandlers = {
                 const addresses = data.addresses || [];
                 
                 const addressSelect = document.getElementById('address_select');
-                addressSelect.innerHTML = '<option value="">Pick an address…</option>';
+                addressSelect.innerHTML = '<option value="">Choose from list...</option>';
                 
                 if (addresses.length === 0) {
                     Utils.showError('address_error', 'No addresses found for this postcode');
@@ -513,12 +546,25 @@ const EventHandlers = {
                     addresses.forEach(addr => {
                         const option = document.createElement('option');
                         option.value = JSON.stringify(addr);
-                        const label = addr.name || addr.flat || addr.house || addr.number || '';
-                        option.textContent = `${label} ${addr.street1}, ${addr.postTown}`;
+                        
+                        // Build address label with all components
+                        const parts = [];
+                        if (addr.number) parts.push(addr.number);
+                        if (addr.name) parts.push(addr.name);
+                        if (addr.flat) parts.push(addr.flat);
+                        if (addr.house) parts.push(addr.house);
+                        if (addr.street1) parts.push(addr.street1);
+                        if (addr.postTown) parts.push(addr.postTown);
+                        
+                        option.textContent = parts.join(', ');
                         addressSelect.appendChild(option);
                     });
                     
                     document.getElementById('address_container').style.display = 'block';
+                    
+                    // Auto-show manual fields
+                    document.getElementById('manual_address_fields').style.display = 'block';
+                    manualToggle.textContent = 'Hide address fields';
                 }
             } catch (error) {
                 Utils.showError('address_error', error.message || 'Address lookup failed');
@@ -533,7 +579,11 @@ const EventHandlers = {
             if (!e.target.value) return;
             
             const addr = JSON.parse(e.target.value);
-            document.getElementById('flat').value = addr.name || addr.flat || addr.house || addr.number || '';
+            
+            // Populate fields intelligently
+            document.getElementById('building_number').value = addr.number || '';
+            document.getElementById('building_name').value = addr.name || '';
+            document.getElementById('flat').value = addr.flat || addr.house || '';
             document.getElementById('street').value = addr.street1 || '';
             document.getElementById('post_town').value = addr.postTown || '';
             document.getElementById('post_code').value = addr.postcode || '';
@@ -568,22 +618,25 @@ const EventHandlers = {
             
             const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
             
-            Utils.showLoading('Sending OTP...');
+            Utils.showLoading('Sending verification code...');
             
             try {
                 const result = await API.sendOTP(mobile);
                 
                 if (result.data && result.data.result === 'SENT') {
                     AppState.otpSent = true;
-                    document.getElementById('otp_message').textContent = 'OTP sent successfully! Check your phone.';
+                    document.getElementById('otp_verification').style.display = 'block';
+                    document.getElementById('otp_message').textContent = '✓ Code sent! Check your phone.';
                     document.getElementById('otp_message').style.display = 'block';
                     document.getElementById('otp_message').className = 'info-message success';
-                    document.getElementById('next_to_step4').disabled = false;
+                    
+                    // Focus on OTP input
+                    document.getElementById('otp').focus();
                 } else {
                     throw new Error('Failed to send OTP');
                 }
             } catch (error) {
-                document.getElementById('otp_message').textContent = 'Failed to send OTP. Please try again.';
+                document.getElementById('otp_message').textContent = 'Failed to send code. Please try again.';
                 document.getElementById('otp_message').style.display = 'block';
                 document.getElementById('otp_message').className = 'info-message error';
             } finally {
@@ -591,16 +644,11 @@ const EventHandlers = {
             }
         });
         
-        // Navigation buttons
-        document.getElementById('back_to_step2').addEventListener('click', () => Navigation.showStep('step2'));
-        document.getElementById('next_to_step4').addEventListener('click', () => {
-            if (AppState.otpSent) {
-                Navigation.showStep('step4');
-            }
+        // Resend OTP
+        document.getElementById('resend_otp').addEventListener('click', () => {
+            document.getElementById('send_otp').click();
         });
-    },
-
-    initStep4() {
+        
         // OTP input formatting
         document.getElementById('otp').addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -612,23 +660,23 @@ const EventHandlers = {
             const code = document.getElementById('otp').value.replace(/\D/g, '');
             
             if (!code || code.length !== 6) {
-                Utils.showError('otp_error', 'Please enter a 6-digit OTP code');
+                Utils.showError('otp_error', 'Please enter a 6-digit code');
                 return;
             }
             
-            Utils.showLoading('Verifying OTP...');
+            Utils.showLoading('Verifying code...');
             
             try {
                 const result = await API.verifyOTP(mobile, code);
                 
                 if (result.data && result.data.result === 'PASS') {
                     AppState.otpVerified = true;
-                    document.getElementById('otp_status').textContent = '✓ OTP Verified Successfully';
+                    document.getElementById('otp_status').textContent = '✓ Mobile Verified Successfully';
                     document.getElementById('otp_status').className = 'status-message success';
-                    document.getElementById('next_to_stepMobileId').disabled = false;
+                    document.getElementById('next_to_step4').disabled = false;
                     Utils.clearError('otp_error');
                 } else {
-                    document.getElementById('otp_status').textContent = '✗ Invalid OTP. Please try again.';
+                    document.getElementById('otp_status').textContent = '✗ Invalid code. Please try again.';
                     document.getElementById('otp_status').className = 'status-message error';
                 }
             } catch (error) {
@@ -640,17 +688,17 @@ const EventHandlers = {
         });
         
         // Navigation buttons
-        document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
-        document.getElementById('next_to_stepMobileId').addEventListener('click', () => {
+        document.getElementById('back_to_step2').addEventListener('click', () => Navigation.showStep('step2'));
+        document.getElementById('next_to_step4').addEventListener('click', () => {
             if (AppState.otpVerified) {
-                Navigation.showStep('stepMobileId');
+                Navigation.showStep('step4');
             }
         });
     },
 
-    initMobileIdStep() {
-        // Check Mobile Trust button
-        document.getElementById('check_mobile_trust').addEventListener('click', async () => {
+    initStep4() {
+        // Verify Identity button
+        document.getElementById('verify_identity').addEventListener('click', async () => {
             const data = {
                 title: document.getElementById('title').value,
                 firstName: document.getElementById('first_name').value,
@@ -659,114 +707,8 @@ const EventHandlers = {
                 dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
                 mobile: document.getElementById('mobile').value.replace(/\D/g, ''),
                 email: document.getElementById('email').value,
-                flat: document.getElementById('flat').value,
-                street: document.getElementById('street').value,
-                postTown: document.getElementById('post_town').value,
-                postCode: document.getElementById('post_code').value
-            };
-            
-            Utils.showLoading('Performing trust assessment...');
-            
-            try {
-                const result = await API.checkMobileId(data);
-                
-                if (result.success && result.trustAssessment) {
-                    AppState.trustAssessment = result.trustAssessment;
-                    this.displayTrustResults(result.trustAssessment);
-                    
-                    // Enable proceed button if trust is positive or neutral
-                    if (result.trustAssessment.recommendation !== 'NEGATIVE') {
-                        AppState.mobileIdVerified = true;
-                        document.getElementById('next_to_stepIdentity_from_mobile').disabled = false;
-                    } else {
-                        // Show warning but still allow to proceed with additional verification
-                        document.getElementById('trust_warning').style.display = 'block';
-                        document.getElementById('trust_warning_text').textContent = 
-                            'Your mobile number appears to be associated with different identities. ' +
-                            'Additional verification will be required to proceed.';
-                        document.getElementById('next_to_stepIdentity_from_mobile').disabled = false;
-                    }
-                } else {
-                    throw new Error('Trust assessment failed');
-                }
-            } catch (error) {
-                document.getElementById('trust_status').style.display = 'block';
-                document.querySelector('.trust-text').textContent = 'Trust assessment failed. Please try again.';
-                document.querySelector('.trust-icon').textContent = '⚠️';
-            } finally {
-                Utils.hideLoading();
-            }
-        });
-        
-        // Navigation buttons
-        document.getElementById('back_to_step4_from_mobile').addEventListener('click', () => Navigation.showStep('step4'));
-        document.getElementById('next_to_stepIdentity_from_mobile').addEventListener('click', () => {
-            if (AppState.mobileIdVerified || AppState.trustAssessment) {
-                Navigation.showStep('stepIdentity');
-            }
-        });
-    },
-
-    displayTrustResults(assessment) {
-        const statusContainer = document.getElementById('trust_status');
-        const iconElement = document.querySelector('.trust-icon');
-        const textElement = document.querySelector('.trust-text');
-        const detailsList = document.getElementById('trust_details_list');
-        
-        statusContainer.style.display = 'block';
-        
-        // Set icon and main message based on recommendation
-        switch (assessment.recommendation) {
-            case 'POSITIVE':
-                iconElement.textContent = '✓';
-                iconElement.style.color = '#28a745';
-                textElement.textContent = 'Excellent! Your mobile number is strongly verified.';
-                break;
-            case 'NEUTRAL':
-                iconElement.textContent = '✓';
-                iconElement.style.color = '#ffc107';
-                textElement.textContent = 'Good! Your mobile number has been verified.';
-                break;
-            case 'NEGATIVE':
-                iconElement.textContent = '⚠️';
-                iconElement.style.color = '#dc3545';
-                textElement.textContent = 'Warning: Additional verification required.';
-                break;
-        }
-        
-        // Show detailed results
-        if (assessment.details) {
-            document.querySelector('.trust-details').style.display = 'block';
-            detailsList.innerHTML = '';
-            
-            if (assessment.details.identityMatches > 0) {
-                detailsList.innerHTML += `<li class="positive">✓ Direct identity match found (${assessment.details.identityMatches} sources)</li>`;
-            }
-            if (assessment.details.linkedMatches > 0) {
-                detailsList.innerHTML += `<li class="positive">✓ Linked identity match found (${assessment.details.linkedMatches} sources)</li>`;
-            }
-            if (assessment.details.addressMatches > 0) {
-                detailsList.innerHTML += `<li class="neutral">✓ Address match found (${assessment.details.addressMatches} sources)</li>`;
-            }
-            if (assessment.details.unknownIdentities > 0) {
-                detailsList.innerHTML += `<li class="negative">⚠ Unknown identities detected (${assessment.details.unknownIdentities})</li>`;
-            }
-            if (assessment.details.unknownAddresses > 0) {
-                detailsList.innerHTML += `<li class="negative">⚠ Unknown addresses detected (${assessment.details.unknownAddresses})</li>`;
-            }
-        }
-    },
-
-    initIdentityStep() {
-        document.getElementById('verify_identity').addEventListener('click', async () => {
-            const data = {
-                title: document.getElementById('title').value,
-                firstName: document.getElementById('first_name').value,
-                middleName: document.getElementById('middle_name').value,
-                lastName: document.getElementById('last_name').value,
-                dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}T00:00:00`,
-                mobile: document.getElementById('mobile').value.replace(/\D/g, ''),
-                email: document.getElementById('email').value,
+                buildingNumber: document.getElementById('building_number').value,
+                buildingName: document.getElementById('building_name').value,
                 flat: document.getElementById('flat').value,
                 street: document.getElementById('street').value,
                 postTown: document.getElementById('post_town').value,
@@ -778,26 +720,57 @@ const EventHandlers = {
             try {
                 const result = await API.validateIdentity(data);
                 
-                if (result.data && result.data.summaryReport && 
-                    result.data.summaryReport.data.OtherChecks.IdentityResult === 'Pass') {
+                const statusDiv = document.getElementById('identity_status');
+                const statusIcon = statusDiv.querySelector('.status-icon');
+                const statusTitle = statusDiv.querySelector('.status-title');
+                const statusMessage = statusDiv.querySelector('.status-message');
+                const scoreDisplay = statusDiv.querySelector('.score-display');
+                const scoreValue = statusDiv.querySelector('.score-value');
+                
+                statusDiv.style.display = 'block';
+                
+                if (result.success && result.passed) {
                     AppState.identityVerified = true;
-                    document.getElementById('identity_status').textContent = '✓ Identity verified successfully';
-                    document.getElementById('identity_status').className = 'status-message success';
+                    AppState.identityScore = result.identityScore;
+                    AppState.minimumScore = result.minimumScore;
+                    
+                    statusIcon.textContent = '✓';
+                    statusIcon.style.color = '#28a745';
+                    statusTitle.textContent = 'Identity Verified';
+                    statusMessage.textContent = 'Your identity has been successfully verified.';
+                    
+                    if (result.identityScore !== undefined) {
+                        scoreDisplay.style.display = 'flex';
+                        scoreValue.textContent = result.identityScore;
+                    }
+                    
                     document.getElementById('next_to_step5').disabled = false;
                 } else {
-                    document.getElementById('identity_status').textContent = '✗ Identity verification failed';
-                    document.getElementById('identity_status').className = 'status-message error';
+                    statusIcon.textContent = '⚠️';
+                    statusIcon.style.color = '#dc3545';
+                    statusTitle.textContent = 'Verification Failed';
+                    statusMessage.textContent = `Identity score (${result.identityScore || 0}) is below the required minimum (${result.minimumScore || AppState.minimumScore}).`;
+                    
+                    if (result.identityScore !== undefined) {
+                        scoreDisplay.style.display = 'flex';
+                        scoreValue.textContent = result.identityScore;
+                        scoreValue.style.color = '#dc3545';
+                    }
+                    
+                    document.getElementById('next_to_step5').disabled = true;
                 }
             } catch (error) {
-                document.getElementById('identity_status').textContent = '✗ Verification error. Please try again.';
-                document.getElementById('identity_status').className = 'status-message error';
+                document.getElementById('identity_status').style.display = 'block';
+                document.querySelector('.status-icon').textContent = '✗';
+                document.querySelector('.status-title').textContent = 'Verification Error';
+                document.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
             } finally {
                 Utils.hideLoading();
             }
         });
         
         // Navigation buttons
-        document.getElementById('back_to_stepMobileId').addEventListener('click', () => Navigation.showStep('stepMobileId'));
+        document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
         document.getElementById('next_to_step5').addEventListener('click', () => {
             if (AppState.identityVerified) {
                 Navigation.populateReviewSummary();
@@ -807,7 +780,15 @@ const EventHandlers = {
     },
 
     initStep5() {
-        document.getElementById('back_to_stepIdentity').addEventListener('click', () => Navigation.showStep('stepIdentity'));
+        // Consent checkbox
+        const consentCheckbox = document.getElementById('consent_checkbox');
+        const submitButton = document.getElementById('submit_form');
+        
+        consentCheckbox.addEventListener('change', () => {
+            submitButton.disabled = !consentCheckbox.checked;
+        });
+        
+        document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
     },
 
     initStep6() {
@@ -835,6 +816,8 @@ const EventHandlers = {
                     dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
                     mobile: document.getElementById('mobile').value.replace(/\D/g, ''),
                     email: document.getElementById('email').value,
+                    buildingNumber: document.getElementById('building_number').value,
+                    buildingName: document.getElementById('building_name').value,
                     flat: document.getElementById('flat').value,
                     street: document.getElementById('street').value,
                     postTown: document.getElementById('post_town').value,
@@ -871,7 +854,7 @@ const EventHandlers = {
                     })(),
                     phone1: reportData.mobile,
                     email: reportData.email,
-                    address: reportData.flat ? `${reportData.flat} ${reportData.street}` : reportData.street,
+                    address: [reportData.buildingNumber, reportData.buildingName, reportData.flat, reportData.street].filter(Boolean).join(' '),
                     towncity: reportData.postTown,
                     postcode: reportData.postCode,
                     accounts: accounts,

@@ -4,258 +4,360 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
   <title>Credit Report Service</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/CSS/style.css" />
 </head>
 <body>
   <div class="container">
     <form id="searchForm" autocomplete="on" novalidate>
       <!-- Mobile-Responsive Progress Indicator -->
       <div class="progress-bar">
-        <div class="progress-step active" data-step="1">Personal Info</div>
-        <div class="progress-step" data-step="2">Address</div>
-        <div class="progress-step" data-step="3">Mobile</div>
-        <div class="progress-step" data-step="4">Verify OTP</div>
-        <div class="progress-step" data-step="mobileid">Trust Check</div>
-        <div class="progress-step" data-step="identity">Identity</div>
-        <div class="progress-step" data-step="5">Submit</div>
+        <div class="progress-step active" data-step="1">
+          <span class="step-number">1</span>
+          <span class="step-label">Personal Info</span>
+        </div>
+        <div class="progress-connector"></div>
+        <div class="progress-step" data-step="2">
+          <span class="step-number">2</span>
+          <span class="step-label">Address</span>
+        </div>
+        <div class="progress-connector"></div>
+        <div class="progress-step" data-step="3">
+          <span class="step-number">3</span>
+          <span class="step-label">Mobile Verification</span>
+        </div>
+        <div class="progress-connector"></div>
+        <div class="progress-step" data-step="4">
+          <span class="step-number">4</span>
+          <span class="step-label">Identity Check</span>
+        </div>
+        <div class="progress-connector"></div>
+        <div class="progress-step" data-step="5">
+          <span class="step-number">5</span>
+          <span class="step-label">Complete</span>
+        </div>
       </div>
 
       <!-- === STEP 1: Personal Info === -->
       <div class="form-step" id="step1">
-        <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
-        
-        <div class="form-group">
-          <label>Title *</label>
-          <div class="title-button-group" id="title_buttons">
-            <button type="button" data-value="Mr">Mr</button>
-            <button type="button" data-value="Mrs">Mrs</button>
-            <button type="button" data-value="Miss">Miss</button>
-            <button type="button" data-value="Ms">Ms</button>
-            <button type="button" data-value="Other">Other</button>
-          </div>
-          <input type="hidden" id="title" name="title" required />
-          <span class="error-message" id="title_error"></span>
-        </div>
-
-        <div class="form-group">
-          <label for="first_name">First Name (as on documents) *</label>
-          <input type="text" id="first_name" required autocomplete="given-name" placeholder="Enter your first name">
-          <span class="error-message" id="first_name_error"></span>
-        </div>
-
-        <div class="form-group">
-          <label for="middle_name">Middle Name(s) – optional</label>
-          <input type="text" id="middle_name" autocomplete="additional-name" placeholder="Enter middle name (optional)">
-        </div>
-
-        <div class="form-group">
-          <label for="last_name">Last Name *</label>
-          <input type="text" id="last_name" required autocomplete="family-name" placeholder="Enter your last name">
-          <span class="error-message" id="last_name_error"></span>
+        <div class="step-header">
+          <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
+          <p class="step-subtitle">Let's start with your personal information</p>
         </div>
         
-        <div class="form-group">
-          <label for="dob_day">Date of Birth *</label>
-          <div class="dob-container">
-            <select id="dob_day" required>
-              <option value="">Day</option>
-            </select>
-            <select id="dob_month" required>
-              <option value="">Month</option>
-            </select>
-            <input type="text" id="dob_year" placeholder="YYYY" maxlength="4" required pattern="\d{4}" />
+        <div class="form-section">
+          <div class="form-group">
+            <label class="form-label">Title <span class="required">*</span></label>
+            <div class="title-button-group" id="title_buttons">
+              <button type="button" class="title-btn" data-value="Mr">Mr</button>
+              <button type="button" class="title-btn" data-value="Mrs">Mrs</button>
+              <button type="button" class="title-btn" data-value="Miss">Miss</button>
+              <button type="button" class="title-btn" data-value="Ms">Ms</button>
+              <button type="button" class="title-btn" data-value="Other">Other</button>
+            </div>
+            <input type="hidden" id="title" name="title" required />
+            <span class="error-message" id="title_error"></span>
           </div>
-          <span class="error-message" id="dob_error"></span>
-        </div>
 
-        <div class="form-group">
-          <label for="email">Email Address *</label>
-          <input type="email" id="email" name="email" required autocomplete="email" placeholder="Enter your email address" />
-          <span class="error-message" id="email_error"></span>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="first_name">First Name <span class="required">*</span></label>
+              <input type="text" id="first_name" class="form-input" required autocomplete="given-name" placeholder="As on documents">
+              <span class="error-message" id="first_name_error"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="middle_name">Middle Name(s)</label>
+              <input type="text" id="middle_name" class="form-input" autocomplete="additional-name" placeholder="Optional">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="last_name">Last Name <span class="required">*</span></label>
+            <input type="text" id="last_name" class="form-input" required autocomplete="family-name" placeholder="As on documents">
+            <span class="error-message" id="last_name_error"></span>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Date of Birth <span class="required">*</span></label>
+            <div class="dob-container">
+              <select id="dob_day" class="form-select" required>
+                <option value="">Day</option>
+              </select>
+              <select id="dob_month" class="form-select" required>
+                <option value="">Month</option>
+              </select>
+              <div class="year-input-group">
+                <input type="number" id="dob_year" class="form-input" placeholder="YYYY" min="1900" max="2023" required />
+                <div class="year-slider-container">
+                  <input type="range" id="year_slider" class="year-slider" min="1900" max="2023" />
+                  <div class="slider-tooltip" id="slider_tooltip"></div>
+                </div>
+              </div>
+            </div>
+            <span class="error-message" id="dob_error"></span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+            <input type="email" id="email" name="email" class="form-input" required autocomplete="email" placeholder="your@email.com" />
+            <span class="error-message" id="email_error"></span>
+          </div>
         </div>
 
         <div class="button-row">
-          <button type="button" class="button-left" id="clear_step1">Clear Data</button>
-          <button type="button" class="button-right" id="next_to_step2">Proceed</button>
+          <button type="button" class="btn btn-secondary" id="clear_step1">
+            <span class="btn-icon">↻</span> Clear Data
+          </button>
+          <button type="button" class="btn btn-primary" id="next_to_step2">
+            Continue <span class="btn-icon">→</span>
+          </button>
         </div>
       </div>
 
       <!-- === STEP 2: Address === -->
       <div class="form-step" id="step2" style="display:none;">
-        <h2 class="step-title">What's your address?</h2>
-
-        <div class="postcode-lookup">
-          <input type="text" id="lookup_postcode" placeholder="Enter postcode…" autocomplete="postal-code" />
-          <button type="button" class="button-right" id="address_lookup_btn">Find Address</button>
+        <div class="step-header">
+          <h2 class="step-title">What's your address?</h2>
+          <p class="step-subtitle">We'll use this to verify your identity</p>
         </div>
 
-        <div id="address_container" style="display:none;">
-          <label for="address_select">Select Address</label>
-          <select id="address_select" name="address_select">
-            <option value="">Pick an address…</option>
-          </select>
-        </div>
+        <div class="form-section">
+          <div class="address-lookup-section">
+            <div class="form-group">
+              <label class="form-label">Find Your Address</label>
+              <div class="postcode-lookup">
+                <input type="text" id="lookup_postcode" class="form-input" placeholder="Enter your postcode" autocomplete="postal-code" />
+                <button type="button" class="btn btn-primary" id="address_lookup_btn">
+                  <span class="btn-icon">🔍</span> Find Address
+                </button>
+              </div>
+            </div>
 
-        <div id="address_error" class="error-message"></div>
+            <div id="address_container" class="address-select-container" style="display:none;">
+              <label class="form-label" for="address_select">Select Your Address</label>
+              <select id="address_select" name="address_select" class="form-select">
+                <option value="">Choose from list...</option>
+              </select>
+            </div>
 
-        <div class="address-fields">
-          <div class="form-group">
-            <label for="flat">Flat / Unit</label>
-            <input type="text" id="flat" name="flat" placeholder="e.g. 1" autocomplete="address-line1"/>
+            <div id="address_error" class="error-message"></div>
+
+            <div class="manual-entry-toggle">
+              <button type="button" class="btn-link" id="manual_address_toggle">
+                Enter address manually
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="street">Street *</label>
-            <input type="text" id="street" name="street" placeholder="e.g. Example Street" required autocomplete="address-line2"/>
-            <span class="error-message" id="street_error"></span>
-          </div>
-          <div class="form-group">
-            <label for="post_town">Post Town *</label>
-            <input type="text" id="post_town" name="postTown" placeholder="e.g. TEST TOWN" required autocomplete="address-level2"/>
-            <span class="error-message" id="post_town_error"></span>
-          </div>
-          <div class="form-group">
-            <label for="post_code">Post Code *</label>
-            <input type="text" id="post_code" name="postCode" placeholder="e.g. AB1 2CD" required autocomplete="postal-code"/>
-            <span class="error-message" id="post_code_error"></span>
+
+          <div class="address-fields" id="manual_address_fields" style="display:none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="building_number">Building Number</label>
+                <input type="text" id="building_number" name="buildingNumber" class="form-input" placeholder="e.g. 123" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="building_name">Building Name</label>
+                <input type="text" id="building_name" name="buildingName" class="form-input" placeholder="e.g. Oak House" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="flat">Flat / Unit</label>
+                <input type="text" id="flat" name="flat" class="form-input" placeholder="e.g. Flat 2A" autocomplete="address-line1"/>
+              </div>
+              <div class="form-group flex-2">
+                <label class="form-label" for="street">Street <span class="required">*</span></label>
+                <input type="text" id="street" name="street" class="form-input" placeholder="e.g. High Street" required autocomplete="address-line2"/>
+                <span class="error-message" id="street_error"></span>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="post_town">Town/City <span class="required">*</span></label>
+                <input type="text" id="post_town" name="postTown" class="form-input" placeholder="e.g. London" required autocomplete="address-level2"/>
+                <span class="error-message" id="post_town_error"></span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="post_code">Post Code <span class="required">*</span></label>
+                <input type="text" id="post_code" name="postCode" class="form-input" placeholder="e.g. SW1A 1AA" required autocomplete="postal-code"/>
+                <span class="error-message" id="post_code_error"></span>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step1">Go Back</button>
-          <button type="button" class="button-right" id="next_to_step3">Proceed</button>
-        </div>
-      </div>
-
-      <!-- === STEP 3: Mobile Entry === -->
-      <div class="form-step" id="step3" style="display:none;">
-        <h2 class="step-title">Mobile Verification</h2>
-
-        <div class="form-group">
-          <label for="mobile">Mobile Number *</label>
-          <input type="tel" id="mobile" name="mobile" required autocomplete="tel" placeholder="07XXX XXXXXX">
-          <span class="error-message" id="mobile_error"></span>
-        </div>
-        
-        <button type="button" class="button-primary full-width" id="send_otp">Send OTP</button>
-        <div id="otp_message" class="info-message" style="display:none;"></div>
-
-        <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step2">Go Back</button>
-          <button type="button" class="button-right" id="next_to_step4" disabled>Proceed</button>
-        </div>
-      </div>
-
-      <!-- === STEP 4: OTP Verification === -->
-      <div class="form-step" id="step4" style="display:none;">
-        <h2 class="step-title">Verify OTP Code</h2>
-
-        <div class="form-group" id="otp_group">
-          <label for="otp">Enter OTP *</label>
-          <input type="text" id="otp" name="otp" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="XXXXXX">
-          <span class="error-message" id="otp_error"></span>
-        </div>
-        
-        <button type="button" class="button-primary full-width" id="verify_otp">Verify OTP</button>
-        <div id="otp_status" class="status-message"></div>
-
-        <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step3">Go Back</button>
-          <button type="button" class="button-right" id="next_to_stepMobileId" disabled>Proceed</button>
-        </div>
-      </div>
-
-      <!-- === NEW STEP: MobileID Trust Assessment === -->
-      <div class="form-step" id="stepMobileId" style="display:none;">
-        <h2 class="step-title">Trust & Security Check</h2>
-        <p class="step-description">
-          We're now verifying that your mobile number is securely associated with your identity. 
-          This helps protect against fraud and ensures your information is safe.
-        </p>
-        
-        <div class="trust-check-container">
-          <button type="button" class="button-primary full-width" id="check_mobile_trust">
-            Verify Mobile Trust
+          <button type="button" class="btn btn-secondary" id="back_to_step1">
+            <span class="btn-icon">←</span> Back
           </button>
+          <button type="button" class="btn btn-primary" id="next_to_step3">
+            Continue <span class="btn-icon">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- === STEP 3: Mobile Verification === -->
+      <div class="form-step" id="step3" style="display:none;">
+        <div class="step-header">
+          <h2 class="step-title">Mobile Verification</h2>
+          <p class="step-subtitle">We'll send you a code to verify your mobile number</p>
+        </div>
+
+        <div class="form-section">
+          <div class="verification-card">
+            <div class="form-group">
+              <label class="form-label" for="mobile">Mobile Number <span class="required">*</span></label>
+              <input type="tel" id="mobile" name="mobile" class="form-input form-input-large" required autocomplete="tel" placeholder="07XXX XXXXXX">
+              <span class="error-message" id="mobile_error"></span>
+            </div>
+            
+            <button type="button" class="btn btn-primary btn-large" id="send_otp">
+              <span class="btn-icon">📱</span> Send Verification Code
+            </button>
+            
+            <div id="otp_message" class="info-message" style="display:none;"></div>
+          </div>
           
-          <div id="trust_status" class="trust-status-container" style="display:none;">
-            <div class="trust-indicator">
-              <span class="trust-icon"></span>
-              <span class="trust-text"></span>
+          <div id="otp_verification" class="verification-card" style="display:none;">
+            <div class="form-group">
+              <label class="form-label" for="otp">Enter 6-digit Code <span class="required">*</span></label>
+              <input type="text" id="otp" name="otp" class="form-input form-input-large otp-input" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="XXXXXX">
+              <span class="error-message" id="otp_error"></span>
             </div>
             
-            <div class="trust-details" style="display:none;">
-              <h4>Trust Assessment Details:</h4>
-              <ul id="trust_details_list"></ul>
+            <button type="button" class="btn btn-primary btn-large" id="verify_otp">
+              <span class="btn-icon">✓</span> Verify Code
+            </button>
+            
+            <div id="otp_status" class="status-message"></div>
+            
+            <div class="resend-container">
+              <button type="button" class="btn-link" id="resend_otp">Resend code</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="btn btn-secondary" id="back_to_step2">
+            <span class="btn-icon">←</span> Back
+          </button>
+          <button type="button" class="btn btn-primary" id="next_to_step4" disabled>
+            Continue <span class="btn-icon">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- === STEP 4: Identity Validation === -->
+      <div class="form-step" id="step4" style="display:none;">
+        <div class="step-header">
+          <h2 class="step-title">Identity Verification</h2>
+          <p class="step-subtitle">Final step to verify your identity and check for existing finance</p>
+        </div>
+        
+        <div class="form-section">
+          <div class="identity-check-card">
+            <div class="check-info">
+              <div class="check-icon">🔐</div>
+              <h3>Secure Identity Check</h3>
+              <p>We'll verify your identity using the information you've provided. This helps protect against fraud and ensures we find all relevant finance agreements.</p>
             </div>
             
-            <div class="trust-warning" id="trust_warning" style="display:none;">
-              <strong>⚠️ Security Alert:</strong>
-              <p id="trust_warning_text"></p>
+            <button type="button" class="btn btn-primary btn-large" id="verify_identity">
+              <span class="btn-icon">🔍</span> Verify My Identity
+            </button>
+            
+            <div id="identity_status" class="identity-status" style="display:none;">
+              <div class="status-icon"></div>
+              <div class="status-content">
+                <h4 class="status-title"></h4>
+                <p class="status-message"></p>
+                <div class="score-display" style="display:none;">
+                  <span class="score-label">Identity Score:</span>
+                  <span class="score-value"></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         
         <div class="button-row">
-          <button type="button" class="button-left" id="back_to_step4_from_mobile">Go Back</button>
-          <button type="button" class="button-right" id="next_to_stepIdentity_from_mobile" disabled>Proceed</button>
-        </div>
-      </div>
-
-      <!-- === STEP 4.5: Proof of Identity === -->
-      <div class="form-step" id="stepIdentity" style="display:none;">
-        <h2 class="step-title">Proof of Identity</h2>
-        <p class="step-description">Please confirm your identity by validating your details.</p>
-        
-        <button type="button" class="button-primary full-width" id="verify_identity">Verify Identity</button>
-        <div id="identity_status" class="status-message"></div>
-        
-        <div class="button-row">
-          <button type="button" class="button-left" id="back_to_stepMobileId">Go Back</button>
-          <button type="button" class="button-right" id="next_to_step5" disabled>Proceed</button>
+          <button type="button" class="btn btn-secondary" id="back_to_step3">
+            <span class="btn-icon">←</span> Back
+          </button>
+          <button type="button" class="btn btn-primary" id="next_to_step5" disabled>
+            Continue <span class="btn-icon">→</span>
+          </button>
         </div>
       </div>
 
       <!-- === STEP 5: Submit Final === -->
       <div class="form-step" id="step5" style="display:none;">
-        <h2 class="step-title">Review and Submit</h2>
+        <div class="step-header">
+          <h2 class="step-title">Review and Submit</h2>
+          <p class="step-subtitle">Please review your information before retrieving your credit report</p>
+        </div>
         
-        <div class="review-summary" id="review_summary">
-          <!-- Populated by JS -->
+        <div class="form-section">
+          <div class="review-card" id="review_summary">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="consent-section">
+            <label class="checkbox-container">
+              <input type="checkbox" id="consent_checkbox" />
+              <span class="checkbox-label">
+                I confirm that all information provided is accurate and I consent to a credit check being performed.
+              </span>
+            </label>
+          </div>
         </div>
 
-        <p class="step-description">Click below to retrieve your credit report.</p>
-
         <div class="button-row">
-          <button type="button" class="button-left" id="back_to_stepIdentity">Go Back</button>
-          <button type="submit" class="button-right">Get Report</button>
+          <button type="button" class="btn btn-secondary" id="back_to_step4">
+            <span class="btn-icon">←</span> Back
+          </button>
+          <button type="submit" class="btn btn-primary btn-large" id="submit_form" disabled>
+            <span class="btn-icon">📄</span> Get Credit Report
+          </button>
         </div>
       </div>
 
-      <!-- === STEP 6: What we've found === -->
+      <!-- === STEP 6: Results === -->
       <div class="form-step" id="step6" style="display:none;">
-        <h2 class="section-heading">Here's what our checks have already found</h2>
-        
-        <div id="found_list" class="lenders-list">
-          <!-- JS will inject lender items here -->
+        <div class="step-header">
+          <h2 class="section-heading">Here's what our checks have found</h2>
+          <p class="step-subtitle">We've identified the following finance agreements</p>
         </div>
         
-        <button type="button" class="button-primary full-width" id="add_lender_btn">
-          Click here to add additional lenders if you believe our initial checks missed anything.
-        </button>
-        
-        <p class="info-note">
-          Don't worry if you can't recall any details. In addition to the live checks we have just carried out, 
-          going back up to 7 years, we will run additional checks in the next 24 hours to go back through more 
-          historic contracts on your behalf. We will be in touch to discuss the outcome of any further matches.
-        </p>
+        <div class="form-section">
+          <div id="found_list" class="lenders-list">
+            <!-- JS will inject lender items here -->
+          </div>
+          
+          <div class="additional-actions">
+            <button type="button" class="btn btn-primary" id="add_lender_btn">
+              <span class="btn-icon">+</span> Add Additional Lenders
+            </button>
+            
+            <div class="info-note">
+              <div class="info-icon">ℹ</div>
+              <p>
+                Don't worry if you can't recall any details. We'll run additional checks over the next 24 hours 
+                to search for historic contracts up to 7 years old. We'll contact you with any further matches found.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
     </form>
     
     <!-- Loading Overlay -->
     <div id="loading_overlay" class="loading-overlay" style="display:none;">
-      <div class="spinner"></div>
-      <div class="loading-text">Processing...</div>
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+      </div>
     </div>
     
     <!-- Results & Debug -->

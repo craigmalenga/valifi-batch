@@ -19,6 +19,7 @@ class Config:
     VALIFI_API_URL = os.getenv("VALIFI_API_URL", "").rstrip("/")
     VALIFI_API_USER = os.getenv("VALIFI_API_USER", "")
     VALIFI_API_PASS = os.getenv("VALIFI_API_PASS", "")
+    VALIFI_MIN_ID_SCORE = int(os.getenv("VALIFI_MIN_ID_SCORE", "40"))
     
     # AWS
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -74,89 +75,6 @@ def handle_errors(f):
             logger.error(f"Unexpected error in {f.__name__}: {str(e)}")
             return jsonify({"error": "Internal server error", "details": str(e)}), 500
     return decorated_function
-
-# ─── Trust Analysis Functions ─────────────────────────────────────────────────
-def analyze_mobile_trust(mobile_id_data):
-    """
-    Analyze MobileID data to determine trust level
-    Returns a trust assessment with score and recommendation
-    """
-    trust_score = 0
-    flags = []
-    recommendation = "NEUTRAL"
-    
-    # Check for positive matches
-    identity_matches = mobile_id_data.get("identityMatch", {})
-    linked_matches = mobile_id_data.get("linkedIdentityMatch", {})
-    address_matches = mobile_id_data.get("addressMatch", {})
-    unknown_matches = mobile_id_data.get("unknownMatches", {})
-    
-    # Calculate positive indicators
-    if identity_matches.get("numberOfMatches", 0) > 0:
-        trust_score += 50
-        flags.append("DIRECT_IDENTITY_MATCH")
-    
-    if linked_matches.get("numberOfMatches", 0) > 0:
-        trust_score += 30
-        flags.append("LINKED_IDENTITY_MATCH")
-    
-    if address_matches.get("numberOfMatches", 0) > 0:
-        trust_score += 20
-        flags.append("ADDRESS_MATCH")
-    
-    # Check negative indicators
-    unknown_identities = unknown_matches.get("uniqueUnknownIdentities", 0)
-    unknown_addresses = unknown_matches.get("uniqueUnknownAddresses", 0)
-    
-    if unknown_identities > 0:
-        trust_score -= (unknown_identities * 15)
-        flags.append(f"UNKNOWN_IDENTITIES_{unknown_identities}")
-    
-    if unknown_addresses > 0:
-        trust_score -= (unknown_addresses * 10)
-        flags.append(f"UNKNOWN_ADDRESSES_{unknown_addresses}")
-    
-    # Determine recommendation
-    if trust_score >= 50:
-        recommendation = "POSITIVE"
-        description = "Mobile number strongly associated with provided identity"
-    elif trust_score >= 20:
-        recommendation = "NEUTRAL"
-        description = "Mobile number has some association with provided identity"
-    else:
-        recommendation = "NEGATIVE"
-        description = "Mobile number associated with different identities - potential fraud risk"
-    
-    return {
-        "trustScore": trust_score,
-        "recommendation": recommendation,
-        "description": description,
-        "flags": flags,
-        "details": {
-            "identityMatches": identity_matches.get("numberOfMatches", 0),
-            "linkedMatches": linked_matches.get("numberOfMatches", 0),
-            "addressMatches": address_matches.get("numberOfMatches", 0),
-            "unknownIdentities": unknown_identities,
-            "unknownAddresses": unknown_addresses,
-            "totalPositiveMatches": mobile_id_data.get("totalPositiveMatches", 0)
-        }
-    }
-
-def analyze_email_trust(email_id_data):
-    """Analyze EmailID data similarly to MobileID"""
-    # Similar logic to mobile trust
-    trust_score = 0
-    flags = []
-    
-    identity_matches = email_id_data.get("identityMatch", {})
-    if identity_matches.get("numberOfMatches", 0) > 0:
-        trust_score += 40
-        flags.append("EMAIL_IDENTITY_MATCH")
-    
-    return {
-        "trustScore": trust_score,
-        "flags": flags
-    }
 
 # ─── Valifi API Client ────────────────────────────────────────────────────────
 class ValifiClient:
@@ -229,31 +147,11 @@ class ValifiClient:
         )
         return resp.json(), resp.status_code
     
-    def check_mobile_id(self, payload):
+    def validate_identity_with_mobileid(self, payload):
         """
-        Check MobileID trust assessment
-        Returns detailed trust information about mobile number associations
+        Validate identity using the tu/validate endpoint which includes MobileID
+        This replaces the separate mobile-id and validate endpoints
         """
-        resp = requests.post(
-            f"{self.base_url}/bureau/v1/tu/mobile-id",
-            json=payload,
-            headers=self._get_headers(),
-            timeout=30
-        )
-        return resp.json(), resp.status_code
-    
-    def check_email_id(self, payload):
-        """Check EmailID trust assessment"""
-        resp = requests.post(
-            f"{self.base_url}/bureau/v1/tu/email-id",
-            json=payload,
-            headers=self._get_headers(),
-            timeout=30
-        )
-        return resp.json(), resp.status_code
-    
-    def validate_identity(self, payload):
-        """Validate identity via Mobile ID"""
         resp = requests.post(
             f"{self.base_url}/bureau/v1/tu/validate",
             json=payload,
@@ -387,7 +285,20 @@ def lookup_address():
         .get("listAddressByPostcodeResponse", {})
         .get("matchedStructuredAddress", [])
     )
-    return jsonify({"addresses": addresses}), 200
+    
+    # Sort addresses by building number/name for better UX
+    def address_sort_key(addr):
+        # Try to extract building number for sorting
+        building = addr.get("number", "") or addr.get("house", "") or addr.get("name", "") or addr.get("flat", "") or ""
+        # Try to convert to int if it's a number
+        try:
+            return (0, int(building))
+        except ValueError:
+            return (1, building)
+    
+    sorted_addresses = sorted(addresses, key=address_sort_key)
+    
+    return jsonify({"addresses": sorted_addresses}), 200
 
 @app.route("/otp/request", methods=["POST"])
 @handle_errors
@@ -415,97 +326,101 @@ def otp_verify():
     result, status = valifi_client.verify_otp(mobile, code)
     return jsonify(result), status
 
-@app.route("/mobile-id/check", methods=["POST"])
-@handle_errors
-def check_mobile_id():
-    """
-    Perform MobileID trust assessment after OTP verification
-    This checks if the mobile number is genuinely associated with the person
-    """
-    data = request.json or {}
-    
-    # Build payload for MobileID check
-    payload = {
-        "includeJsonReport": True,
-        "clientReference": data.get("clientReference", "mobileIdCheck"),
-        "title": data.get("title", ""),
-        "forename": data.get("firstName", ""),
-        "middleName": data.get("middleName", ""),
-        "surname": data.get("lastName", ""),
-        "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
-        "mobileNumber": data.get("mobile"),
-        "emailAddress": data.get("email"),  # Include for EmailID check if available
-        "currentAddress": {
-            "flat": data.get("flat", ""),
-            "street": data.get("street", ""),
-            "postTown": data.get("postTown", ""),
-            "postCode": data.get("postCode", "")
-        }
-    }
-    
-    logger.info(f"MobileID check for: {payload['forename']} {payload['surname']} - Mobile: {payload['mobileNumber']}")
-    
-    result, status = valifi_client.check_mobile_id(payload)
-    
-    if status != 200:
-        logger.error(f"MobileID check failed with status {status}: {result}")
-        return jsonify(result), status
-    
-    # Parse the MobileID results
-    mobile_id_data = result.get("data", {}).get("mobileId", {})
-    email_id_data = result.get("data", {}).get("emailId", {})
-    
-    # Analyze trust level based on matches
-    trust_analysis = analyze_mobile_trust(mobile_id_data)
-    
-    # Add email trust if available
-    if email_id_data:
-        email_trust = analyze_email_trust(email_id_data)
-        trust_analysis["emailTrust"] = email_trust
-    
-    # Return comprehensive trust assessment
-    response = {
-        "success": True,
-        "trustAssessment": trust_analysis,
-        "rawData": {
-            "mobileId": mobile_id_data,
-            "emailId": email_id_data
-        }
-    }
-    
-    logger.info(f"MobileID trust assessment: {trust_analysis['recommendation']} (score: {trust_analysis['trustScore']})")
-    
-    return jsonify(response), 200
-
 @app.route("/validate-identity", methods=["POST"])
 @handle_errors
 def validate_identity():
-    """Validate user identity"""
+    """
+    Validate identity with MobileID included
+    Uses the tu/validate endpoint which returns identity score
+    """
     data = request.json or {}
     
-    # Build payload for Mobile ID
+    # Build payload
     payload = {
         "includeJsonReport": True,
-        "includeMobileKYC": True,
+        "includePdfReport": False,
+        "includeMobileId": True,
+        "includeEmailId": True,
         "clientReference": data.get("clientReference", "identityCheck"),
         "title": data.get("title", ""),
         "forename": data.get("firstName", ""),
         "middleName": data.get("middleName", ""),
         "surname": data.get("lastName", ""),
-        "dateOfBirth": data.get("dateOfBirth"),
-        "mobileNumber": data.get("mobile"),
-        "emailAddress": data.get("email"),
+        "emailAddress": data.get("email", ""),
+        "mobileNumber": data.get("mobile", ""),
+        "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
         "currentAddress": {
+            "buildingNumber": data.get("buildingNumber", ""),
+            "buildingName": data.get("buildingName", ""),
             "flat": data.get("flat", ""),
             "street": data.get("street", ""),
+            "district": data.get("district", ""),
             "postTown": data.get("postTown", ""),
+            "county": data.get("county", ""),
             "postCode": data.get("postCode", "")
         }
     }
     
+    # Clean up empty address fields
+    payload["currentAddress"] = {k: v for k, v in payload["currentAddress"].items() if v}
+    
     logger.info(f"Identity validation for: {payload['forename']} {payload['surname']}")
-    result, status = valifi_client.validate_identity(payload)
-    return jsonify(result), status
+    result, status = valifi_client.validate_identity_with_mobileid(payload)
+    
+    if status != 200:
+        logger.error(f"Validation failed with status {status}: {result}")
+        return jsonify(result), status
+    
+    # Extract identity score from the response
+    try:
+        identity_score = int(
+            result.get("data", {})
+            .get("jsonReport", {})
+            .get("data", {})
+            .get("OtherChecks", {})
+            .get("IdentityScore", "0")
+        )
+        identity_result = (
+            result.get("data", {})
+            .get("jsonReport", {})
+            .get("data", {})
+            .get("OtherChecks", {})
+            .get("IdentityResult", "Fail")
+        )
+        
+        # Extract MobileID data
+        mobile_id_data = (
+            result.get("data", {})
+            .get("jsonReport", {})
+            .get("data", {})
+            .get("Phone", {})
+            .get("MobileID", {})
+        )
+        
+        # Check if identity score meets minimum requirement
+        passed = identity_score >= Config.VALIFI_MIN_ID_SCORE
+        
+        response = {
+            "success": True,
+            "passed": passed,
+            "identityScore": identity_score,
+            "identityResult": identity_result,
+            "minimumScore": Config.VALIFI_MIN_ID_SCORE,
+            "mobileIdData": mobile_id_data,
+            "rawData": result
+        }
+        
+        logger.info(f"Identity validation result: Score={identity_score}, Passed={passed}")
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error parsing validation response: {e}")
+        return jsonify({
+            "error": "Failed to parse validation response",
+            "details": str(e),
+            "rawData": result
+        }), 500
 
 @app.route("/query", methods=["POST"])
 @handle_errors
@@ -514,7 +429,7 @@ def query_valifi():
     data = request.json or {}
     
     # Validate required fields
-    required_fields = ["firstName", "lastName", "dateOfBirth", "flat", "street", "postTown", "postCode"]
+    required_fields = ["firstName", "lastName", "dateOfBirth", "street", "postTown", "postCode"]
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
@@ -531,14 +446,21 @@ def query_valifi():
         "surname": data["lastName"],
         "dateOfBirth": data["dateOfBirth"],
         "currentAddress": {
-            "flat": data["flat"],
+            "buildingNumber": data.get("buildingNumber", ""),
+            "buildingName": data.get("buildingName", ""),
+            "flat": data.get("flat", ""),
             "street": data["street"],
+            "district": data.get("district", ""),
             "postTown": data["postTown"],
+            "county": data.get("county", ""),
             "postCode": data["postCode"]
         },
         "previousAddress": None,
         "previousPreviousAddress": None
     }
+    
+    # Clean up empty address fields
+    payload["currentAddress"] = {k: v for k, v in payload["currentAddress"].items() if v}
     
     if payload["title"].lower() == "other":
         payload["title"] = ""
@@ -740,6 +662,9 @@ def health_check():
             "valifi": "unknown",
             "s3": "healthy" if s3_client else "unavailable",
             "flg": "unknown"
+        },
+        "config": {
+            "min_identity_score": Config.VALIFI_MIN_ID_SCORE
         }
     }
     
