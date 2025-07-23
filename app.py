@@ -7,7 +7,7 @@ from functools import wraps
 import xml.etree.ElementTree as ET
 import csv
 
-from flask import Flask, render_template, request, jsonify, send_file, Response
+from flask import Flask, render_template, request, jsonify, send_file, Response, send_from_directory
 import requests
 import boto3
 import botocore
@@ -38,8 +38,14 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
 # ─── App Initialization ────────────────────────────────────────────────────────
-app = Flask(__name__)
+app = Flask(__name__, 
+            static_folder='static',
+            static_url_path='/static')
 app.config.from_object(Config)
+
+# Enable debug mode for static files in development
+if Config.DEBUG:
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 # ─── Logging Setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -264,6 +270,55 @@ lenders_service = LendersService()
 def index():
     """Render the main form"""
     return render_template("index.html")
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """Serve JavaScript files from js directory"""
+    import os
+    js_dir = os.path.join(app.root_path, 'js')
+    return send_from_directory(js_dir, filename)
+
+@app.route("/test")
+def test():
+    """Test page for debugging static files"""
+    return render_template("test.html")
+
+@app.route("/debug/static")
+def debug_static():
+    """Debug endpoint to check static files"""
+    import os
+    static_dir = os.path.join(app.root_path, 'static')
+    js_dir = os.path.join(app.root_path, 'js')
+    files = {}
+    
+    # Check static directory
+    if os.path.exists(static_dir):
+        for root, dirs, filenames in os.walk(static_dir):
+            rel_root = os.path.relpath(root, static_dir)
+            files[f'static/{rel_root}'] = {
+                'dirs': dirs,
+                'files': filenames
+            }
+    else:
+        files['static'] = 'Directory not found'
+    
+    # Check js directory
+    if os.path.exists(js_dir):
+        for root, dirs, filenames in os.walk(js_dir):
+            rel_root = os.path.relpath(root, js_dir)
+            files[f'js/{rel_root}'] = {
+                'dirs': dirs,
+                'files': filenames
+            }
+    else:
+        files['js'] = 'Directory not found'
+    
+    return jsonify({
+        'static_folder': app.static_folder,
+        'static_url_path': app.static_url_path,
+        'root_path': app.root_path,
+        'files': files
+    })
 
 @app.route("/lenders", methods=["GET"])
 @handle_errors

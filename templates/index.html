@@ -4,7 +4,87 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
   <title>Credit Report Service</title>
-  <link rel="stylesheet" href="/static/CSS/style.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Fallback inline styles for immediate visual feedback -->
+  <style>
+    /* Critical inline styles in case external CSS fails */
+    :root {
+      --primary-color: #2199E8;
+      --secondary-color: #F57F30;
+      --purple-color: rebeccapurple;
+      --burgundy-color: #880A51;
+      --dark-color: #21212D;
+      --green-color: #ACBD31;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 3rem;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    
+    .title-btn {
+      padding: 0.875rem 1.5rem;
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+      background: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-right: 0.5rem;
+    }
+    
+    .title-btn:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+    
+    .title-btn.active {
+      background: var(--dark-color);
+      color: white;
+      border-color: var(--dark-color);
+    }
+    
+    .btn {
+      padding: 0.875rem 2rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: white;
+    }
+    
+    /* Show error in console if CSS doesn't load */
+    @supports not (color: var(--primary-color)) {
+      body::before {
+        content: "CSS variables not supported or CSS not loaded properly";
+        color: red;
+        display: block;
+        padding: 20px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -366,6 +446,27 @@
     <div id="debug_container" class="debug-container" style="display:none;"></div>
   </div>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/js/app.js"></script>
+  
+  <!-- Debug script to check if resources loaded -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check if main app.js loaded
+      if (typeof EventHandlers === 'undefined') {
+        console.error('app.js failed to load! Check the file path.');
+        alert('JavaScript failed to load. Please check the console for errors.');
+      }
+      
+      // Check if CSS loaded
+      const testEl = document.createElement('div');
+      testEl.className = 'btn-primary';
+      document.body.appendChild(testEl);
+      const styles = window.getComputedStyle(testEl);
+      if (styles.backgroundColor !== 'rgb(33, 153, 232)') {
+        console.error('CSS may not have loaded properly');
+      }
+      document.body.removeChild(testEl);
+    });
+  </script>
 </body>
 </html>
