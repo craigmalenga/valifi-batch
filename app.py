@@ -406,29 +406,34 @@ def validate_identity():
     """
     data = request.json or {}
     
+    # Build client reference from name
+    first_name = data.get("firstName", "")
+    last_name = data.get("lastName", "")
+    client_ref = f"{first_name}.{last_name}" if first_name and last_name else "identityCheck"
+    
     # Build payload matching the exact format from documentation
     payload = {
         "includeJsonReport": True,
         "includePdfReport": False,
         "includeMobileId": True,
         "includeEmailId": True,
-        "clientReference": data.get("clientReference", "identityCheck"),
+        "clientReference": client_ref,
         "title": data.get("title", ""),
         "forename": data.get("firstName", ""),
         "middleName": data.get("middleName", ""),
         "surname": data.get("lastName", ""),
         "emailAddress": data.get("email", ""),
-        "mobileNumber": data.get("mobile", ""),  # Changed from 'mobile' to 'mobileNumber'
+        "mobileNumber": data.get("mobile", ""),
         "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
         "currentAddress": {
-            "buildingnumber": data.get("buildingNumber", "") or data.get("building_number", "") or "",
-            "buildingname": data.get("buildingName", "") or data.get("building_name", "") or "",
+            "buildingnumber": data.get("building_number", "") or "",
+            "buildingname": data.get("building_name", "") or "",
             "subbuilding": data.get("flat", "") or "",
             "street": data.get("street", "") or "",
-            "street1": data.get("street", "") or "",  # Some APIs want both
-            "posttown": data.get("postTown", "") or data.get("post_town", "") or "",
-            "county": data.get("county", "") or "",
-            "postcode": data.get("postCode", "") or data.get("post_code", "") or "",
+            "street1": data.get("street", "") or "",
+            "posttown": data.get("post_town", "") or "",
+            "county": "",
+            "postcode": data.get("post_code", "") or "",
             "countrycode": "GB",
             "residencyyears": ""
         },
@@ -554,7 +559,7 @@ def query_valifi():
         "middleName": data.get("middleName", ""),
         "surname": data["lastName"],
         "dateOfBirth": data["dateOfBirth"],
-        "mobileNumber": data.get("mobile", ""),  # Add mobile number
+        "mobileNumber": data.get("mobile", ""),
         "emailAddress": data.get("email", ""),
         "currentAddress": {
             "buildingNumber": data.get("building_number", "") or "",

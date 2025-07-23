@@ -231,6 +231,7 @@ const FormValidation = {
 
 // ─── Step Navigation ───────────────────────────────────────────────────────────
 const Navigation = {
+
     showStep(stepId) {
         // First, hide ALL steps completely
         const allSteps = document.querySelectorAll('.form-step');
@@ -254,10 +255,13 @@ const Navigation = {
             // Save form data
             this.saveFormData();
             
-            // Scroll to top of form
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Scroll to top of container
+            const container = document.querySelector('.container');
+            if (container) {
+                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
-    },
+    },    
 
     updateProgressBar(currentStepId) {
         const stepMap = {
