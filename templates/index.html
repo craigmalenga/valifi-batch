@@ -18,10 +18,14 @@
     }
     
     /* FORCE VISIBILITY OF FORM */
-    #step1 {
-      display: block !important;
+    .form-step {
+      display: none;
       opacity: 1 !important;
       visibility: visible !important;
+    }
+    
+    .form-step.active {
+      display: block !important;
     }
     
     body {
@@ -242,7 +246,7 @@
       </div>
 
       <!-- === STEP 1: Personal Info === -->
-      <div class="form-step active" id="step1" style="display: block !important;">
+      <div class="form-step" id="step1">
         <div class="step-header">
           <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
           <p class="step-subtitle">Let's start with your personal information</p>
@@ -574,20 +578,7 @@
   
   <!-- Debug script to check if resources loaded -->
   <script>
-    console.log('Inline script running...');
-    
     window.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM loaded');
-      
-      // Ensure step 1 is visible
-      const step1 = document.getElementById('step1');
-      if (step1) {
-        step1.style.display = 'block';
-        console.log('Step 1 made visible');
-      } else {
-        console.error('Step 1 element not found!');
-      }
-      
       // Check if main app.js loaded
       if (typeof EventHandlers === 'undefined') {
         console.error('app.js failed to load! Check the file path.');
@@ -599,21 +590,7 @@
             document.getElementById('title').value = this.dataset.value;
           });
         });
-      } else {
-        console.log('app.js loaded successfully');
       }
-      
-      // Check if CSS loaded
-      const testEl = document.createElement('div');
-      testEl.className = 'btn-primary';
-      document.body.appendChild(testEl);
-      const styles = window.getComputedStyle(testEl);
-      if (styles.backgroundColor !== 'rgb(33, 153, 232)') {
-        console.warn('External CSS may not have loaded properly, using inline styles');
-      } else {
-        console.log('CSS loaded successfully');
-      }
-      document.body.removeChild(testEl);
     });
   </script>
 </body>

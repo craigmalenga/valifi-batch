@@ -232,15 +232,20 @@ const FormValidation = {
 // ─── Step Navigation ───────────────────────────────────────────────────────────
 const Navigation = {
     showStep(stepId) {
-        // Hide all steps
-        document.querySelectorAll('.form-step').forEach(step => {
+        // First, hide ALL steps completely
+        const allSteps = document.querySelectorAll('.form-step');
+        allSteps.forEach(step => {
             step.style.display = 'none';
+            step.style.visibility = 'hidden';
+            step.classList.remove('active');
         });
         
-        // Show requested step
+        // Then show only the requested step
         const stepElement = document.getElementById(stepId);
         if (stepElement) {
             stepElement.style.display = 'block';
+            stepElement.style.visibility = 'visible';
+            stepElement.classList.add('active');
             AppState.currentStep = stepId;
             
             // Update progress bar
@@ -248,6 +253,9 @@ const Navigation = {
             
             // Save form data
             this.saveFormData();
+            
+            // Scroll to top of form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
@@ -725,12 +733,8 @@ const EventHandlers = {
     initStep4() {
         // Verify Identity button
         document.getElementById('verify_identity').addEventListener('click', async () => {
-            let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-            
-            // Convert UK format (07...) to international format (447...)
-            if (mobile.startsWith('07')) {
-                mobile = '44' + mobile.substring(1);
-            }
+            // Keep mobile in UK format for identity validation
+            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
             
             const data = {
                 title: document.getElementById('title').value,
@@ -738,14 +742,14 @@ const EventHandlers = {
                 middleName: document.getElementById('middle_name').value,
                 lastName: document.getElementById('last_name').value,
                 dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                mobile: mobile,
+                mobile: mobile,  // Keep in UK format (07...)
                 email: document.getElementById('email').value,
-                buildingNumber: document.getElementById('building_number').value,
-                buildingName: document.getElementById('building_name').value,
+                building_number: document.getElementById('building_number').value,
+                building_name: document.getElementById('building_name').value,
                 flat: document.getElementById('flat').value,
                 street: document.getElementById('street').value,
-                postTown: document.getElementById('post_town').value,
-                postCode: document.getElementById('post_code').value
+                post_town: document.getElementById('post_town').value,
+                post_code: document.getElementById('post_code').value
             };
             
             Utils.showLoading('Verifying identity...');
@@ -841,12 +845,7 @@ const EventHandlers = {
             
             try {
                 // Prepare data for credit report
-                let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-                
-                // Convert UK format (07...) to international format (447...)
-                if (mobile.startsWith('07')) {
-                    mobile = '44' + mobile.substring(1);
-                }
+                const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
                 
                 const reportData = {
                     title: document.getElementById('title').value,
@@ -854,14 +853,14 @@ const EventHandlers = {
                     middleName: document.getElementById('middle_name').value,
                     lastName: document.getElementById('last_name').value,
                     dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                    mobile: mobile,
+                    mobile: mobile,  // Keep in UK format
                     email: document.getElementById('email').value,
-                    buildingNumber: document.getElementById('building_number').value,
-                    buildingName: document.getElementById('building_name').value,
+                    building_number: document.getElementById('building_number').value,
+                    building_name: document.getElementById('building_name').value,
                     flat: document.getElementById('flat').value,
                     street: document.getElementById('street').value,
-                    postTown: document.getElementById('post_town').value,
-                    postCode: document.getElementById('post_code').value,
+                    post_town: document.getElementById('post_town').value,
+                    post_code: document.getElementById('post_code').value,
                     clientReference: 'report'
                 };
                 
@@ -883,6 +882,9 @@ const EventHandlers = {
                 // Upload to FLG
                 Utils.showLoading('Uploading to FLG...');
                 
+                // Ensure mobile is in UK format for FLG
+                const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+                
                 const flgData = {
                     name: summaryReport.name,
                     dateOfBirth: (() => {
@@ -892,7 +894,7 @@ const EventHandlers = {
                         }
                         return '';
                     })(),
-                    phone1: reportData.mobile,
+                    phone1: ukMobile,
                     email: reportData.email,
                     address: [reportData.buildingNumber, reportData.buildingName, reportData.flat, reportData.street].filter(Boolean).join(' '),
                     towncity: reportData.postTown,
@@ -1024,4 +1026,7 @@ const EventHandlers = {
 // ─── Initialize Application ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     EventHandlers.init();
+    
+    // Ensure step 1 is visible on load
+    Navigation.showStep('step1');
 });

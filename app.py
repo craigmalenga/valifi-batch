@@ -2,6 +2,7 @@ import os
 import logging
 import uuid
 import base64
+import json
 from datetime import datetime, timedelta
 from functools import wraps
 import xml.etree.ElementTree as ET
@@ -405,7 +406,7 @@ def validate_identity():
     """
     data = request.json or {}
     
-    # Build payload
+    # Build payload matching the exact format from documentation
     payload = {
         "includeJsonReport": True,
         "includePdfReport": False,
@@ -417,24 +418,27 @@ def validate_identity():
         "middleName": data.get("middleName", ""),
         "surname": data.get("lastName", ""),
         "emailAddress": data.get("email", ""),
-        "mobileNumber": data.get("mobile", ""),
+        "mobileNumber": data.get("mobile", ""),  # Changed from 'mobile' to 'mobileNumber'
         "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
         "currentAddress": {
-            "buildingNumber": data.get("buildingNumber", ""),
-            "buildingName": data.get("buildingName", ""),
-            "flat": data.get("flat", ""),
-            "street": data.get("street", ""),
-            "district": data.get("district", ""),
-            "postTown": data.get("postTown", ""),
-            "county": data.get("county", ""),
-            "postCode": data.get("postCode", "")
-        }
+            "buildingnumber": data.get("buildingNumber", "") or data.get("building_number", "") or "",
+            "buildingname": data.get("buildingName", "") or data.get("building_name", "") or "",
+            "subbuilding": data.get("flat", "") or "",
+            "street": data.get("street", "") or "",
+            "street1": data.get("street", "") or "",  # Some APIs want both
+            "posttown": data.get("postTown", "") or data.get("post_town", "") or "",
+            "county": data.get("county", "") or "",
+            "postcode": data.get("postCode", "") or data.get("post_code", "") or "",
+            "countrycode": "GB",
+            "residencyyears": ""
+        },
+        "previousAddress": None,
+        "previousPreviousAddress": None
     }
     
-    # Clean up empty address fields
-    payload["currentAddress"] = {k: v for k, v in payload["currentAddress"].items() if v}
-    
     logger.info(f"Identity validation for: {payload['forename']} {payload['surname']}")
+    logger.info(f"Validation payload: {json.dumps(payload, indent=2)}")
+    
     result, status = valifi_client.validate_identity_with_mobileid(payload)
     
     if status != 200:
@@ -443,29 +447,58 @@ def validate_identity():
     
     # Extract identity score from the response
     try:
-        identity_score = int(
-            result.get("data", {})
-            .get("jsonReport", {})
-            .get("data", {})
-            .get("OtherChecks", {})
-            .get("IdentityScore", "0")
-        )
-        identity_result = (
-            result.get("data", {})
-            .get("jsonReport", {})
-            .get("data", {})
-            .get("OtherChecks", {})
-            .get("IdentityResult", "Fail")
-        )
+        # Try multiple paths where the score might be
+        score_paths = [
+            lambda r: int(r.get("data", {}).get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityScore", "0")),
+            lambda r: int(r.get("data", {}).get("summaryReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityScore", "0")),
+            lambda r: int(r.get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityScore", "0"))
+        ]
+        
+        identity_score = 0
+        for path in score_paths:
+            try:
+                score = path(result)
+                if score > 0:
+                    identity_score = score
+                    break
+            except:
+                continue
+        
+        # Get identity result
+        result_paths = [
+            lambda r: r.get("data", {}).get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail"),
+            lambda r: r.get("data", {}).get("summaryReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail"),
+            lambda r: r.get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail")
+        ]
+        
+        identity_result = "Fail"
+        for path in result_paths:
+            try:
+                res = path(result)
+                if res and res != "Fail":
+                    identity_result = res
+                    break
+            except:
+                continue
+        
+        logger.info(f"Identity validation raw response: {json.dumps(result, indent=2)}")
         
         # Extract MobileID data
-        mobile_id_data = (
-            result.get("data", {})
-            .get("jsonReport", {})
-            .get("data", {})
-            .get("Phone", {})
-            .get("MobileID", {})
-        )
+        mobile_id_paths = [
+            lambda r: r.get("data", {}).get("jsonReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {}),
+            lambda r: r.get("data", {}).get("summaryReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {}),
+            lambda r: r.get("jsonReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {})
+        ]
+        
+        mobile_id_data = {}
+        for path in mobile_id_paths:
+            try:
+                data = path(result)
+                if data:
+                    mobile_id_data = data
+                    break
+            except:
+                continue
         
         # Check if identity score meets minimum requirement
         passed = identity_score >= Config.VALIFI_MIN_ID_SCORE
@@ -499,10 +532,16 @@ def query_valifi():
     data = request.json or {}
     
     # Validate required fields
-    required_fields = ["firstName", "lastName", "dateOfBirth", "street", "postTown", "postCode"]
+    required_fields = ["firstName", "lastName", "dateOfBirth", "street", "post_town", "post_code"]
     for field in required_fields:
         if not data.get(field):
-            return jsonify({"error": f"{field} is required"}), 400
+            # Try alternate field names
+            if field == "post_town" and not data.get("postTown"):
+                return jsonify({"error": f"postTown is required"}), 400
+            elif field == "post_code" and not data.get("postCode"):
+                return jsonify({"error": f"postCode is required"}), 400
+            elif not data.get(field):
+                return jsonify({"error": f"{field} is required"}), 400
     
     # Build payload
     payload = {
@@ -515,15 +554,17 @@ def query_valifi():
         "middleName": data.get("middleName", ""),
         "surname": data["lastName"],
         "dateOfBirth": data["dateOfBirth"],
+        "mobileNumber": data.get("mobile", ""),  # Add mobile number
+        "emailAddress": data.get("email", ""),
         "currentAddress": {
-            "buildingNumber": data.get("buildingNumber", ""),
-            "buildingName": data.get("buildingName", ""),
-            "flat": data.get("flat", ""),
-            "street": data["street"],
-            "district": data.get("district", ""),
-            "postTown": data["postTown"],
-            "county": data.get("county", ""),
-            "postCode": data["postCode"]
+            "buildingNumber": data.get("building_number", "") or "",
+            "buildingName": data.get("building_name", "") or "",
+            "flat": data.get("flat", "") or "",
+            "street": data.get("street", "") or "",
+            "district": data.get("district", "") or "",
+            "postTown": data.get("post_town", "") or "",
+            "county": data.get("county", "") or "",
+            "postCode": data.get("post_code", "") or ""
         },
         "previousAddress": None,
         "previousPreviousAddress": None
