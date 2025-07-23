@@ -364,8 +364,19 @@ def otp_request():
         return jsonify({"error": "mobile is required"}), 400
     
     logger.info(f"OTP request for mobile: {mobile}")
-    result, status = valifi_client.request_otp(mobile)
-    return jsonify(result), status
+    
+    try:
+        result, status = valifi_client.request_otp(mobile)
+        logger.info(f"OTP response status: {status}, result: {result}")
+        
+        if status == 200:
+            return jsonify(result), status
+        else:
+            logger.error(f"OTP request failed with status {status}: {result}")
+            return jsonify({"error": "OTP request failed", "details": result}), status
+    except Exception as e:
+        logger.error(f"OTP request exception: {str(e)}")
+        return jsonify({"error": "OTP request failed", "details": str(e)}), 500
 
 @app.route("/otp/verify", methods=["POST"])
 @handle_errors

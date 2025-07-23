@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -421,6 +422,11 @@
             <button type="button" class="btn btn-primary btn-large" id="send_otp">
               <span class="btn-icon">📱</span> Send Verification Code
             </button>
+            
+            <!-- Debug: Show what mobile format we're sending -->
+            <div id="mobile_debug" style="display:none; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 0.9em; color: #666;">
+              Sending to API: <span id="mobile_formatted"></span>
+            </div>
             
             <div id="otp_message" class="info-message" style="display:none;"></div>
           </div>

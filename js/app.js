@@ -54,6 +54,7 @@ const Utils = {
     // Validate UK mobile number
     isValidUKMobile(mobile) {
         const cleaned = mobile.replace(/\D/g, '');
+        // Accept both UK format (07...) and international format (447...)
         return /^(07\d{9}|447\d{9}|00447\d{9})$/.test(cleaned);
     },
 
@@ -341,13 +342,21 @@ const API = {
     },
 
     async sendOTP(mobile) {
+        console.log('Sending OTP to:', mobile);
         const response = await fetch('/otp/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mobile })
         });
         
-        return response.json();
+        const result = await response.json();
+        console.log('OTP response:', result);
+        
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP ${response.status}`);
+        }
+        
+        return result;
     },
 
     async verifyOTP(mobile, code) {
@@ -616,7 +625,21 @@ const EventHandlers = {
         document.getElementById('send_otp').addEventListener('click', async () => {
             if (!FormValidation.validateStep3()) return;
             
-            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+            let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+            
+            // Convert UK format (07...) to international format (447...)
+            if (mobile.startsWith('07')) {
+                mobile = '44' + mobile.substring(1);
+                console.log('Converted mobile to international format:', mobile);
+            }
+            
+            // Show debug info
+            const debugDiv = document.getElementById('mobile_debug');
+            const formattedSpan = document.getElementById('mobile_formatted');
+            if (debugDiv && formattedSpan) {
+                formattedSpan.textContent = mobile;
+                debugDiv.style.display = 'block';
+            }
             
             Utils.showLoading('Sending verification code...');
             
@@ -633,10 +656,12 @@ const EventHandlers = {
                     // Focus on OTP input
                     document.getElementById('otp').focus();
                 } else {
-                    throw new Error('Failed to send OTP');
+                    console.error('OTP send failed:', result);
+                    throw new Error(result.error || result.message || 'Failed to send OTP');
                 }
             } catch (error) {
-                document.getElementById('otp_message').textContent = 'Failed to send code. Please try again.';
+                console.error('OTP request error:', error);
+                document.getElementById('otp_message').textContent = `Failed to send code: ${error.message || 'Unknown error'}`;
                 document.getElementById('otp_message').style.display = 'block';
                 document.getElementById('otp_message').className = 'info-message error';
             } finally {
@@ -656,8 +681,13 @@ const EventHandlers = {
         
         // Verify OTP button
         document.getElementById('verify_otp').addEventListener('click', async () => {
-            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+            let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
             const code = document.getElementById('otp').value.replace(/\D/g, '');
+            
+            // Convert UK format (07...) to international format (447...)
+            if (mobile.startsWith('07')) {
+                mobile = '44' + mobile.substring(1);
+            }
             
             if (!code || code.length !== 6) {
                 Utils.showError('otp_error', 'Please enter a 6-digit code');
@@ -699,13 +729,20 @@ const EventHandlers = {
     initStep4() {
         // Verify Identity button
         document.getElementById('verify_identity').addEventListener('click', async () => {
+            let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+            
+            // Convert UK format (07...) to international format (447...)
+            if (mobile.startsWith('07')) {
+                mobile = '44' + mobile.substring(1);
+            }
+            
             const data = {
                 title: document.getElementById('title').value,
                 firstName: document.getElementById('first_name').value,
                 middleName: document.getElementById('middle_name').value,
                 lastName: document.getElementById('last_name').value,
                 dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                mobile: document.getElementById('mobile').value.replace(/\D/g, ''),
+                mobile: mobile,
                 email: document.getElementById('email').value,
                 buildingNumber: document.getElementById('building_number').value,
                 buildingName: document.getElementById('building_name').value,
@@ -808,13 +845,20 @@ const EventHandlers = {
             
             try {
                 // Prepare data for credit report
+                let mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+                
+                // Convert UK format (07...) to international format (447...)
+                if (mobile.startsWith('07')) {
+                    mobile = '44' + mobile.substring(1);
+                }
+                
                 const reportData = {
                     title: document.getElementById('title').value,
                     firstName: document.getElementById('first_name').value,
                     middleName: document.getElementById('middle_name').value,
                     lastName: document.getElementById('last_name').value,
                     dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                    mobile: document.getElementById('mobile').value.replace(/\D/g, ''),
+                    mobile: mobile,
                     email: document.getElementById('email').value,
                     buildingNumber: document.getElementById('building_number').value,
                     buildingName: document.getElementById('building_name').value,
