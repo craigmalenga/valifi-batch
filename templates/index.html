@@ -17,6 +17,13 @@
       --green-color: #ACBD31;
     }
     
+    /* FORCE VISIBILITY OF FORM */
+    #step1 {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -32,6 +39,47 @@
       background: white;
       border-radius: 24px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    
+    /* Ensure form steps are visible */
+    .form-step {
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    .form-step.active {
+      display: block !important;
+    }
+    
+    .section-heading {
+      color: rebeccapurple;
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    
+    .form-input, .form-select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      font-size: 1rem;
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+    }
+    
+    .title-button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
     }
     
     .title-btn {
@@ -75,19 +123,93 @@
       color: white;
     }
     
-    /* Show error in console if CSS doesn't load */
-    @supports not (color: var(--primary-color)) {
-      body::before {
-        content: "CSS variables not supported or CSS not loaded properly";
-        color: red;
-        display: block;
-        padding: 20px;
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    /* Progress bar styles */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: #f8f9fa;
+      border-radius: 16px;
+    }
+    
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.125rem;
+    }
+    
+    .progress-step.active .step-number {
+      background: var(--primary-color);
+      color: white;
+    }
+    
+    .progress-connector {
+      flex: 1;
+      height: 3px;
+      background: #e9ecef;
+      margin: 0 -1rem;
+    }
+    
+    .error-message {
+      color: #dc3545;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 1rem;
+        padding: 1.5rem;
+      }
+      
+      .progress-bar {
+        margin-bottom: 2rem;
+        padding: 1rem;
+      }
+      
+      .button-row {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Emergency message if nothing loads -->
+    <noscript>
+      <div style="padding: 20px; background: #f8d7da; color: #721c24; border-radius: 8px;">
+        JavaScript is required for this application to work.
+      </div>
+    </noscript>
+    
     <form id="searchForm" autocomplete="on" novalidate>
       <!-- Mobile-Responsive Progress Indicator -->
       <div class="progress-bar">
@@ -117,8 +239,13 @@
         </div>
       </div>
 
+      <!-- Debug: Test if content shows -->
+      <div style="padding: 20px; background: yellow; margin: 20px 0;">
+        If you can see this yellow box, the page is loading but the form is hidden!
+      </div>
+
       <!-- === STEP 1: Personal Info === -->
-      <div class="form-step" id="step1">
+      <div class="form-step active" id="step1" style="display: block !important;">
         <div class="step-header">
           <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
           <p class="step-subtitle">Let's start with your personal information</p>
@@ -450,11 +577,33 @@
   
   <!-- Debug script to check if resources loaded -->
   <script>
+    console.log('Inline script running...');
+    
     window.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded');
+      
+      // Ensure step 1 is visible
+      const step1 = document.getElementById('step1');
+      if (step1) {
+        step1.style.display = 'block';
+        console.log('Step 1 made visible');
+      } else {
+        console.error('Step 1 element not found!');
+      }
+      
       // Check if main app.js loaded
       if (typeof EventHandlers === 'undefined') {
         console.error('app.js failed to load! Check the file path.');
-        alert('JavaScript failed to load. Please check the console for errors.');
+        // Basic fallback functionality
+        document.querySelectorAll('.title-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('title').value = this.dataset.value;
+          });
+        });
+      } else {
+        console.log('app.js loaded successfully');
       }
       
       // Check if CSS loaded
@@ -463,7 +612,9 @@
       document.body.appendChild(testEl);
       const styles = window.getComputedStyle(testEl);
       if (styles.backgroundColor !== 'rgb(33, 153, 232)') {
-        console.error('CSS may not have loaded properly');
+        console.warn('External CSS may not have loaded properly, using inline styles');
+      } else {
+        console.log('CSS loaded successfully');
       }
       document.body.removeChild(testEl);
     });
