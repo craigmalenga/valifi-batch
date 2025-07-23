@@ -70,6 +70,7 @@ body {
     box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
+    min-height: 600px; /* Ensure consistent height */
 }
 
 @media (max-width: 768px) {
@@ -77,6 +78,7 @@ body {
         margin: 1rem;
         padding: 2rem 1.5rem;
         border-radius: var(--radius-lg);
+        min-height: 500px;
     }
 }
 
@@ -90,6 +92,7 @@ body {
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     position: relative;
+    z-index: 10;
 }
 
 .progress-step {
@@ -237,6 +240,7 @@ h1, h2, h3, h4 {
 .form-step {
     display: none;
     animation: fadeIn var(--transition-base);
+    min-height: 400px; /* Ensure consistent step height */
 }
 
 @keyframes fadeIn {

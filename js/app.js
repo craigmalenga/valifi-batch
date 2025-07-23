@@ -633,20 +633,14 @@ const EventHandlers = {
                 console.log('Converted mobile to international format:', mobile);
             }
             
-            // Show debug info
-            const debugDiv = document.getElementById('mobile_debug');
-            const formattedSpan = document.getElementById('mobile_formatted');
-            if (debugDiv && formattedSpan) {
-                formattedSpan.textContent = mobile;
-                debugDiv.style.display = 'block';
-            }
-            
             Utils.showLoading('Sending verification code...');
             
             try {
                 const result = await API.sendOTP(mobile);
                 
-                if (result.data && result.data.result === 'SENT') {
+                // More flexible success detection
+                if (result.status === true || result.status === "true" || 
+                    (result.data && (result.data.result === 'SENT' || result.data.status === true))) {
                     AppState.otpSent = true;
                     document.getElementById('otp_verification').style.display = 'block';
                     document.getElementById('otp_message').textContent = '✓ Code sent! Check your phone.';
@@ -699,7 +693,9 @@ const EventHandlers = {
             try {
                 const result = await API.verifyOTP(mobile, code);
                 
-                if (result.data && result.data.result === 'PASS') {
+                // More flexible success detection for OTP verification
+                if (result.status === true || result.status === "true" || 
+                    (result.data && (result.data.result === 'PASS' || result.data.result === 'VERIFIED' || result.data.status === true))) {
                     AppState.otpVerified = true;
                     document.getElementById('otp_status').textContent = '✓ Mobile Verified Successfully';
                     document.getElementById('otp_status').className = 'status-message success';

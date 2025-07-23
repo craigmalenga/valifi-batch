@@ -369,8 +369,12 @@ def otp_request():
         result, status = valifi_client.request_otp(mobile)
         logger.info(f"OTP response status: {status}, result: {result}")
         
+        # Always return success with status true if we got a 200 response
         if status == 200:
-            return jsonify(result), status
+            # Ensure we always have a status field
+            if "status" not in result:
+                result["status"] = True
+            return jsonify(result), 200
         else:
             logger.error(f"OTP request failed with status {status}: {result}")
             return jsonify({"error": "OTP request failed", "details": result}), status
