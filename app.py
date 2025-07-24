@@ -409,7 +409,7 @@ def validate_identity():
     # Build client reference from name
     first_name = data.get("firstName", "")
     last_name = data.get("lastName", "")
-    client_ref = f"{first_name}.{last_name}" if first_name and last_name else "identityCheck"
+    client_ref = f"{first_name}_{last_name}" if first_name and last_name else "identityCheck"
     
     # Build payload matching the exact format from documentation
     payload = {
