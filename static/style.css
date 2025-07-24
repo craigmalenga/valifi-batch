@@ -71,12 +71,17 @@ body {
     min-height: 600px;
 }
 
-/* Form Container - Center everything */
+/* Form Container */
 #searchForm {
     width: 100%;
+}
+
+/* Form Steps Container - Centers the form content */
+.form-steps-container {
+    width: 100%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
 }
 
 /* Progress bar should be full width at the top */
@@ -91,23 +96,16 @@ body {
     width: 100%;
 }
 
-/* Form steps should be centered below progress bar */
+/* Form steps */
 .form-step {
     display: none;
     animation: fadeIn var(--transition-base);
     min-height: 400px;
     width: 100%;
     max-width: 600px;
-    margin: 0 auto;  /* Center the form step */
 }
 
-/* Ensure form steps are visible and centered when active */
-.form-step {
-    display: none;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
+/* Ensure form steps are visible when active */
 .form-step.active {
     display: block !important;
 }
