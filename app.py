@@ -542,7 +542,7 @@ def query_valifi():
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
     
-    # Build payload with ALL fields from the working example
+    # Build payload
     payload = {
         "includeJsonReport": True,
         "includePdfReport": True,
@@ -555,25 +555,63 @@ def query_valifi():
         "dateOfBirth": data.get("dateOfBirth"),
         "currentAddress": {
             "flat": data.get("flat", ""),
-            "houseName": data.get("building_name", ""),  # Added
-            "houseNumber": data.get("building_number", ""),  # Added
+            "houseName": data.get("building_name", ""),
+            "houseNumber": data.get("building_number", ""),
             "street": data.get("street", ""),
-            "street2": None,  # Added
-            "district": None,  # Added
+            "street2": None,
+            "district": None,
             "postTown": data.get("post_town", ""),
-            "county": None,  # Added
+            "county": None,
             "postCode": data.get("post_code", ""),
-            "addressID": None  # Added (use None instead of undefined)
+            "addressID": None
         },
         "previousAddress": None,
         "previousPreviousAddress": None
     }
     
-    # Log for debugging
     logger.info(f"Requesting credit report for: {payload['forename']} {payload['surname']}")
     logger.info(f"Report request payload: {json.dumps(payload, indent=2)}")
     
+    # Get the report
     result = valifi_client.get_credit_report(payload)
+    logger.info("Credit report retrieved successfully")
+    
+    # Check if we have a PDF to upload
+    report_data = result.get("data", {})
+    pdf_base64 = report_data.get("pdfReport")
+    
+    if pdf_base64:
+        logger.info("PDF found in response, attempting S3 upload")
+        if s3_client:
+            try:
+                pdf_bytes = base64.b64decode(pdf_base64)
+                filename = f"{uuid.uuid4().hex}.pdf"
+                key = f"reports/{filename}"
+                
+                s3_client.put_object(
+                    Bucket=Config.AWS_S3_BUCKET,
+                    Key=key,
+                    Body=pdf_bytes,
+                    ContentType="application/pdf"
+                )
+                
+                report_data["pdfUrl"] = f"https://{Config.AWS_S3_BUCKET}.s3.{Config.AWS_REGION}.amazonaws.com/{key}"
+                logger.info("PDF uploaded successfully to S3")
+                
+            except Exception as e:
+                logger.error(f"S3 upload failed: {e}")
+                report_data["s3_error"] = str(e)
+        else:
+            logger.warning("S3 client not configured")
+    else:
+        logger.info("No pdfReport field in response - may need to fetch separately")
+        # According to the TransUnion docs, you might need to fetch the PDF separately
+        # using the report ID
+        if report_data.get("id"):
+            logger.info(f"Report ID: {report_data['id']} - PDF may be available via separate endpoint")
+    
+    # ALWAYS return the result, regardless of PDF status
+    return jsonify(result), 200
 
 @app.route("/upload_summary", methods=["POST"])
 @handle_errors
