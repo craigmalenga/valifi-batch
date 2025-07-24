@@ -734,6 +734,7 @@ const EventHandlers = {
         });
     },
 
+
     initStep4() {
         // Verify Identity button
         document.getElementById('verify_identity').addEventListener('click', async () => {
@@ -766,7 +767,6 @@ const EventHandlers = {
                 const statusTitle = statusDiv.querySelector('.status-title');
                 const statusMessage = statusDiv.querySelector('.status-message');
                 const scoreDisplay = statusDiv.querySelector('.score-display');
-                const scoreValue = statusDiv.querySelector('.score-value');
                 
                 statusDiv.style.display = 'block';
                 
@@ -780,9 +780,9 @@ const EventHandlers = {
                     statusTitle.textContent = 'Identity Verified';
                     statusMessage.textContent = 'Your identity has been successfully verified.';
                     
-                    if (result.identityScore !== undefined) {
-                        scoreDisplay.style.display = 'flex';
-                        scoreValue.textContent = result.identityScore;
+                    // Hide score display completely
+                    if (scoreDisplay) {
+                        scoreDisplay.style.display = 'none';
                     }
                     
                     document.getElementById('next_to_step5').disabled = false;
@@ -790,12 +790,11 @@ const EventHandlers = {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
                     statusTitle.textContent = 'Verification Failed';
-                    statusMessage.textContent = `Identity score (${result.identityScore || 0}) is below the required minimum (${result.minimumScore || AppState.minimumScore}).`;
+                    statusMessage.innerHTML = 'Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
                     
-                    if (result.identityScore !== undefined) {
-                        scoreDisplay.style.display = 'flex';
-                        scoreValue.textContent = result.identityScore;
-                        scoreValue.style.color = '#dc3545';
+                    // Hide score display completely
+                    if (scoreDisplay) {
+                        scoreDisplay.style.display = 'none';
                     }
                     
                     document.getElementById('next_to_step5').disabled = true;
@@ -805,6 +804,12 @@ const EventHandlers = {
                 document.querySelector('.status-icon').textContent = '✗';
                 document.querySelector('.status-title').textContent = 'Verification Error';
                 document.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
+                
+                // Hide score display in error case too
+                const scoreDisplay = document.querySelector('.score-display');
+                if (scoreDisplay) {
+                    scoreDisplay.style.display = 'none';
+                }
             } finally {
                 Utils.hideLoading();
             }

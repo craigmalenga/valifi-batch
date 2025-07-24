@@ -30,7 +30,7 @@ class Config:
     
     # FLG API
     FLG_API_URL = os.getenv("FLG_API_URL", "https://cars.flg360.co.uk/api/APILeadCreateUpdate.php")
-    FLG_API_KEY = os.getenv("FLG_API_KEY", "T9jrI9IdgOlnODCEuziNDcn5Vt7m4sgA")
+    FLG_API_KEY = os.getenv("FLG_API_KEY", "")
     FLG_LEADGROUP_ID = os.getenv("FLG_LEADGROUP_ID", "57862")
     FLG_UPDATE_URL = os.getenv("FLG_UPDATE_URL")
     
@@ -204,10 +204,10 @@ class FLGClient:
             if lead.get(field):
                 ET.SubElement(lead_el, field).text = str(lead[field])
         
-        # Date of birth parsing
+        # Date of birth parsing - FIXED TO HANDLE YYYY-MM-DD FORMAT
         dob = lead.get("dateOfBirth", "")
         if dob and "-" in dob:
-            day, mon, year = dob.split("-")
+            year, mon, day = dob.split("-")  # Changed order to handle YYYY-MM-DD
             ET.SubElement(lead_el, "dobday").text = day
             ET.SubElement(lead_el, "dobmonth").text = mon
             ET.SubElement(lead_el, "dobyear").text = year
@@ -235,6 +235,9 @@ class FLGClient:
             headers={"Content-Type": "application/xml"},
             timeout=30
         )
+
+
+
 
 # ─── Lenders Service ──────────────────────────────────────────────────────────
 class LendersService:
@@ -413,10 +416,10 @@ def validate_identity():
     
     # Build payload matching the exact format from documentation
     payload = {
-        "includeJsonReport": True,  # Boolean, not string
-        "includePdfReport": False,  # Boolean, not string
-        "includeMobileId": True,    # Boolean, not string
-        "includeEmailId": True,     # Boolean, not string
+        "includeJsonReport": True,
+        "includePdfReport": False,
+        "includeMobileId": True,
+        "includeEmailId": True,
         "clientReference": client_ref,
         "title": data.get("title", ""),
         "forename": data.get("firstName", ""),
@@ -424,25 +427,24 @@ def validate_identity():
         "surname": data.get("lastName", ""),
         "emailAddress": data.get("email", ""),
         "mobileNumber": data.get("mobile", ""),
-        "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
+        "dateOfBirth": data.get("dateOfBirth"),
         "currentAddress": {
             "flat": data.get("flat", "") or "",
             "houseName": data.get("building_name", "") or "",
             "houseNumber": data.get("building_number", "") or "",
             "street": data.get("street", "") or "",
-            "street2": None,  # Use null, not empty string
-            "district": None,  # Use null, not empty string
+            "street2": None,
+            "district": None,
             "postTown": data.get("post_town", "") or "",
-            "county": None,   # Use null, not empty string
+            "county": None,
             "postCode": data.get("post_code", "") or "",
             "addressID": None
         },
-        "previousAddress": None,  # Use null, not empty string
-        "previousPreviousAddress": None  # Use null, not empty string
+        "previousAddress": None,
+        "previousPreviousAddress": None
     }
     
     logger.info(f"Identity validation for: {payload['forename']} {payload['surname']}")
-    logger.info(f"Validation payload: {json.dumps(payload, indent=2)}")
     
     result, status = valifi_client.validate_identity_with_mobileid(payload)
     
@@ -469,56 +471,17 @@ def validate_identity():
             except:
                 continue
         
-        # Get identity result
-        result_paths = [
-            lambda r: r.get("data", {}).get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail"),
-            lambda r: r.get("data", {}).get("summaryReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail"),
-            lambda r: r.get("jsonReport", {}).get("data", {}).get("OtherChecks", {}).get("IdentityResult", "Fail")
-        ]
-        
-        identity_result = "Fail"
-        for path in result_paths:
-            try:
-                res = path(result)
-                if res and res != "Fail":
-                    identity_result = res
-                    break
-            except:
-                continue
-        
-        logger.info(f"Identity validation raw response: {json.dumps(result, indent=2)}")
-        
-        # Extract MobileID data
-        mobile_id_paths = [
-            lambda r: r.get("data", {}).get("jsonReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {}),
-            lambda r: r.get("data", {}).get("summaryReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {}),
-            lambda r: r.get("jsonReport", {}).get("data", {}).get("Phone", {}).get("MobileID", {})
-        ]
-        
-        mobile_id_data = {}
-        for path in mobile_id_paths:
-            try:
-                data = path(result)
-                if data:
-                    mobile_id_data = data
-                    break
-            except:
-                continue
-        
         # Check if identity score meets minimum requirement
         passed = identity_score >= Config.VALIFI_MIN_ID_SCORE
         
+        logger.info(f"Identity validation result: Score={identity_score}, Passed={passed}")
+        
+        # Don't send the actual score to frontend
         response = {
             "success": True,
             "passed": passed,
-            "identityScore": identity_score,
-            "identityResult": identity_result,
-            "minimumScore": Config.VALIFI_MIN_ID_SCORE,
-            "mobileIdData": mobile_id_data,
-            "rawData": result
+            "minimumScore": Config.VALIFI_MIN_ID_SCORE
         }
-        
-        logger.info(f"Identity validation result: Score={identity_score}, Passed={passed}")
         
         return jsonify(response), 200
         
@@ -526,9 +489,9 @@ def validate_identity():
         logger.error(f"Error parsing validation response: {e}")
         return jsonify({
             "error": "Failed to parse validation response",
-            "details": str(e),
-            "rawData": result
+            "details": str(e)
         }), 500
+
 
 @app.route("/query", methods=["POST"])
 @handle_errors
@@ -633,15 +596,21 @@ def upload_summary():
     rest = parts[1] if len(parts) > 1 else parts[0]
     first, last = (rest.split(" ", 1) + [""])[:2]
     
-    # Parse date
+    # Parse date - handle ISO format from credit report
     dob_raw = summary.get("dateOfBirth", "")
-    dob_iso = ""
-    if dob_raw and "/" in dob_raw:
-        try:
-            d, m, y = dob_raw.split("/")
-            dob_iso = f"{y}-{m.zfill(2)}-{d.zfill(2)}"
-        except ValueError:
-            logger.error(f"Invalid date format: {dob_raw}")
+    dob_formatted = ""
+    
+    if dob_raw:
+        if "T" in dob_raw:  # ISO format like "1975-08-01T00:00:00"
+            dob_formatted = dob_raw.split("T")[0]  # Get "1975-08-01"
+        elif "/" in dob_raw:  # DD/MM/YYYY format
+            try:
+                d, m, y = dob_raw.split("/")
+                dob_formatted = f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+            except ValueError:
+                logger.error(f"Invalid date format: {dob_raw}")
+        else:
+            dob_formatted = dob_raw  # Assume already in correct format
     
     # Build data32 (account information)
     accounts = summary.get("accounts", [])
@@ -672,7 +641,7 @@ def upload_summary():
         "title": title,
         "firstname": first,
         "lastname": last,
-        "dateOfBirth": dob_iso,
+        "dateOfBirth": dob_formatted,  # Now in YYYY-MM-DD format
         "phone1": summary.get("phone1", ""),
         "email": summary.get("email", ""),
         "address": summary.get("address", ""),
