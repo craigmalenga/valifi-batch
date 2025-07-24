@@ -540,49 +540,33 @@ def query_valifi():
     required_fields = ["firstName", "lastName", "dateOfBirth", "street", "post_town", "post_code"]
     for field in required_fields:
         if not data.get(field):
-            # Try alternate field names
-            if field == "post_town" and not data.get("postTown"):
-                return jsonify({"error": f"postTown is required"}), 400
-            elif field == "post_code" and not data.get("postCode"):
-                return jsonify({"error": f"postCode is required"}), 400
-            elif not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
+            return jsonify({"error": f"{field} is required"}), 400
     
-    # Build payload
+    # Build payload EXACTLY as shown in your example
     payload = {
-        "includeJsonReport": True,
-        "includePdfReport": True,
+        "includeJsonReport": True,     
+        "includePdfReport": True,      
         "includeSummaryReport": True,
-        "title": data.get("title", "") or "",
-        "clientReference": data.get("clientReference", "report"),
-        "forename": data["firstName"],
+        "clientReference": "test",
+        "title": data.get("title", ""),
+        "forename": data.get("firstName", ""),
         "middleName": data.get("middleName", ""),
-        "surname": data["lastName"],
-        "dateOfBirth": data["dateOfBirth"],
-        "mobileNumber": data.get("mobile", ""),
-        "emailAddress": data.get("email", ""),
+        "surname": data.get("lastName", ""),
+        "dateOfBirth": data.get("dateOfBirth"),
         "currentAddress": {
-            "buildingNumber": data.get("building_number", "") or "",
-            "buildingName": data.get("building_name", "") or "",
-            "flat": data.get("flat", "") or "",
-            "street": data.get("street", "") or "",
-            "district": data.get("district", "") or "",
-            "postTown": data.get("post_town", "") or "",
-            "county": data.get("county", "") or "",
-            "postCode": data.get("post_code", "") or ""
+            "flat": data.get("flat", ""),
+            "street": data.get("street", ""),
+            "postTown": data.get("post_town", ""),
+            "postCode": data.get("post_code", "")
         },
         "previousAddress": None,
         "previousPreviousAddress": None
     }
     
-    # Clean up empty address fields
-    payload["currentAddress"] = {k: v for k, v in payload["currentAddress"].items() if v}
-    
-    if payload["title"].lower() == "other":
-        payload["title"] = ""
-    
     # Get credit report
     logger.info(f"Requesting credit report for: {payload['forename']} {payload['surname']}")
+    logger.info(f"Report request payload: {json.dumps(payload, indent=2)}")
+    
     result = valifi_client.get_credit_report(payload)
     
     # Upload PDF to S3 if present
