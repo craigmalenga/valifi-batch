@@ -413,10 +413,10 @@ def validate_identity():
     
     # Build payload matching the exact format from documentation
     payload = {
-        "includeJsonReport": True,
-        "includePdfReport": False,
-        "includeMobileId": True,
-        "includeEmailId": True,
+        "includeJsonReport": True,  # Boolean, not string
+        "includePdfReport": False,  # Boolean, not string
+        "includeMobileId": True,    # Boolean, not string
+        "includeEmailId": True,     # Boolean, not string
         "clientReference": client_ref,
         "title": data.get("title", ""),
         "forename": data.get("firstName", ""),
@@ -426,19 +426,19 @@ def validate_identity():
         "mobileNumber": data.get("mobile", ""),
         "dateOfBirth": data.get("dateOfBirth"),  # Format: YYYY-MM-DD
         "currentAddress": {
-            "buildingnumber": data.get("building_number", "") or "",
-            "buildingname": data.get("building_name", "") or "",
-            "subbuilding": data.get("flat", "") or "",
+            "flat": data.get("flat", "") or "",
+            "houseName": data.get("building_name", "") or "",
+            "houseNumber": data.get("building_number", "") or "",
             "street": data.get("street", "") or "",
-            "street1": data.get("street", "") or "",
-            "posttown": data.get("post_town", "") or "",
-            "county": "",
-            "postcode": data.get("post_code", "") or "",
-            "countrycode": "GB",
-            "residencyyears": ""
+            "street2": None,  # Use null, not empty string
+            "district": None,  # Use null, not empty string
+            "postTown": data.get("post_town", "") or "",
+            "county": None,   # Use null, not empty string
+            "postCode": data.get("post_code", "") or "",
+            "addressID": None
         },
-        "previousAddress": None,
-        "previousPreviousAddress": None
+        "previousAddress": None,  # Use null, not empty string
+        "previousPreviousAddress": None  # Use null, not empty string
     }
     
     logger.info(f"Identity validation for: {payload['forename']} {payload['surname']}")

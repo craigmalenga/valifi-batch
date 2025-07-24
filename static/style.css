@@ -79,9 +79,48 @@ body {
     align-items: center;
 }
 
-/* Progress bar should be full width */
-#searchForm .progress-bar {
+/* Progress bar should be full width at the top */
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 3rem;
+    padding: 2rem 1rem;
+    background: transparent;
+    position: relative;
     width: 100%;
+}
+
+/* Form steps should be centered below progress bar */
+.form-step {
+    display: none;
+    animation: fadeIn var(--transition-base);
+    min-height: 400px;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;  /* Center the form step */
+}
+
+/* Ensure form steps are visible and centered when active */
+.form-step {
+    display: none;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.form-step.active {
+    display: block !important;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
 }
 
 @media (max-width: 768px) {
@@ -97,18 +136,7 @@ body {
     }
 }
 
-/* ─── Progress Bar ────────────────────────────────────────────────────────── */
-.progress-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 3rem;
-    padding: 2rem 1rem;
-    background: transparent;
-    position: relative;
-    width: 100%;
-}
-
+/* ─── Progress Steps ────────────────────────────────────────────────────────── */
 .progress-step {
     display: flex;
     flex-direction: column;
@@ -244,38 +272,6 @@ h1, h2, h3, h4 {
     
     .step-subtitle {
         font-size: 1rem;
-    }
-}
-
-/* ─── Form Elements ────────────────────────────────────────────────────────── */
-.form-step {
-    display: none;
-    animation: fadeIn var(--transition-base);
-    min-height: 400px;
-    width: 100%;
-    max-width: 600px;
-}
-
-/* Ensure form steps are visible and centered when active */
-.form-step {
-    display: none;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-.form-step.active {
-    display: block !important;
-    margin: 0 auto;
-}
-
-@keyframes fadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(20px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
     }
 }
 
