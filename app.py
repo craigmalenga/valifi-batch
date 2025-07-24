@@ -542,6 +542,51 @@ def query_valifi():
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
     
+    # Build payload with ALL fields from the working example
+    payload = {
+        "includeJsonReport": True,
+        "includePdfReport": True,
+        "includeSummaryReport": True,
+        "clientReference": "test",
+        "title": data.get("title", ""),
+        "forename": data.get("firstName", ""),
+        "middleName": data.get("middleName", ""),
+        "surname": data.get("lastName", ""),
+        "dateOfBirth": data.get("dateOfBirth"),
+        "currentAddress": {
+            "flat": data.get("flat", ""),
+            "houseName": data.get("building_name", ""),  # Added
+            "houseNumber": data.get("building_number", ""),  # Added
+            "street": data.get("street", ""),
+            "street2": None,  # Added
+            "district": None,  # Added
+            "postTown": data.get("post_town", ""),
+            "county": None,  # Added
+            "postCode": data.get("post_code", ""),
+            "addressID": None  # Added (use None instead of undefined)
+        },
+        "previousAddress": None,
+        "previousPreviousAddress": None
+    }
+    
+    # Log for debugging
+    logger.info(f"Requesting credit report for: {payload['forename']} {payload['surname']}")
+    logger.info(f"Report request payload: {json.dumps(payload, indent=2)}")
+    
+    result = valifi_client.get_credit_report(payload)
+
+@app.route("/query", methods=["POST"])
+@handle_errors
+def query_valifi():
+    """Get credit report and upload to S3"""
+    data = request.json or {}
+    
+    # Validate required fields
+    required_fields = ["firstName", "lastName", "dateOfBirth", "street", "post_town", "post_code"]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"{field} is required"}), 400
+    
     # Build payload EXACTLY as shown in your example
     payload = {
         "includeJsonReport": True,     
