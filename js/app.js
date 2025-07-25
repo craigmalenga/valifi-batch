@@ -1,4 +1,4 @@
-// js/app.js
+// static/js/app.js
 
 // ─── Application State ─────────────────────────────────────────────────────────
 const AppState = {
@@ -26,6 +26,61 @@ const Utils = {
         overlay.style.display = 'flex';
     },
     
+    async retrieveFinanceInformation() {
+        try {
+            Utils.showLoading('Searching for your vehicle finance records...');
+            
+            const result = await API.getCreditReport(AppState.reportData);
+            
+            if (!result.data) {
+                throw new Error('Failed to retrieve vehicle finance information');
+            }
+            
+            // Process and store results
+            const summaryReport = result.data.summaryReport || result.data;
+            const accounts = summaryReport.accounts || [];
+            AppState.foundLenders = accounts;
+            
+            // Upload to FLG silently in background
+            const mobile = AppState.reportData.mobile;
+            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+            
+            const flgData = {
+                name: summaryReport.name,
+                dateOfBirth: (() => {
+                    if (accounts.length > 0 && accounts[0].dob) {
+                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
+                        return `${dd}/${mm}/${yyyy}`;
+                    }
+                    return '';
+                })(),
+                phone1: ukMobile,
+                email: AppState.reportData.email,
+                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
+                towncity: AppState.reportData.post_town,
+                postcode: AppState.reportData.post_code,
+                accounts: accounts,
+                pdfUrl: result.data.pdfUrl
+            };
+            
+            // Silently upload to FLG
+            try {
+                await API.uploadToFLG(flgData);
+            } catch (error) {
+                console.error('FLG upload failed:', error);
+            }
+            
+            // Move to Step 5 and display results
+            Navigation.showStep('step5');
+            this.displayLenders(AppState.foundLenders);
+            
+        } catch (error) {
+            console.error('Finance retrieval error:', error);
+            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
+        } finally {
+            Utils.hideLoading();
+        }
+
     // Hide loading overlay
     hideLoading() {
         document.getElementById('loading_overlay').style.display = 'none';
@@ -235,6 +290,7 @@ const FormValidation = {
 
 // ─── Step Navigation ───────────────────────────────────────────────────────────
 const Navigation = {
+
     showStep(stepId) {
         console.log(`Attempting to show step: ${stepId}`);
         
@@ -624,8 +680,9 @@ const EventHandlers = {
                     
                     document.getElementById('address_container').style.display = 'block';
                     
-                    // DON'T auto-show manual fields after selection
-                    document.querySelector('.address-edit-option').style.display = 'none';
+                    // Auto-show manual fields after selection
+                    document.getElementById('manual_address_fields').style.display = 'block';
+                    manualToggle.textContent = 'Hide address fields';
                 }
             } catch (error) {
                 Utils.showError('address_error', error.message || 'Address lookup failed');
@@ -685,27 +742,26 @@ const EventHandlers = {
             
             const priorAddressDiv = document.createElement('div');
             priorAddressDiv.className = 'prior-address-item';
-            priorAddressDiv.dataset.index = index;
             priorAddressDiv.innerHTML = `
-                <button type="button" class="prior-address-remove" onclick="EventHandlers.removePriorAddress(${index})">×</button>
+                <button type="button" class="prior-address-remove" onclick="this.parentElement.remove()">×</button>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Street</label>
-                        <input type="text" class="form-input prior-street" placeholder="e.g. High Street" />
+                        <input type="text" class="form-input" placeholder="e.g. High Street" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">Town/City</label>
-                        <input type="text" class="form-input prior-town" placeholder="e.g. London" />
+                        <input type="text" class="form-input" placeholder="e.g. London" />
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Post Code</label>
-                        <input type="text" class="form-input prior-postcode" placeholder="e.g. SW1A 1AA" />
+                        <input type="text" class="form-input" placeholder="e.g. SW1A 1AA" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">Years Lived There</label>
-                        <select class="form-select prior-years">
+                        <select class="form-select">
                             <option value="">Select...</option>
                             <option value="less-than-1">Less than 1 year</option>
                             <option value="1-2">1-2 years</option>
@@ -719,13 +775,6 @@ const EventHandlers = {
             priorList.appendChild(priorAddressDiv);
             AppState.priorAddresses.push({index});
         });
-    },
-    
-    removePriorAddress(index) {
-        const element = document.querySelector(`[data-index="${index}"]`);
-        if (element) {
-            element.remove();
-        }
     },
 
     initStep3() {
@@ -865,26 +914,6 @@ const EventHandlers = {
                 // Keep mobile in UK format for identity validation
                 const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
                 
-                // Collect prior addresses
-                const priorAddressElements = document.querySelectorAll('.prior-address-item');
-                const priorAddresses = [];
-                
-                priorAddressElements.forEach(element => {
-                    const street = element.querySelector('.prior-street').value.trim();
-                    const town = element.querySelector('.prior-town').value.trim();
-                    const postcode = element.querySelector('.prior-postcode').value.trim();
-                    const years = element.querySelector('.prior-years').value;
-                    
-                    if (street && town && postcode) {
-                        priorAddresses.push({
-                            street,
-                            postTown: town,
-                            postCode: postcode,
-                            yearsLived: years
-                        });
-                    }
-                });
-                
                 const data = {
                     title: document.getElementById('title').value,
                     firstName: document.getElementById('first_name').value,
@@ -898,8 +927,7 @@ const EventHandlers = {
                     flat: document.getElementById('flat').value,
                     street: document.getElementById('street').value,
                     post_town: document.getElementById('post_town').value,
-                    post_code: document.getElementById('post_code').value,
-                    priorAddresses: priorAddresses
+                    post_code: document.getElementById('post_code').value
                 };
                 
                 const identityResult = await API.validateIdentity(data);
@@ -937,7 +965,7 @@ const EventHandlers = {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
                     statusTitle.textContent = 'Verification Failed';
-                    statusMessage.innerHTML = 'We were unable to verify your identity. Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
+                    statusMessage.innerHTML = 'Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
                     
                     document.getElementById('next_to_step5').disabled = true;
                 }
@@ -960,67 +988,10 @@ const EventHandlers = {
         document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
         document.getElementById('next_to_step5').addEventListener('click', async () => {
             if (AppState.identityVerified && AppState.reportData) {
-                // Show step 5 first
-                Navigation.showStep('step5');
-                // Then retrieve the finance information
+                // NOW retrieve the finance information when moving to step 5
                 await this.retrieveFinanceInformation();
             }
         });
-    },
-
-    async retrieveFinanceInformation() {
-        try {
-            Utils.showLoading('Searching for your vehicle finance records...');
-            
-            const result = await API.getCreditReport(AppState.reportData);
-            
-            if (!result.data) {
-                throw new Error('Failed to retrieve vehicle finance information');
-            }
-            
-            // Process and store results
-            const summaryReport = result.data.summaryReport || result.data;
-            const accounts = summaryReport.accounts || [];
-            AppState.foundLenders = accounts;
-            
-            // Upload to FLG silently in background
-            const mobile = AppState.reportData.mobile;
-            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-            
-            const flgData = {
-                name: summaryReport.name,
-                dateOfBirth: (() => {
-                    if (accounts.length > 0 && accounts[0].dob) {
-                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                        return `${dd}/${mm}/${yyyy}`;
-                    }
-                    return '';
-                })(),
-                phone1: ukMobile,
-                email: AppState.reportData.email,
-                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
-                towncity: AppState.reportData.post_town,
-                postcode: AppState.reportData.post_code,
-                accounts: accounts,
-                pdfUrl: result.data.pdfUrl
-            };
-            
-            // Silently upload to FLG
-            try {
-                await API.uploadToFLG(flgData);
-            } catch (error) {
-                console.error('FLG upload failed:', error);
-            }
-            
-            // Display results immediately
-            this.displayLenders(AppState.foundLenders);
-            
-        } catch (error) {
-            console.error('Finance retrieval error:', error);
-            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
-        } finally {
-            Utils.hideLoading();
-        }
     },
 
     initStep5() {
@@ -1117,13 +1088,15 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column - ONLY show when NO logo
+            // Name column - only show if no logo or on mobile
             const nameDiv = document.createElement('div');
             nameDiv.className = 'lender-name';
-            if (!logoFile) {
+            if (logoFile) {
+                // Hide name on desktop when logo exists, show on mobile
+                nameDiv.innerHTML = `<span class="desktop-hidden">${displayName}</span>`;
+            } else {
                 nameDiv.textContent = displayName;
             }
-            // If logo exists, leave name column empty
             
             // Date column
             const dateDiv = document.createElement('div');
@@ -1175,8 +1148,9 @@ const EventHandlers = {
                             <div class="lender-grid-item" data-name="${lender.name}">
                                 ${lender.filename ? 
                                     `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="lender-grid-logo">` :
-                                    `<div class="no-logo-placeholder">${lender.name}</div>`
+                                    `<div class="no-logo-placeholder">No Logo</div>`
                                 }
+                                <div class="lender-grid-name">${lender.name}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -1265,8 +1239,9 @@ const EventHandlers = {
                 <div class="final-lender-item">
                     ${lender.filename ? 
                         `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="final-lender-logo">` :
-                        `<div class="final-no-logo">${lender.name}</div>`
+                        `<div class="final-no-logo">No Logo</div>`
                     }
+                    <div class="final-lender-name">${lender.name}</div>
                 </div>
             `).join('');
             
