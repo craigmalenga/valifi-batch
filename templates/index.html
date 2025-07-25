@@ -365,7 +365,7 @@
       <!-- === STEP 0: Welcome Screen === -->
       <div class="form-step active" id="step0">
         <div class="welcome-container">
-          <h1 class="welcome-title">You could be owed £000s from your car finance – it's free to check and takes just 60 seconds.</h1>
+          <h1 class="welcome-title">You could be owed £000s from your car finance – it's free to check and takes just 60 seconds</h1>
           
           <div class="welcome-benefits">
             <div class="benefit-item">
@@ -383,7 +383,7 @@
           </div>
           
           <div class="welcome-button-container">
-            <button type="button" class="btn btn-primary btn-large" id="start_journey">
+            <button type="button" class="btn btn-primary btn-large" id="start_journey" onclick="console.log('Fallback click handler'); if(typeof Navigation !== 'undefined') Navigation.showStep('step1'); else alert('Please refresh the page');">
               Let's get started
             </button>
           </div>

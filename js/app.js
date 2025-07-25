@@ -292,16 +292,22 @@ const FormValidation = {
 const Navigation = {
 
     showStep(stepId) {
+        console.log(`Attempting to show step: ${stepId}`);
+        
         // Hide progress bar for step 0 (welcome screen)
         const progressBar = document.getElementById('main_progress_bar');
-        if (stepId === 'step0') {
-            progressBar.style.display = 'none';
-        } else {
-            progressBar.style.display = 'flex';
+        if (progressBar) {
+            if (stepId === 'step0') {
+                progressBar.style.display = 'none';
+            } else {
+                progressBar.style.display = 'flex';
+            }
         }
         
         // First, hide ALL steps completely
         const allSteps = document.querySelectorAll('.form-step');
+        console.log(`Found ${allSteps.length} form steps`);
+        
         allSteps.forEach(step => {
             step.style.display = 'none';
             step.style.visibility = 'hidden';
@@ -311,6 +317,7 @@ const Navigation = {
         // Then show only the requested step
         const stepElement = document.getElementById(stepId);
         if (stepElement) {
+            console.log(`Showing step element: ${stepId}`);
             stepElement.style.display = 'block';
             stepElement.style.visibility = 'visible';
             stepElement.classList.add('active');
@@ -329,6 +336,8 @@ const Navigation = {
             if (container) {
                 container.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+        } else {
+            console.error(`Step element not found: ${stepId}`);
         }
     },    
 
@@ -524,9 +533,18 @@ const EventHandlers = {
 
     initStep0() {
         // Welcome screen - "Let's get started" button
-        document.getElementById('start_journey').addEventListener('click', () => {
-            Navigation.showStep('step1');
-        });
+        console.log('Initializing Step 0...');
+        
+        const startButton = document.getElementById('start_journey');
+        if (startButton) {
+            console.log('Found start_journey button, adding event listener');
+            startButton.addEventListener('click', () => {
+                console.log('Start journey button clicked');
+                Navigation.showStep('step1');
+            });
+        } else {
+            console.error('start_journey button not found!');
+        }
     },
 
     initStep1() {
@@ -1236,8 +1254,21 @@ const EventHandlers = {
 
 // ─── Initialize Application ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    EventHandlers.init();
+    console.log('DOM loaded, initializing app...');
+    
+    // Initialize event handlers
+    try {
+        EventHandlers.init();
+        console.log('EventHandlers initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize EventHandlers:', error);
+    }
     
     // Start with welcome screen (step 0)
-    Navigation.showStep('step0');
+    try {
+        Navigation.showStep('step0');
+        console.log('Showing step 0 (welcome screen)');
+    } catch (error) {
+        console.error('Failed to show step 0:', error);
+    }
 });
