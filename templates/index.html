@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Vehicle Finance Check Service</title>
   <link rel="stylesheet" href="/static/style.css" />
   <!-- Fallback inline styles for immediate visual feedback -->
@@ -43,6 +43,11 @@
       background: white;
       border-radius: 24px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      overflow-x: hidden;
+    }
+    
+    .container * {
+      max-width: 100%;
     }
     
     /* Ensure form steps are visible */
@@ -141,8 +146,10 @@
       justify-content: space-between;
       margin-bottom: 3rem;
       padding: 2rem;
-      background: #f8f9fa;
+      background: transparent;
       border-radius: 16px;
+      gap: 60px;
+      overflow: visible;
     }
     
     .progress-step {
@@ -150,6 +157,23 @@
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
+      position: relative;
+    }
+    
+    /* Create connector lines with consistent gaps */
+    .progress-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      width: 60px;
+      height: 2px;
+      background: #e9ecef;
+      left: 100%;
+      top: 24px;
+      z-index: 1;
+    }
+    
+    .progress-step.completed:not(:last-child)::after {
+      background: #28a745;
     }
     
     .step-number {
@@ -168,13 +192,12 @@
     .progress-step.active .step-number {
       background: var(--primary-color);
       color: white;
+      box-shadow: 0 0 0 4px rgba(33, 153, 232, 0.1);
     }
     
-    .progress-connector {
-      flex: 1;
-      height: 3px;
-      background: #e9ecef;
-      margin: 0 -1rem;
+    .progress-step.completed .step-number {
+      background: #28a745;
+      color: white;
     }
     
     .error-message {
@@ -191,22 +214,31 @@
       justify-content: center;
       flex-direction: column;
       align-items: center;
+      overflow-x: hidden;
     }
     
     .form-step {
       max-width: 600px;
       width: 100%;
+      overflow-x: hidden;
     }
     
     @media (max-width: 768px) {
       .container {
         margin: 1rem;
         padding: 1.5rem;
+        max-width: calc(100vw - 2rem);
       }
       
       .progress-bar {
         margin-bottom: 2rem;
         padding: 1rem;
+        gap: 0.5rem;
+      }
+      
+      /* Hide connector lines on mobile */
+      .progress-step:not(:last-child)::after {
+        display: none;
       }
       
       .button-row {
@@ -235,22 +267,18 @@
           <span class="step-number">1</span>
           <span class="step-label">Personal Info</span>
         </div>
-        <div class="progress-connector"></div>
         <div class="progress-step" data-step="2">
           <span class="step-number">2</span>
           <span class="step-label">Address</span>
         </div>
-        <div class="progress-connector"></div>
         <div class="progress-step" data-step="3">
           <span class="step-number">3</span>
           <span class="step-label">Mobile Verification</span>
         </div>
-        <div class="progress-connector"></div>
         <div class="progress-step" data-step="4">
           <span class="step-number">4</span>
           <span class="step-label">Identity Check</span>
         </div>
-        <div class="progress-connector"></div>
         <div class="progress-step" data-step="5">
           <span class="step-number">5</span>
           <span class="step-label">Complete</span>
