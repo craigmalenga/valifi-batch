@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=0.85, maximum-scale=5.0, user-scalable=yes"/>
   <title>Vehicle Finance Check Service</title>
   <link rel="stylesheet" href="/static/style.css" />
   <!-- Fallback inline styles for immediate visual feedback -->
@@ -15,6 +15,77 @@
       --burgundy-color: #880A51;
       --dark-color: #21212D;
       --green-color: #ACBD31;
+    }
+    
+    /* Front Loading Page Styles */
+    .loading-page {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-page.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-content-container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    
+    .loading-logo {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .loading-title {
+      font-size: 2rem;
+      color: var(--purple-color);
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    
+    .loading-subtitle {
+      font-size: 1.25rem;
+      color: #6c757d;
+      margin-bottom: 3rem;
+    }
+    
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 2rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-message {
+      font-size: 1rem;
+      color: #6c757d;
     }
     
     /* FORCE VISIBILITY OF FORM */
@@ -85,9 +156,9 @@
     }
     
     .title-button-group {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 0.5rem;
-      flex-wrap: wrap;
       margin-bottom: 1rem;
     }
     
@@ -99,7 +170,10 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s;
-      margin-right: 0.5rem;
+    }
+    
+    .title-btn-other {
+      grid-column: 2 / 4;
     }
     
     .title-btn:hover {
@@ -139,7 +213,7 @@
       margin-top: 2rem;
     }
     
-    /* Progress bar styles */
+    /* Progress bar styles - uniform spacing */
     .progress-bar {
       display: flex;
       align-items: center;
@@ -148,8 +222,9 @@
       padding: 2rem;
       background: transparent;
       border-radius: 16px;
-      gap: 60px;
       overflow: visible;
+      width: 100%;
+      max-width: 100%;
     }
     
     .progress-step {
@@ -158,16 +233,18 @@
       align-items: center;
       gap: 0.5rem;
       position: relative;
+      flex: 1;
+      max-width: 150px;
     }
     
-    /* Create connector lines with consistent gaps */
+    /* Create connector lines */
     .progress-step:not(:last-child)::after {
       content: '';
       position: absolute;
-      width: 60px;
+      width: calc(100% - 48px);
       height: 2px;
       background: #e9ecef;
-      left: 100%;
+      left: calc(50% + 24px);
       top: 24px;
       z-index: 1;
     }
@@ -248,10 +325,33 @@
       .btn {
         width: 100%;
       }
+      
+      .title-button-group {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .title-btn-other {
+        grid-column: 2 / 4;
+      }
+      
+      .dob-container {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
+  <!-- Front Loading Page -->
+  <div class="loading-page" id="loadingPage">
+    <div class="loading-content-container">
+      <div class="loading-logo">🚗</div>
+      <h1 class="loading-title">Vehicle Finance Check Service</h1>
+      <p class="loading-subtitle">Helping you reclaim what's rightfully yours</p>
+      <div class="loading-spinner"></div>
+      <p class="loading-message">Preparing your secure form...</p>
+    </div>
+  </div>
+
   <div class="container">
     <!-- Emergency message if nothing loads -->
     <noscript>
@@ -265,27 +365,27 @@
       <div class="progress-bar">
         <div class="progress-step active" data-step="1">
           <span class="step-number">1</span>
-          <span class="step-label">Personal Info</span>
+          <span class="step-label">Tell Us<br>About You</span>
         </div>
         <div class="progress-step" data-step="2">
           <span class="step-number">2</span>
-          <span class="step-label">Address</span>
+          <span class="step-label">Where Do You<br>Call Home?</span>
         </div>
         <div class="progress-step" data-step="3">
           <span class="step-number">3</span>
-          <span class="step-label">Mobile Verification</span>
+          <span class="step-label">Confirm<br>Your Mobile</span>
         </div>
         <div class="progress-step" data-step="4">
           <span class="step-number">4</span>
-          <span class="step-label">Identity Check</span>
+          <span class="step-label">Prove It's<br>Really You</span>
         </div>
         <div class="progress-step" data-step="5">
           <span class="step-number">5</span>
-          <span class="step-label">Confirm Lenders</span>
+          <span class="step-label">Which Lender<br>Did You Use?</span>
         </div>
         <div class="progress-step" data-step="6">
           <span class="step-number">6</span>
-          <span class="step-label">Submit</span>
+          <span class="step-label">Submit<br>Your Claim</span>
         </div>
       </div>
 
@@ -306,7 +406,7 @@
                 <button type="button" class="title-btn" data-value="Mrs">Mrs</button>
                 <button type="button" class="title-btn" data-value="Miss">Miss</button>
                 <button type="button" class="title-btn" data-value="Ms">Ms</button>
-                <button type="button" class="title-btn" data-value="Other">Other</button>
+                <button type="button" class="title-btn title-btn-other" data-value="Other">Other</button>
               </div>
               <input type="hidden" id="title" name="title" required />
               <span class="error-message" id="title_error"></span>
@@ -544,40 +644,8 @@
           </div>
         </div>
 
-        <!-- === STEP 5: Submit Final === -->
+        <!-- === STEP 5: Results === -->
         <div class="form-step" id="step5" style="display:none;">
-          <div class="step-header">
-            <h2 class="step-title">Review and Submit</h2>
-            <p class="step-subtitle">Please review your information before retrieving your vehicle finance history</p>
-          </div>
-          
-          <div class="form-section">
-            <div class="review-card" id="review_summary">
-              <!-- Populated by JS -->
-            </div>
-
-            <div class="consent-section">
-              <label class="checkbox-container">
-                <input type="checkbox" id="consent_checkbox" />
-                <span class="checkbox-label">
-                  I confirm that all information provided is accurate and I consent to Belmond obtaining relevant information to assess prior vehicle finance. This will not impact your credit score.
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div class="button-row">
-            <button type="button" class="btn btn-secondary" id="back_to_step4">
-              <span class="btn-icon">←</span> Back
-            </button>
-            <button type="submit" class="btn btn-primary btn-large" id="submit_form" disabled>
-              <span class="btn-icon">📄</span> Retrieve Finance History
-            </button>
-          </div>
-        </div>
-
-        <!-- === STEP 6: Results === -->
-        <div class="form-step" id="step6" style="display:none;">
           <div class="step-header">
             <h2 class="section-heading">Here's what our checks have found</h2>
             <p class="step-subtitle">We've identified the following finance agreements</p>
@@ -602,6 +670,47 @@
               </div>
             </div>
           </div>
+
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step4">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step6">
+              Continue <span class="btn-icon">→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- === STEP 6: Final Submit === -->
+        <div class="form-step" id="step6" style="display:none;">
+          <div class="step-header">
+            <h2 class="step-title">Review and Submit</h2>
+            <p class="step-subtitle">Please review your information before submitting</p>
+          </div>
+          
+          <div class="form-section">
+            <div class="review-card" id="final_review_summary">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="consent-section">
+              <label class="checkbox-container">
+                <input type="checkbox" id="final_consent_checkbox" />
+                <span class="checkbox-label">
+                  I confirm that all information provided is accurate and I consent to Belmond processing this information for vehicle finance checks.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step5">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="submit" class="btn btn-primary btn-large" id="final_submit_form" disabled>
+              <span class="btn-icon">✓</span> Submit Application
+            </button>
+          </div>
         </div>
       </div>
       <!-- END OF CENTERING WRAPPER -->
@@ -618,6 +727,20 @@
   </div>
 
   <script src="/js/app.js"></script>
+  
+  <!-- Loading page script -->
+  <script>
+    // Hide loading page after 2 seconds
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loadingPage = document.getElementById('loadingPage');
+        loadingPage.classList.add('hidden');
+        setTimeout(() => {
+          loadingPage.style.display = 'none';
+        }, 500);
+      }, 2000);
+    });
+  </script>
   
   <!-- Debug script to check if resources loaded -->
   <script>

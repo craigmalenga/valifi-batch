@@ -303,7 +303,7 @@ const Navigation = {
     },
 
     populateReviewSummary() {
-        const summary = document.getElementById('review_summary');
+        const summary = document.getElementById('final_review_summary');
         const data = AppState.formData;
         
         summary.innerHTML = `
@@ -736,17 +736,6 @@ const EventHandlers = {
 
 
     initStep4() {
-        // Enable verify button when consent is checked
-        const consentCheckbox = document.getElementById('consent_checkbox');
-        const verifyButton = document.getElementById('verify_identity');
-        
-        consentCheckbox.addEventListener('change', () => {
-            verifyButton.disabled = !consentCheckbox.checked;
-        });
-        
-        // Populate review summary when arriving at step 4
-        Navigation.populateReviewSummary();
-        
         // Verify Identity button
         document.getElementById('verify_identity').addEventListener('click', async () => {
             // Keep mobile in UK format for identity validation
@@ -847,61 +836,113 @@ const EventHandlers = {
         
         // Add lender button
         document.getElementById('add_lender_btn').addEventListener('click', () => {
-            document.getElementById('found_list').parentElement.style.display = 'none';
-            document.getElementById('lender_selection_interface').style.display = 'block';
-            document.getElementById('step5_nav').style.display = 'none';
+            // Create modal for lender selection
+            const modal = document.createElement('div');
+            modal.className = 'lenders-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Select Additional Lenders</h3>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" class="lender-search" placeholder="Search lenders...">
+                        <div class="lenders-grid">
+                            ${AppState.lendersList.map(lender => `
+                                <div class="lender-option" data-name="${lender.name}">
+                                    ${lender.filename ? 
+                                        `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}">` :
+                                        '<div class="no-logo-placeholder">No Logo</div>'
+                                    }
+                                    <div>${lender.name}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary modal-cancel">Cancel</button>
+                        <button class="btn btn-primary modal-save">Add Selected</button>
+                    </div>
+                </div>
+            `;
             
-            // Populate lender grid
-            this.populateLenderGrid();
-        });
-        
-        // Back to found lenders
-        document.getElementById('back_to_found').addEventListener('click', () => {
-            document.getElementById('found_list').parentElement.style.display = 'block';
-            document.getElementById('lender_selection_interface').style.display = 'none';
-            document.getElementById('step5_nav').style.display = 'flex';
-        });
-        
-        // Continue to submit
-        document.getElementById('continue_to_submit').addEventListener('click', () => {
-            Navigation.showStep('step6');
-        });
-        
-        // Lender search
-        document.getElementById('lender_search').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            this.filterLenderGrid(searchTerm);
+            document.body.appendChild(modal);
             
-            // Convert to title case for display
-            const words = e.target.value.split(' ');
-            e.target.value = words.map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-            ).join(' ');
+            // Modal functionality
+            const selectedLenders = new Set();
+            
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+            modal.querySelector('.modal-cancel').addEventListener('click', () => modal.remove());
+            
+            modal.querySelectorAll('.lender-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const name = option.dataset.name;
+                    if (selectedLenders.has(name)) {
+                        selectedLenders.delete(name);
+                        option.classList.remove('selected');
+                    } else {
+                        selectedLenders.add(name);
+                        option.classList.add('selected');
+                    }
+                });
+            });
+            
+            modal.querySelector('.lender-search').addEventListener('input', (e) => {
+                const search = e.target.value.toLowerCase();
+                modal.querySelectorAll('.lender-option').forEach(option => {
+                    const name = option.dataset.name.toLowerCase();
+                    option.style.display = name.includes(search) ? 'flex' : 'none';
+                });
+            });
+            
+            modal.querySelector('.modal-save').addEventListener('click', () => {
+                selectedLenders.forEach(name => {
+                    const lender = AppState.lendersList.find(l => l.name === name);
+                    if (lender && !AppState.additionalLenders.find(l => l.name === name)) {
+                        AppState.additionalLenders.push(lender);
+                    }
+                });
+                modal.remove();
+                this.updateAdditionalLendersList();
+            });
         });
         
         // Navigation
         document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
-        document.getElementById('next_to_step6').addEventListener('click', () => Navigation.showStep('step6'));
+        document.getElementById('next_to_step6').addEventListener('click', () => {
+            Navigation.populateReviewSummary();
+            Navigation.showStep('step6');
+        });
     },
 
     initStep6() {
+        // Enable submit button when consent is checked
+        const consentCheckbox = document.getElementById('final_consent_checkbox');
+        const submitButton = document.getElementById('final_submit_form');
+        
+        consentCheckbox.addEventListener('change', () => {
+            submitButton.disabled = !consentCheckbox.checked;
+        });
+        
+        // Navigation
         document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
         
-        document.getElementById('final_submit').addEventListener('click', async (e) => {
+        // Final submit
+        document.getElementById('final_submit_form').addEventListener('click', async (e) => {
             e.preventDefault();
-            Utils.showLoading('Submitting your information...');
+            Utils.showLoading('Submitting your application...');
             
             // Here you would normally submit all the collected data
             setTimeout(() => {
                 Utils.hideLoading();
-                alert('Thank you! Your vehicle finance check has been submitted successfully.');
+                alert('Thank you! Your vehicle finance check has been submitted successfully. We will contact you within 24 hours with any additional findings.');
             }, 2000);
         });
     },
 
     initFormSubmission() {
         // Form submission is now handled in initStep6
-    }
+    },
 
     displayLenders(accounts) {
         const foundList = document.getElementById('found_list');
@@ -965,91 +1006,10 @@ const EventHandlers = {
         });
     },
     
-    populateLenderGrid() {
-        const grid = document.getElementById('lender_grid');
-        grid.innerHTML = '';
-        
-        AppState.lendersList.forEach(lender => {
-            const item = document.createElement('div');
-            item.className = 'lender-grid-item';
-            item.dataset.lenderName = lender.name;
-            
-            // Logo or placeholder
-            if (lender.filename) {
-                const img = document.createElement('img');
-                img.src = `/static/icons/${encodeURIComponent(lender.filename)}`;
-                img.alt = lender.name;
-                img.className = 'lender-grid-logo';
-                item.appendChild(img);
-            } else {
-                const placeholder = document.createElement('div');
-                placeholder.className = 'no-logo-placeholder';
-                placeholder.innerHTML = '<span>No Logo</span>';
-                item.appendChild(placeholder);
-            }
-            
-            // Name
-            const name = document.createElement('div');
-            name.className = 'lender-grid-name';
-            name.textContent = lender.name;
-            item.appendChild(name);
-            
-            // Click handler
-            item.addEventListener('click', () => {
-                if (!item.classList.contains('selected')) {
-                    item.classList.add('selected');
-                    this.addSelectedLender(lender);
-                }
-            });
-            
-            grid.appendChild(item);
-        });
-    },
-    
-    filterLenderGrid(searchTerm) {
-        const items = document.querySelectorAll('.lender-grid-item');
-        items.forEach(item => {
-            const name = item.dataset.lenderName.toLowerCase();
-            if (name.includes(searchTerm)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    },
-    
-    addSelectedLender(lender) {
-        if (!AppState.additionalLenders.find(l => l.name === lender.name)) {
-            AppState.additionalLenders.push(lender);
-            this.updateSelectedLendersList();
-        }
-    },
-    
-    updateSelectedLendersList() {
-        const list = document.getElementById('selected_lenders_list');
-        list.innerHTML = '';
-        
-        AppState.additionalLenders.forEach((lender, index) => {
-            const chip = document.createElement('div');
-            chip.className = 'selected-lender-chip';
-            chip.innerHTML = `
-                ${lender.name}
-                <button type="button" data-index="${index}">×</button>
-            `;
-            
-            chip.querySelector('button').addEventListener('click', () => {
-                AppState.additionalLenders.splice(index, 1);
-                this.updateSelectedLendersList();
-                
-                // Unselect in grid
-                const gridItem = document.querySelector(`.lender-grid-item[data-lender-name="${lender.name}"]`);
-                if (gridItem) {
-                    gridItem.classList.remove('selected');
-                }
-            });
-            
-            list.appendChild(chip);
-        });
+    updateAdditionalLendersList() {
+        // This function would update the display of additional lenders
+        // For now, we'll just log them
+        console.log('Additional lenders:', AppState.additionalLenders);
     },
     
     async retrieveFinanceInformation() {
