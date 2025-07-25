@@ -487,20 +487,6 @@
             </div>
           </div>
 
-          <!-- Prior Addresses Section -->
-          <div class="prior-addresses-section">
-            <h3>Prior Addresses (Optional)</h3>
-            <p class="prior-address-note">Adding previous addresses helps us find more vehicle finance records in your name.</p>
-            
-            <div id="prior_addresses_list">
-              <!-- Prior addresses will be added here -->
-            </div>
-            
-            <button type="button" class="btn btn-secondary" id="add_prior_address">
-              <span class="btn-icon">+</span> Add Previous Address
-            </button>
-          </div>
-
           <div class="button-row">
             <button type="button" class="btn btn-secondary" id="clear_step1">
               <span class="btn-icon">↻</span> Clear Data
@@ -550,6 +536,20 @@
                   Enter address manually
                 </button>
               </div>
+            </div>
+            
+            <!-- Prior Addresses Section moved from Step 1 -->
+            <div class="prior-addresses-section" style="margin-top: 2rem;">
+              <h3>Prior Addresses (Optional)</h3>
+              <p class="prior-address-note">Adding previous addresses helps us find more vehicle finance records in your name.</p>
+              
+              <div id="prior_addresses_list">
+                <!-- Prior addresses will be added here -->
+              </div>
+              
+              <button type="button" class="btn btn-secondary" id="add_prior_address">
+                <span class="btn-icon">+</span> Add Previous Address
+              </button>
             </div>
 
             <div class="address-fields" id="manual_address_fields" style="display:none;">
@@ -703,7 +703,7 @@
           </div>
         </div>
 
-        <!-- === STEP 5: Your Finance Agreements === -->
+        <!-- === STEP 5: Your Lenders === -->
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
             <h2 class="section-heading">Your Lenders</h2>
