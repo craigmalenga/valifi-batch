@@ -383,7 +383,7 @@
           </div>
           
           <div class="welcome-button-container">
-            <button type="button" class="btn btn-primary btn-large" id="start_journey" onclick="console.log('Fallback click handler'); if(typeof Navigation !== 'undefined') Navigation.showStep('step1'); else alert('Please refresh the page');">
+            <button type="button" class="btn btn-primary btn-large" id="start_journey">
               Let's get started
             </button>
           </div>
@@ -802,13 +802,65 @@
     });
   </script>
   
+  <!-- IMMEDIATE Button Handler - This will work regardless -->
+  <script>
+    console.log('Setting up immediate button handler...');
+    
+    function setupStartButton() {
+      const startBtn = document.getElementById('start_journey');
+      if (startBtn) {
+        console.log('Found start button, adding click handler');
+        startBtn.onclick = function() {
+          console.log('Start button clicked!');
+          
+          // Hide step 0
+          const step0 = document.getElementById('step0');
+          if (step0) {
+            step0.style.display = 'none';
+            step0.classList.remove('active');
+          }
+          
+          // Show step 1
+          const step1 = document.getElementById('step1');
+          if (step1) {
+            step1.style.display = 'block';
+            step1.classList.add('active');
+          }
+          
+          // Show progress bar
+          const progressBar = document.getElementById('main_progress_bar');
+          if (progressBar) {
+            progressBar.style.display = 'flex';
+          }
+          
+          console.log('Switched to step 1');
+        };
+        return true;
+      }
+      return false;
+    }
+    
+    // Try multiple times to set up the button
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupStartButton);
+    } else {
+      setupStartButton();
+    }
+    
+    // Backup - try again after a short delay
+    setTimeout(setupStartButton, 100);
+    setTimeout(setupStartButton, 500);
+  </script>
+  
   <!-- Debug script to check if resources loaded -->
   <script>
     window.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM Content Loaded');
+      
       // Check if main app.js loaded
       if (typeof EventHandlers === 'undefined') {
         console.error('app.js failed to load! Check the file path.');
-        // Basic fallback functionality
+        // Basic fallback functionality for title buttons
         document.querySelectorAll('.title-btn').forEach(btn => {
           btn.addEventListener('click', function() {
             document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
@@ -816,6 +868,8 @@
             document.getElementById('title').value = this.dataset.value;
           });
         });
+      } else {
+        console.log('app.js loaded successfully');
       }
     });
   </script>
