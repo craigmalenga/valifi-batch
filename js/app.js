@@ -1,4 +1,4 @@
-// static/js/app.js
+// js/app.js
 
 // ─── Application State ─────────────────────────────────────────────────────────
 const AppState = {
@@ -26,61 +26,6 @@ const Utils = {
         overlay.style.display = 'flex';
     },
     
-    async retrieveFinanceInformation() {
-        try {
-            Utils.showLoading('Searching for your vehicle finance records...');
-            
-            const result = await API.getCreditReport(AppState.reportData);
-            
-            if (!result.data) {
-                throw new Error('Failed to retrieve vehicle finance information');
-            }
-            
-            // Process and store results
-            const summaryReport = result.data.summaryReport || result.data;
-            const accounts = summaryReport.accounts || [];
-            AppState.foundLenders = accounts;
-            
-            // Upload to FLG silently in background
-            const mobile = AppState.reportData.mobile;
-            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-            
-            const flgData = {
-                name: summaryReport.name,
-                dateOfBirth: (() => {
-                    if (accounts.length > 0 && accounts[0].dob) {
-                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                        return `${dd}/${mm}/${yyyy}`;
-                    }
-                    return '';
-                })(),
-                phone1: ukMobile,
-                email: AppState.reportData.email,
-                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
-                towncity: AppState.reportData.post_town,
-                postcode: AppState.reportData.post_code,
-                accounts: accounts,
-                pdfUrl: result.data.pdfUrl
-            };
-            
-            // Silently upload to FLG
-            try {
-                await API.uploadToFLG(flgData);
-            } catch (error) {
-                console.error('FLG upload failed:', error);
-            }
-            
-            // Move to Step 5 and display results
-            Navigation.showStep('step5');
-            this.displayLenders(AppState.foundLenders);
-            
-        } catch (error) {
-            console.error('Finance retrieval error:', error);
-            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
-        } finally {
-            Utils.hideLoading();
-        }
-
     // Hide loading overlay
     hideLoading() {
         document.getElementById('loading_overlay').style.display = 'none';
@@ -290,7 +235,6 @@ const FormValidation = {
 
 // ─── Step Navigation ───────────────────────────────────────────────────────────
 const Navigation = {
-
     showStep(stepId) {
         console.log(`Attempting to show step: ${stepId}`);
         
@@ -994,6 +938,62 @@ const EventHandlers = {
         });
     },
 
+    async retrieveFinanceInformation() {
+        try {
+            Utils.showLoading('Searching for your vehicle finance records...');
+            
+            const result = await API.getCreditReport(AppState.reportData);
+            
+            if (!result.data) {
+                throw new Error('Failed to retrieve vehicle finance information');
+            }
+            
+            // Process and store results
+            const summaryReport = result.data.summaryReport || result.data;
+            const accounts = summaryReport.accounts || [];
+            AppState.foundLenders = accounts;
+            
+            // Upload to FLG silently in background
+            const mobile = AppState.reportData.mobile;
+            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+            
+            const flgData = {
+                name: summaryReport.name,
+                dateOfBirth: (() => {
+                    if (accounts.length > 0 && accounts[0].dob) {
+                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
+                        return `${dd}/${mm}/${yyyy}`;
+                    }
+                    return '';
+                })(),
+                phone1: ukMobile,
+                email: AppState.reportData.email,
+                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
+                towncity: AppState.reportData.post_town,
+                postcode: AppState.reportData.post_code,
+                accounts: accounts,
+                pdfUrl: result.data.pdfUrl
+            };
+            
+            // Silently upload to FLG
+            try {
+                await API.uploadToFLG(flgData);
+            } catch (error) {
+                console.error('FLG upload failed:', error);
+            }
+            
+            // Move to Step 5 and display results
+            Navigation.showStep('step5');
+            this.displayLenders(AppState.foundLenders);
+            
+        } catch (error) {
+            console.error('Finance retrieval error:', error);
+            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
+        } finally {
+            Utils.hideLoading();
+        }
+    },
+
     initStep5() {
         // Display found lenders when step loads
         // Note: displayLenders will be called when we transition to this step
@@ -1088,15 +1088,13 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column - only show if no logo or on mobile
+            // Name column - ONLY show when NO logo
             const nameDiv = document.createElement('div');
             nameDiv.className = 'lender-name';
-            if (logoFile) {
-                // Hide name on desktop when logo exists, show on mobile
-                nameDiv.innerHTML = `<span class="desktop-hidden">${displayName}</span>`;
-            } else {
+            if (!logoFile) {
                 nameDiv.textContent = displayName;
             }
+            // If logo exists, leave name column empty
             
             // Date column
             const dateDiv = document.createElement('div');
@@ -1148,9 +1146,9 @@ const EventHandlers = {
                             <div class="lender-grid-item" data-name="${lender.name}">
                                 ${lender.filename ? 
                                     `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="lender-grid-logo">` :
-                                    `<div class="no-logo-placeholder">No Logo</div>`
+                                    `<div class="no-logo-placeholder">${lender.name}</div>`
                                 }
-                                <div class="lender-grid-name">${lender.name}</div>
+                                ${!lender.filename ? `<div class="lender-grid-name">${lender.name}</div>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -1239,9 +1237,9 @@ const EventHandlers = {
                 <div class="final-lender-item">
                     ${lender.filename ? 
                         `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="final-lender-logo">` :
-                        `<div class="final-no-logo">No Logo</div>`
+                        `<div class="final-no-logo">${lender.name}</div>`
                     }
-                    <div class="final-lender-name">${lender.name}</div>
+                    ${!lender.filename ? `<div class="final-lender-name">${lender.name}</div>` : ''}
                 </div>
             `).join('');
             
