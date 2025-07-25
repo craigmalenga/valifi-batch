@@ -7,6 +7,8 @@ const AppState = {
     lendersList: [],
     foundLenders: [], // Lenders found by Valifi
     additionalLenders: [], // Lenders manually added
+    priorAddresses: [], // Prior addresses
+    reportData: null, // Stored report data
     identityScore: null,
     otpSent: false,
     otpVerified: false,
@@ -23,6 +25,61 @@ const Utils = {
         loadingText.textContent = text;
         overlay.style.display = 'flex';
     },
+    
+    async retrieveFinanceInformation() {
+        try {
+            Utils.showLoading('Searching for your vehicle finance records...');
+            
+            const result = await API.getCreditReport(AppState.reportData);
+            
+            if (!result.data) {
+                throw new Error('Failed to retrieve vehicle finance information');
+            }
+            
+            // Process and store results
+            const summaryReport = result.data.summaryReport || result.data;
+            const accounts = summaryReport.accounts || [];
+            AppState.foundLenders = accounts;
+            
+            // Upload to FLG silently in background
+            const mobile = AppState.reportData.mobile;
+            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+            
+            const flgData = {
+                name: summaryReport.name,
+                dateOfBirth: (() => {
+                    if (accounts.length > 0 && accounts[0].dob) {
+                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
+                        return `${dd}/${mm}/${yyyy}`;
+                    }
+                    return '';
+                })(),
+                phone1: ukMobile,
+                email: AppState.reportData.email,
+                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
+                towncity: AppState.reportData.post_town,
+                postcode: AppState.reportData.post_code,
+                accounts: accounts,
+                pdfUrl: result.data.pdfUrl
+            };
+            
+            // Silently upload to FLG
+            try {
+                await API.uploadToFLG(flgData);
+            } catch (error) {
+                console.error('FLG upload failed:', error);
+            }
+            
+            // Move to Step 5 and display results
+            Navigation.showStep('step5');
+            this.displayLenders(AppState.foundLenders);
+            
+        } catch (error) {
+            console.error('Finance retrieval error:', error);
+            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
+        } finally {
+            Utils.hideLoading();
+        }
 
     // Hide loading overlay
     hideLoading() {
@@ -605,7 +662,7 @@ const EventHandlers = {
                     
                     document.getElementById('address_container').style.display = 'block';
                     
-                    // Auto-show manual fields
+                    // Auto-show manual fields after selection
                     document.getElementById('manual_address_fields').style.display = 'block';
                     manualToggle.textContent = 'Hide address fields';
                 }
@@ -631,11 +688,23 @@ const EventHandlers = {
             document.getElementById('post_town').value = addr.postTown || '';
             document.getElementById('post_code').value = addr.postcode || '';
             
+            // Show edit option
+            document.querySelector('.address-edit-option').style.display = 'block';
+            
             // Clear any validation errors
             Utils.clearError('street_error');
             Utils.clearError('post_town_error');
             Utils.clearError('post_code_error');
         });
+        
+        // Edit address details button
+        document.getElementById('edit_address_details').addEventListener('click', () => {
+            document.getElementById('manual_address_fields').style.display = 'block';
+            manualToggle.textContent = 'Hide address fields';
+        });
+        
+        // Prior addresses functionality
+        this.initPriorAddresses();
         
         // Navigation buttons
         document.getElementById('back_to_step1').addEventListener('click', () => Navigation.showStep('step1'));
@@ -643,6 +712,50 @@ const EventHandlers = {
             if (FormValidation.validateStep2()) {
                 Navigation.showStep('step3');
             }
+        });
+    },
+
+    initPriorAddresses() {
+        AppState.priorAddresses = [];
+        
+        document.getElementById('add_prior_address').addEventListener('click', () => {
+            const priorList = document.getElementById('prior_addresses_list');
+            const index = AppState.priorAddresses.length;
+            
+            const priorAddressDiv = document.createElement('div');
+            priorAddressDiv.className = 'prior-address-item';
+            priorAddressDiv.innerHTML = `
+                <button type="button" class="prior-address-remove" onclick="this.parentElement.remove()">×</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Street</label>
+                        <input type="text" class="form-input" placeholder="e.g. High Street" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Town/City</label>
+                        <input type="text" class="form-input" placeholder="e.g. London" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Post Code</label>
+                        <input type="text" class="form-input" placeholder="e.g. SW1A 1AA" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Years Lived There</label>
+                        <select class="form-select">
+                            <option value="">Select...</option>
+                            <option value="less-than-1">Less than 1 year</option>
+                            <option value="1-2">1-2 years</option>
+                            <option value="2-5">2-5 years</option>
+                            <option value="5-plus">5+ years</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            priorList.appendChild(priorAddressDiv);
+            AppState.priorAddresses.push({index});
         });
     },
 
@@ -815,65 +928,28 @@ const EventHandlers = {
                     
                     statusIcon.textContent = '✓';
                     statusIcon.style.color = '#28a745';
-                    statusTitle.textContent = 'Identity Verified';
-                    statusMessage.textContent = 'Your identity has been successfully verified. Retrieving your finance information...';
+                    statusTitle.textContent = 'Identity Verified Successfully';
+                    statusMessage.textContent = 'Your identity has been verified successfully.';
                     
-                    // Step 2: Retrieve Finance Information
-                    Utils.showLoading('Retrieving your vehicle finance information...');
-                    
-                    // Get credit report and process lenders
-                    const reportData = {
+                    // Store data for later use
+                    AppState.reportData = {
                         ...data,
                         clientReference: 'report'
                     };
                     
-                    const result = await API.getCreditReport(reportData);
+                    // Show the continue section
+                    document.getElementById('verified_continue').style.display = 'block';
                     
-                    if (!result.data) {
-                        throw new Error('Failed to retrieve vehicle finance information');
-                    }
-                    
-                    // Process and store results
-                    const summaryReport = result.data.summaryReport || result.data;
-                    const accounts = summaryReport.accounts || [];
-                    AppState.foundLenders = accounts;
-                    
-                    // Upload to FLG silently in background
-                    const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-                    
-                    const flgData = {
-                        name: summaryReport.name,
-                        dateOfBirth: (() => {
-                            if (accounts.length > 0 && accounts[0].dob) {
-                                const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                                return `${dd}/${mm}/${yyyy}`;
-                            }
-                            return '';
-                        })(),
-                        phone1: ukMobile,
-                        email: reportData.email,
-                        address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
-                        towncity: reportData.post_town,
-                        postcode: reportData.post_code,
-                        accounts: accounts,
-                        pdfUrl: result.data.pdfUrl
-                    };
-                    
-                    // Silently upload to FLG
-                    try {
-                        await API.uploadToFLG(flgData);
-                    } catch (error) {
-                        console.error('FLG upload failed:', error);
-                    }
-                    
-                    // Move to Step 5 to show lenders
-                    Navigation.showStep('step5');
+                    // Enable continue button
+                    document.getElementById('next_to_step5').disabled = false;
                     
                 } else {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
                     statusTitle.textContent = 'Verification Failed';
                     statusMessage.innerHTML = 'Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
+                    
+                    document.getElementById('next_to_step5').disabled = true;
                 }
             } catch (error) {
                 console.error('Verification error:', error);
@@ -883,6 +959,8 @@ const EventHandlers = {
                 statusDiv.querySelector('.status-icon').style.color = '#dc3545';
                 statusDiv.querySelector('.status-title').textContent = 'Verification Error';
                 statusDiv.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
+                
+                document.getElementById('next_to_step5').disabled = true;
             } finally {
                 Utils.hideLoading();
             }
@@ -890,11 +968,17 @@ const EventHandlers = {
         
         // Navigation buttons
         document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
+        document.getElementById('next_to_step5').addEventListener('click', async () => {
+            if (AppState.identityVerified && AppState.reportData) {
+                // NOW retrieve the finance information when moving to step 5
+                await this.retrieveFinanceInformation();
+            }
+        });
     },
 
     initStep5() {
         // Display found lenders when step loads
-        this.displayLenders(AppState.foundLenders);
+        // Note: displayLenders will be called when we transition to this step
         
         // Add lender button
         document.getElementById('add_lender_btn').addEventListener('click', () => {
@@ -935,12 +1019,12 @@ const EventHandlers = {
         foundList.innerHTML = '';
         
         if (accounts.length === 0) {
-            foundList.innerHTML = '<p style="text-align: center; color: #6c757d;">No finance agreements found in our database. Please use the "Add Additional Lenders" button below if you remember any specific lenders.</p>';
+            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add Additional Lenders" button below if you remember any specific lenders.</p>';
             return;
         }
         
         accounts.forEach(account => {
-            const lenderName = account.lenderName || '';
+            const lenderName = account.lenderName || 'Unknown Lender';
             
             // Fuzzy match against lenders list
             let bestMatch = { similarity: 0, lender: null };
@@ -963,35 +1047,51 @@ const EventHandlers = {
             const row = document.createElement('div');
             row.className = 'found-row';
             
-            // Icon
+            // Icon column
             const iconDiv = document.createElement('div');
             iconDiv.className = 'lender-icon';
+            
             if (logoFile) {
+                // Show ONLY logo when available
                 const img = document.createElement('img');
                 img.src = `/static/icons/${encodeURIComponent(logoFile)}`;
                 img.alt = displayName;
                 img.className = 'lender-logo';
+                img.onerror = function() {
+                    // Fallback to name if logo fails to load
+                    iconDiv.innerHTML = `<div class="no-logo">${displayName}</div>`;
+                };
                 iconDiv.appendChild(img);
             } else {
+                // Show name when no logo
                 const noLogo = document.createElement('div');
                 noLogo.className = 'no-logo';
-                noLogo.innerHTML = '<span>No Logo</span>';
+                noLogo.textContent = displayName;
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name
+            // Name column - only show if no logo or on mobile
             const nameDiv = document.createElement('div');
             nameDiv.className = 'lender-name';
-            nameDiv.textContent = displayName;
+            if (logoFile) {
+                // Hide name on desktop when logo exists, show on mobile
+                nameDiv.innerHTML = `<span class="desktop-hidden">${displayName}</span>`;
+            } else {
+                nameDiv.textContent = displayName;
+            }
             
-            // Date
+            // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date';
             if (account.startDate) {
-                const date = new Date(account.startDate);
-                const month = date.toLocaleString('default', { month: 'long' });
-                const year = String(date.getFullYear()).slice(-2);
-                dateDiv.textContent = `From ${month} '${year}`;
+                try {
+                    const date = new Date(account.startDate);
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    const year = String(date.getFullYear()).slice(-2);
+                    dateDiv.textContent = `From ${month} '${year}`;
+                } catch(e) {
+                    dateDiv.textContent = '';
+                }
             }
             
             row.appendChild(iconDiv);

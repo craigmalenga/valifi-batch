@@ -674,7 +674,8 @@ h1, h2, h3, h4 {
 }
 
 .postcode-lookup {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 50/50 split */
     gap: 1rem;
 }
 
@@ -684,7 +685,7 @@ h1, h2, h3, h4 {
     }
     
     .postcode-lookup {
-        flex-direction: column;
+        grid-template-columns: 1fr; /* Stack on mobile */
     }
 }
 
@@ -732,6 +733,54 @@ h1, h2, h3, h4 {
 
 .flex-2 {
     grid-column: span 2;
+}
+
+/* ─── Prior Addresses Section ──────────────────────────────────────────────── */
+.prior-addresses-section {
+    background: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    margin-top: 2rem;
+}
+
+.prior-addresses-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+}
+
+.prior-address-note {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+}
+
+.prior-address-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.prior-address-remove {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-round);
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.address-edit-option {
+    margin-top: 1rem;
+    text-align: center;
 }
 
 /* ─── Buttons ──────────────────────────────────────────────────────────────── */
@@ -1059,6 +1108,16 @@ h1, h2, h3, h4 {
     color: var(--text-primary);
     font-size: 1.125rem;
     text-align: left; /* Ensure left alignment */
+}
+
+.desktop-hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .desktop-hidden {
+        display: inline;
+    }
 }
 
 .lender-date {

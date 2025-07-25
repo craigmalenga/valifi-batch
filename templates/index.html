@@ -406,11 +406,11 @@
         </div>
         <div class="progress-step" data-step="4">
           <span class="step-number">4</span>
-          <span class="step-label">Review &<br>Submit</span>
+          <span class="step-label">Prove it's<br>Really You</span>
         </div>
         <div class="progress-step" data-step="5">
           <span class="step-number">5</span>
-          <span class="step-label">Your Finance<br>Agreements</span>
+          <span class="step-label">Your<br>Lenders</span>
         </div>
         <div class="progress-step" data-step="6">
           <span class="step-number">6</span>
@@ -487,6 +487,20 @@
             </div>
           </div>
 
+          <!-- Prior Addresses Section -->
+          <div class="prior-addresses-section">
+            <h3>Prior Addresses (Optional)</h3>
+            <p class="prior-address-note">Adding previous addresses helps us find more vehicle finance records in your name.</p>
+            
+            <div id="prior_addresses_list">
+              <!-- Prior addresses will be added here -->
+            </div>
+            
+            <button type="button" class="btn btn-secondary" id="add_prior_address">
+              <span class="btn-icon">+</span> Add Previous Address
+            </button>
+          </div>
+
           <div class="button-row">
             <button type="button" class="btn btn-secondary" id="clear_step1">
               <span class="btn-icon">↻</span> Clear Data
@@ -501,7 +515,7 @@
         <div class="form-step" id="step2" style="display:none;">
           <div class="step-header">
             <h2 class="step-title">What's your address?</h2>
-            <p class="step-subtitle">We'll use this to verify your identity</p>
+            <p class="step-subtitle">We'll use this to track down prior vehicle finance in your name. If you can take a few more moments, please add any prior addresses if you moved to your new place recently</p>
           </div>
 
           <div class="form-section">
@@ -521,6 +535,12 @@
                 <select id="address_select" name="address_select" class="form-select">
                   <option value="">Choose from list...</option>
                 </select>
+                
+                <div class="address-edit-option" style="display:none;">
+                  <button type="button" class="btn-link" id="edit_address_details">
+                    Edit address details if needed
+                  </button>
+                </div>
               </div>
 
               <div id="address_error" class="error-message"></div>
@@ -633,7 +653,7 @@
         <!-- === STEP 4: Review & Submit === -->
         <div class="form-step" id="step4" style="display:none;">
           <div class="step-header">
-            <h2 class="step-title">Review & Submit</h2>
+            <h2 class="step-title">Prove it's Really You</h2>
             <p class="step-subtitle">Please review your information and consent to proceed</p>
           </div>
           
@@ -649,6 +669,12 @@
                   I confirm that all information provided is accurate and I consent to Belmond processing this information for vehicle finance checks, including identity verification and credit report retrieval.
                 </span>
               </label>
+              
+              <div class="consent-submit" style="margin-top: 2rem; text-align: center;">
+                <button type="button" class="btn btn-primary btn-large" id="submit_and_verify" disabled>
+                  <span class="btn-icon">🔍</span> Submit & Verify Identity
+                </button>
+              </div>
             </div>
 
             <div id="identity_status" class="identity-status" style="display:none;">
@@ -658,14 +684,21 @@
                 <p class="status-message"></p>
               </div>
             </div>
+            
+            <div id="verified_continue" style="display:none; text-align: center; margin-top: 2rem;">
+              <p style="color: var(--text-secondary); margin-bottom: 1rem;">Identity verification complete. Ready to search for your finance records?</p>
+              <button type="button" class="btn btn-primary btn-large" onclick="document.getElementById('next_to_step5').click()">
+                <span class="btn-icon">🔍</span> Search My Finance Records
+              </button>
+            </div>
           </div>
           
           <div class="button-row">
             <button type="button" class="btn btn-secondary" id="back_to_step3">
               <span class="btn-icon">←</span> Back
             </button>
-            <button type="button" class="btn btn-primary" id="submit_and_verify" disabled>
-              <span class="btn-icon">🔍</span> Submit & Verify Identity
+            <button type="button" class="btn btn-primary" id="next_to_step5" disabled>
+              Continue to Search Records <span class="btn-icon">→</span>
             </button>
           </div>
         </div>
@@ -673,7 +706,7 @@
         <!-- === STEP 5: Your Finance Agreements === -->
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
-            <h2 class="section-heading">Your Finance Agreements</h2>
+            <h2 class="section-heading">Your Lenders</h2>
             <p class="step-subtitle">Here's what our checks have found</p>
           </div>
           
