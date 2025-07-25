@@ -802,6 +802,195 @@
     });
   </script>
   
+  <!-- IMMEDIATE Form Controls Setup -->
+  <script>
+    console.log('Setting up form controls immediately...');
+    
+    function initializeFormControls() {
+      console.log('Initializing form controls...');
+      
+      // Populate day dropdown
+      const daySelect = document.getElementById('dob_day');
+      if (daySelect && daySelect.children.length <= 1) {
+        console.log('Populating day dropdown...');
+        for (let i = 1; i <= 31; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          daySelect.appendChild(option);
+        }
+      }
+      
+      // Populate month dropdown
+      const monthSelect = document.getElementById('dob_month');
+      if (monthSelect && monthSelect.children.length <= 1) {
+        console.log('Populating month dropdown...');
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        months.forEach((month, index) => {
+          const option = document.createElement('option');
+          option.value = index + 1;
+          option.textContent = month;
+          monthSelect.appendChild(option);
+        });
+      }
+      
+      // Setup year slider
+      const yearInput = document.getElementById('dob_year');
+      const yearSlider = document.getElementById('year_slider');
+      const sliderTooltip = document.getElementById('slider_tooltip');
+      
+      if (yearInput && yearSlider) {
+        console.log('Setting up year slider...');
+        
+        const currentYear = new Date().getFullYear();
+        const maxYear = currentYear - 18;
+        yearSlider.max = maxYear;
+        yearInput.max = maxYear;
+        
+        // Sync year input with slider
+        yearInput.oninput = function() {
+          const year = parseInt(yearInput.value);
+          if (year >= 1900 && year <= maxYear) {
+            yearSlider.value = year;
+          }
+        };
+        
+        // Sync slider with year input
+        yearSlider.oninput = function() {
+          yearInput.value = yearSlider.value;
+          if (sliderTooltip) {
+            sliderTooltip.textContent = yearSlider.value;
+            sliderTooltip.classList.add('show');
+          }
+        };
+        
+        yearSlider.onchange = function() {
+          if (sliderTooltip) {
+            sliderTooltip.classList.remove('show');
+          }
+        };
+      }
+      
+      // Setup title buttons (backup)
+      document.querySelectorAll('.title-btn').forEach(btn => {
+        btn.onclick = function() {
+          console.log('Title button clicked:', this.dataset.value);
+          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          const titleInput = document.getElementById('title');
+          if (titleInput) {
+            titleInput.value = this.dataset.value;
+          }
+        };
+      });
+      
+      console.log('Form controls initialized');
+    }
+    
+    function setupNavigationButtons() {
+      console.log('Setting up navigation buttons...');
+      
+      // Clear button
+      const clearBtn = document.getElementById('clear_step1');
+      if (clearBtn) {
+        clearBtn.onclick = function() {
+          console.log('Clear button clicked');
+          document.getElementById('searchForm').reset();
+          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+          document.getElementById('title').value = '';
+        };
+      }
+      
+      // Continue button
+      const continueBtn = document.getElementById('next_to_step2');
+      if (continueBtn) {
+        continueBtn.onclick = function() {
+          console.log('Continue to step 2 clicked');
+          
+          // Basic validation
+          const title = document.getElementById('title').value;
+          const firstName = document.getElementById('first_name').value.trim();
+          const lastName = document.getElementById('last_name').value.trim();
+          const email = document.getElementById('email').value.trim();
+          const day = document.getElementById('dob_day').value;
+          const month = document.getElementById('dob_month').value;
+          const year = document.getElementById('dob_year').value;
+          
+          if (!title) {
+            alert('Please select a title');
+            return;
+          }
+          if (!firstName) {
+            alert('Please enter your first name');
+            return;
+          }
+          if (!lastName) {
+            alert('Please enter your last name');
+            return;
+          }
+          if (!email || !email.includes('@')) {
+            alert('Please enter a valid email address');
+            return;
+          }
+          if (!day || !month || !year) {
+            alert('Please enter your complete date of birth');
+            return;
+          }
+          
+          // Hide step 1
+          const step1 = document.getElementById('step1');
+          if (step1) {
+            step1.style.display = 'none';
+            step1.classList.remove('active');
+          }
+          
+          // Show step 2
+          const step2 = document.getElementById('step2');
+          if (step2) {
+            step2.style.display = 'block';
+            step2.classList.add('active');
+          }
+          
+          // Update progress bar
+          document.querySelectorAll('.progress-step').forEach(step => {
+            step.classList.remove('active', 'completed');
+            if (step.dataset.step === '1') {
+              step.classList.add('completed');
+            } else if (step.dataset.step === '2') {
+              step.classList.add('active');
+            }
+          });
+          
+          console.log('Moved to step 2');
+        };
+      }
+    }
+    
+    // Try multiple times to initialize
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeFormControls);
+      document.addEventListener('DOMContentLoaded', setupNavigationButtons);
+    } else {
+      initializeFormControls();
+      setupNavigationButtons();
+    }
+    
+    // Additional attempts
+    setTimeout(() => {
+      initializeFormControls();
+      setupNavigationButtons();
+    }, 100);
+    setTimeout(() => {
+      initializeFormControls();
+      setupNavigationButtons();
+    }, 500);
+    setTimeout(() => {
+      initializeFormControls();
+      setupNavigationButtons();
+    }, 1000);
+  </script>
+  
   <!-- IMMEDIATE Button Handler - This will work regardless -->
   <script>
     console.log('Setting up immediate button handler...');
