@@ -736,6 +736,17 @@ const EventHandlers = {
 
 
     initStep4() {
+        // Enable verify button when consent is checked
+        const consentCheckbox = document.getElementById('consent_checkbox');
+        const verifyButton = document.getElementById('verify_identity');
+        
+        consentCheckbox.addEventListener('change', () => {
+            verifyButton.disabled = !consentCheckbox.checked;
+        });
+        
+        // Populate review summary when arriving at step 4
+        Navigation.populateReviewSummary();
+        
         // Verify Identity button
         document.getElementById('verify_identity').addEventListener('click', async () => {
             // Keep mobile in UK format for identity validation
@@ -786,6 +797,12 @@ const EventHandlers = {
                     }
                     
                     document.getElementById('next_to_step5').disabled = false;
+                    
+                    // Auto-retrieve credit report after successful verification
+                    setTimeout(() => {
+                        Utils.showLoading('Retrieving prior vehicle finance information...');
+                        this.retrieveFinanceInformation();
+                    }, 1500);
                 } else {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
@@ -819,116 +836,72 @@ const EventHandlers = {
         document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
         document.getElementById('next_to_step5').addEventListener('click', () => {
             if (AppState.identityVerified) {
-                Navigation.populateReviewSummary();
                 Navigation.showStep('step5');
             }
         });
     },
 
     initStep5() {
-        // Consent checkbox
-        const consentCheckbox = document.getElementById('consent_checkbox');
-        const submitButton = document.getElementById('submit_form');
+        // Additional lenders array
+        AppState.additionalLenders = [];
         
-        consentCheckbox.addEventListener('change', () => {
-            submitButton.disabled = !consentCheckbox.checked;
+        // Add lender button
+        document.getElementById('add_lender_btn').addEventListener('click', () => {
+            document.getElementById('found_list').parentElement.style.display = 'none';
+            document.getElementById('lender_selection_interface').style.display = 'block';
+            document.getElementById('step5_nav').style.display = 'none';
+            
+            // Populate lender grid
+            this.populateLenderGrid();
         });
         
+        // Back to found lenders
+        document.getElementById('back_to_found').addEventListener('click', () => {
+            document.getElementById('found_list').parentElement.style.display = 'block';
+            document.getElementById('lender_selection_interface').style.display = 'none';
+            document.getElementById('step5_nav').style.display = 'flex';
+        });
+        
+        // Continue to submit
+        document.getElementById('continue_to_submit').addEventListener('click', () => {
+            Navigation.showStep('step6');
+        });
+        
+        // Lender search
+        document.getElementById('lender_search').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            this.filterLenderGrid(searchTerm);
+            
+            // Convert to title case for display
+            const words = e.target.value.split(' ');
+            e.target.value = words.map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
+        });
+        
+        // Navigation
         document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
+        document.getElementById('next_to_step6').addEventListener('click', () => Navigation.showStep('step6'));
     },
 
     initStep6() {
-        document.getElementById('add_lender_btn').addEventListener('click', () => {
-            Navigation.showStep('step3');
+        document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
+        
+        document.getElementById('final_submit').addEventListener('click', async (e) => {
+            e.preventDefault();
+            Utils.showLoading('Submitting your information...');
+            
+            // Here you would normally submit all the collected data
+            setTimeout(() => {
+                Utils.hideLoading();
+                alert('Thank you! Your vehicle finance check has been submitted successfully.');
+            }, 2000);
         });
     },
 
     initFormSubmission() {
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            
-            Utils.showLoading('Retrieving prior vehicle finance information...');
-            
-            try {
-                // Prepare data for credit report
-                const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-                
-                const reportData = {
-                    title: document.getElementById('title').value,
-                    firstName: document.getElementById('first_name').value,
-                    middleName: document.getElementById('middle_name').value,
-                    lastName: document.getElementById('last_name').value,
-                    dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                    mobile: mobile,  // Keep in UK format
-                    email: document.getElementById('email').value,
-                    building_number: document.getElementById('building_number').value,
-                    building_name: document.getElementById('building_name').value,
-                    flat: document.getElementById('flat').value,
-                    street: document.getElementById('street').value,
-                    post_town: document.getElementById('post_town').value,
-                    post_code: document.getElementById('post_code').value,
-                    clientReference: 'report'
-                };
-                
-                // Get credit report
-                const result = await API.getCreditReport(reportData);
-                
-                if (!result.data) {
-                    throw new Error('Failed to retrieve vehicle finance information');
-                }
-                
-                // Process and display results
-                const summaryReport = result.data.summaryReport || result.data;
-                const accounts = summaryReport.accounts || [];
-                
-                // Upload to FLG silently in background
-                Utils.showLoading('Processing vehicle finance information...');
-                
-                // Ensure mobile is in UK format for FLG
-                const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-                
-                const flgData = {
-                    name: summaryReport.name,
-                    dateOfBirth: (() => {
-                        if (accounts.length > 0 && accounts[0].dob) {
-                            const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                            return `${dd}/${mm}/${yyyy}`;
-                        }
-                        return '';
-                    })(),
-                    phone1: ukMobile,
-                    email: reportData.email,
-                    address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
-                    towncity: reportData.post_town,
-                    postcode: reportData.post_code,
-                    accounts: accounts,
-                    pdfUrl: result.data.pdfUrl
-                };
-                
-                // Silently upload to FLG - don't show results to user
-                try {
-                    await API.uploadToFLG(flgData);
-                } catch (error) {
-                    // Silent fail - don't show error to user
-                    console.error('FLG upload failed:', error);
-                }
-                
-                // Display lenders in Step 6
-                this.displayLenders(accounts);
-                Navigation.showStep('step6');
-                
-            } catch (error) {
-                console.error('Submission error:', error);
-                alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
-            } finally {
-                Utils.hideLoading();
-                submitButton.disabled = false;
-            }
-        });
-    },
+        // Form submission is now handled in initStep6
+    }
 
     displayLenders(accounts) {
         const foundList = document.getElementById('found_list');
@@ -990,6 +963,170 @@ const EventHandlers = {
             row.appendChild(dateDiv);
             foundList.appendChild(row);
         });
+    },
+    
+    populateLenderGrid() {
+        const grid = document.getElementById('lender_grid');
+        grid.innerHTML = '';
+        
+        AppState.lendersList.forEach(lender => {
+            const item = document.createElement('div');
+            item.className = 'lender-grid-item';
+            item.dataset.lenderName = lender.name;
+            
+            // Logo or placeholder
+            if (lender.filename) {
+                const img = document.createElement('img');
+                img.src = `/static/icons/${encodeURIComponent(lender.filename)}`;
+                img.alt = lender.name;
+                img.className = 'lender-grid-logo';
+                item.appendChild(img);
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'no-logo-placeholder';
+                placeholder.innerHTML = '<span>No Logo</span>';
+                item.appendChild(placeholder);
+            }
+            
+            // Name
+            const name = document.createElement('div');
+            name.className = 'lender-grid-name';
+            name.textContent = lender.name;
+            item.appendChild(name);
+            
+            // Click handler
+            item.addEventListener('click', () => {
+                if (!item.classList.contains('selected')) {
+                    item.classList.add('selected');
+                    this.addSelectedLender(lender);
+                }
+            });
+            
+            grid.appendChild(item);
+        });
+    },
+    
+    filterLenderGrid(searchTerm) {
+        const items = document.querySelectorAll('.lender-grid-item');
+        items.forEach(item => {
+            const name = item.dataset.lenderName.toLowerCase();
+            if (name.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    },
+    
+    addSelectedLender(lender) {
+        if (!AppState.additionalLenders.find(l => l.name === lender.name)) {
+            AppState.additionalLenders.push(lender);
+            this.updateSelectedLendersList();
+        }
+    },
+    
+    updateSelectedLendersList() {
+        const list = document.getElementById('selected_lenders_list');
+        list.innerHTML = '';
+        
+        AppState.additionalLenders.forEach((lender, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'selected-lender-chip';
+            chip.innerHTML = `
+                ${lender.name}
+                <button type="button" data-index="${index}">×</button>
+            `;
+            
+            chip.querySelector('button').addEventListener('click', () => {
+                AppState.additionalLenders.splice(index, 1);
+                this.updateSelectedLendersList();
+                
+                // Unselect in grid
+                const gridItem = document.querySelector(`.lender-grid-item[data-lender-name="${lender.name}"]`);
+                if (gridItem) {
+                    gridItem.classList.remove('selected');
+                }
+            });
+            
+            list.appendChild(chip);
+        });
+    },
+    
+    async retrieveFinanceInformation() {
+        try {
+            // Prepare data for credit report
+            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+            
+            const reportData = {
+                title: document.getElementById('title').value,
+                firstName: document.getElementById('first_name').value,
+                middleName: document.getElementById('middle_name').value,
+                lastName: document.getElementById('last_name').value,
+                dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
+                mobile: mobile,
+                email: document.getElementById('email').value,
+                building_number: document.getElementById('building_number').value,
+                building_name: document.getElementById('building_name').value,
+                flat: document.getElementById('flat').value,
+                street: document.getElementById('street').value,
+                post_town: document.getElementById('post_town').value,
+                post_code: document.getElementById('post_code').value,
+                clientReference: 'report'
+            };
+            
+            // Get credit report
+            const result = await API.getCreditReport(reportData);
+            
+            if (!result.data) {
+                throw new Error('Failed to retrieve vehicle finance information');
+            }
+            
+            // Process and display results
+            const summaryReport = result.data.summaryReport || result.data;
+            const accounts = summaryReport.accounts || [];
+            
+            // Upload to FLG silently in background
+            Utils.showLoading('Processing vehicle finance information...');
+            
+            // Ensure mobile is in UK format for FLG
+            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+            
+            const flgData = {
+                name: summaryReport.name,
+                dateOfBirth: (() => {
+                    if (accounts.length > 0 && accounts[0].dob) {
+                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
+                        return `${dd}/${mm}/${yyyy}`;
+                    }
+                    return '';
+                })(),
+                phone1: ukMobile,
+                email: reportData.email,
+                address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
+                towncity: reportData.post_town,
+                postcode: reportData.post_code,
+                accounts: accounts,
+                pdfUrl: result.data.pdfUrl
+            };
+            
+            // Silently upload to FLG - don't show results to user
+            try {
+                await API.uploadToFLG(flgData);
+            } catch (error) {
+                // Silent fail - don't show error to user
+                console.error('FLG upload failed:', error);
+            }
+            
+            // Display lenders in Step 5
+            this.displayLenders(accounts);
+            Navigation.showStep('step5');
+            
+        } catch (error) {
+            console.error('Finance retrieval error:', error);
+            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
+        } finally {
+            Utils.hideLoading();
+        }
     }
 };
 
