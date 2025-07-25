@@ -361,8 +361,37 @@
     </noscript>
     
     <form id="searchForm" autocomplete="on" novalidate>
+
+      <!-- === STEP 0: Welcome Screen === -->
+      <div class="form-step active" id="step0">
+        <div class="welcome-container">
+          <h1 class="welcome-title">You could be owed £000s from your car finance – it's free to check and takes just 60 seconds.</h1>
+          
+          <div class="welcome-benefits">
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">Free to Check</span>
+            </div>
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">We Find Your Agreements for You</span>
+            </div>
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">No win = no fee</span>
+            </div>
+          </div>
+          
+          <div class="welcome-button-container">
+            <button type="button" class="btn btn-primary btn-large" id="start_journey">
+              Let's get started
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Mobile-Responsive Progress Indicator -->
-      <div class="progress-bar">
+      <div class="progress-bar" id="main_progress_bar" style="display:none;">
         <div class="progress-step active" data-step="1">
           <span class="step-number">1</span>
           <span class="step-label">Tell Us<br>About You</span>
@@ -377,22 +406,22 @@
         </div>
         <div class="progress-step" data-step="4">
           <span class="step-number">4</span>
-          <span class="step-label">Prove It's<br>Really You</span>
+          <span class="step-label">Review &<br>Submit</span>
         </div>
         <div class="progress-step" data-step="5">
           <span class="step-number">5</span>
-          <span class="step-label">Which Lender<br>Did You Use?</span>
+          <span class="step-label">Your Finance<br>Agreements</span>
         </div>
         <div class="progress-step" data-step="6">
           <span class="step-number">6</span>
-          <span class="step-label">Submit<br>Your Claim</span>
+          <span class="step-label">Final Steps<br>Submit Claim</span>
         </div>
       </div>
 
       <!-- CENTERING WRAPPER - ONLY CHANGE -->
       <div class="form-steps-container">
         <!-- === STEP 1: Personal Info === -->
-        <div class="form-step active" id="step1">
+        <div class="form-step" id="step1" style="display:none;">
           <div class="step-header">
             <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
             <p class="step-subtitle">Let's start with your personal information</p>
@@ -601,35 +630,32 @@
           </div>
         </div>
 
-        <!-- === STEP 4: Identity Validation === -->
+        <!-- === STEP 4: Review & Submit === -->
         <div class="form-step" id="step4" style="display:none;">
           <div class="step-header">
-            <h2 class="step-title">Identity Verification</h2>
-            <p class="step-subtitle">Final step to verify your identity and check for existing finance</p>
+            <h2 class="step-title">Review & Submit</h2>
+            <p class="step-subtitle">Please review your information and consent to proceed</p>
           </div>
           
           <div class="form-section">
-            <div class="identity-check-card">
-              <div class="check-info">
-                <div class="check-icon">🔐</div>
-                <h3>Secure Identity Check</h3>
-                <p>We'll verify your identity using the information you've provided. This helps protect against fraud and ensures we find all relevant finance agreements.</p>
-              </div>
-              
-              <button type="button" class="btn btn-primary btn-large" id="verify_identity">
-                <span class="btn-icon">🔍</span> Verify My Identity
-              </button>
-              
-              <div id="identity_status" class="identity-status" style="display:none;">
-                <div class="status-icon"></div>
-                <div class="status-content">
-                  <h4 class="status-title"></h4>
-                  <p class="status-message"></p>
-                  <div class="score-display" style="display:none;">
-                    <span class="score-label">Identity Score:</span>
-                    <span class="score-value"></span>
-                  </div>
-                </div>
+            <div class="review-card" id="review_summary">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="consent-section">
+              <label class="checkbox-container">
+                <input type="checkbox" id="consent_checkbox" />
+                <span class="checkbox-label">
+                  I confirm that all information provided is accurate and I consent to Belmond processing this information for vehicle finance checks, including identity verification and credit report retrieval.
+                </span>
+              </label>
+            </div>
+
+            <div id="identity_status" class="identity-status" style="display:none;">
+              <div class="status-icon"></div>
+              <div class="status-content">
+                <h4 class="status-title"></h4>
+                <p class="status-message"></p>
               </div>
             </div>
           </div>
@@ -638,17 +664,17 @@
             <button type="button" class="btn btn-secondary" id="back_to_step3">
               <span class="btn-icon">←</span> Back
             </button>
-            <button type="button" class="btn btn-primary" id="next_to_step5" disabled>
-              Continue <span class="btn-icon">→</span>
+            <button type="button" class="btn btn-primary" id="submit_and_verify" disabled>
+              <span class="btn-icon">🔍</span> Submit & Verify Identity
             </button>
           </div>
         </div>
 
-        <!-- === STEP 5: Results === -->
+        <!-- === STEP 5: Your Finance Agreements === -->
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
-            <h2 class="section-heading">Here's what our checks have found</h2>
-            <p class="step-subtitle">We've identified the following finance agreements</p>
+            <h2 class="section-heading">Your Finance Agreements</h2>
+            <p class="step-subtitle">Here's what our checks have found</p>
           </div>
           
           <div class="form-section">
@@ -669,6 +695,13 @@
                 </p>
               </div>
             </div>
+
+            <div id="final_lenders_display" class="final-lenders-section" style="display:none;">
+              <h3>Your Selected Finance Agreements</h3>
+              <div id="final_lenders_grid" class="final-lenders-grid">
+                <!-- JS will populate this -->
+              </div>
+            </div>
           </div>
 
           <div class="button-row">
@@ -676,7 +709,7 @@
               <span class="btn-icon">←</span> Back
             </button>
             <button type="button" class="btn btn-primary" id="next_to_step6">
-              Continue <span class="btn-icon">→</span>
+              Final steps to submit your claim <span class="btn-icon">→</span>
             </button>
           </div>
         </div>
@@ -684,31 +717,25 @@
         <!-- === STEP 6: Final Submit === -->
         <div class="form-step" id="step6" style="display:none;">
           <div class="step-header">
-            <h2 class="step-title">Review and Submit</h2>
-            <p class="step-subtitle">Please review your information before submitting</p>
+            <h2 class="step-title">Final Steps</h2>
+            <p class="step-subtitle">Complete your claim submission</p>
           </div>
           
           <div class="form-section">
-            <div class="review-card" id="final_review_summary">
-              <!-- Populated by JS -->
-            </div>
-
-            <div class="consent-section">
-              <label class="checkbox-container">
-                <input type="checkbox" id="final_consent_checkbox" />
-                <span class="checkbox-label">
-                  I confirm that all information provided is accurate and I consent to Belmond processing this information for vehicle finance checks.
-                </span>
-              </label>
+            <div class="final-submit-card">
+              <div class="check-icon">🎯</div>
+              <h3>Ready to Submit Your Claim</h3>
+              <p>We've gathered all the information needed to process your vehicle finance claim. Click below to complete your submission.</p>
+              
+              <button type="submit" class="btn btn-primary btn-large" id="final_submit_form">
+                <span class="btn-icon">✓</span> Submit My Claim
+              </button>
             </div>
           </div>
 
           <div class="button-row">
             <button type="button" class="btn btn-secondary" id="back_to_step5">
               <span class="btn-icon">←</span> Back
-            </button>
-            <button type="submit" class="btn btn-primary btn-large" id="final_submit_form" disabled>
-              <span class="btn-icon">✓</span> Submit Application
             </button>
           </div>
         </div>

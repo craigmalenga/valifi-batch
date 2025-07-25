@@ -2,9 +2,11 @@
 
 // ─── Application State ─────────────────────────────────────────────────────────
 const AppState = {
-    currentStep: 'step1',
+    currentStep: 'step0', // Start with welcome screen
     formData: {},
     lendersList: [],
+    foundLenders: [], // Lenders found by Valifi
+    additionalLenders: [], // Lenders manually added
     identityScore: null,
     otpSent: false,
     otpVerified: false,
@@ -233,6 +235,14 @@ const FormValidation = {
 const Navigation = {
 
     showStep(stepId) {
+        // Hide progress bar for step 0 (welcome screen)
+        const progressBar = document.getElementById('main_progress_bar');
+        if (stepId === 'step0') {
+            progressBar.style.display = 'none';
+        } else {
+            progressBar.style.display = 'flex';
+        }
+        
         // First, hide ALL steps completely
         const allSteps = document.querySelectorAll('.form-step');
         allSteps.forEach(step => {
@@ -249,8 +259,10 @@ const Navigation = {
             stepElement.classList.add('active');
             AppState.currentStep = stepId;
             
-            // Update progress bar
-            this.updateProgressBar(stepId);
+            // Update progress bar (skip for step0)
+            if (stepId !== 'step0') {
+                this.updateProgressBar(stepId);
+            }
             
             // Save form data
             this.saveFormData();
@@ -303,7 +315,7 @@ const Navigation = {
     },
 
     populateReviewSummary() {
-        const summary = document.getElementById('final_review_summary');
+        const summary = document.getElementById('review_summary');
         const data = AppState.formData;
         
         summary.innerHTML = `
@@ -419,6 +431,9 @@ const EventHandlers = {
         // Load lenders data
         this.loadLenders();
         
+        // Step 0 handlers
+        this.initStep0();
+        
         // Step 1 handlers
         this.initStep1();
         
@@ -428,13 +443,13 @@ const EventHandlers = {
         // Step 3 handlers
         this.initStep3();
         
-        // Step 4 handlers
+        // Step 4 handlers (Review & Submit)
         this.initStep4();
         
-        // Step 5 handlers
+        // Step 5 handlers (Your Finance Agreements)
         this.initStep5();
         
-        // Step 6 handlers
+        // Step 6 handlers (Final Submit)
         this.initStep6();
         
         // Form submission
@@ -448,6 +463,13 @@ const EventHandlers = {
         } catch (error) {
             console.error('Failed to load lenders:', error);
         }
+    },
+
+    initStep0() {
+        // Welcome screen - "Let's get started" button
+        document.getElementById('start_journey').addEventListener('click', () => {
+            Navigation.showStep('step1');
+        });
     },
 
     initStep1() {
@@ -729,93 +751,138 @@ const EventHandlers = {
         document.getElementById('back_to_step2').addEventListener('click', () => Navigation.showStep('step2'));
         document.getElementById('next_to_step4').addEventListener('click', () => {
             if (AppState.otpVerified) {
+                // Populate review summary before showing step 4
+                Navigation.populateReviewSummary();
                 Navigation.showStep('step4');
             }
         });
     },
 
-
     initStep4() {
-        // Verify Identity button
-        document.getElementById('verify_identity').addEventListener('click', async () => {
-            // Keep mobile in UK format for identity validation
-            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+        // NEW FLOW: Review & Submit with consent first, then identity verification
+        
+        // Enable submit button when consent is checked
+        const consentCheckbox = document.getElementById('consent_checkbox');
+        const submitButton = document.getElementById('submit_and_verify');
+        
+        consentCheckbox.addEventListener('change', () => {
+            submitButton.disabled = !consentCheckbox.checked;
+        });
+        
+        // Submit & Verify Identity button
+        document.getElementById('submit_and_verify').addEventListener('click', async () => {
+            if (!consentCheckbox.checked) {
+                alert('Please confirm your consent to proceed.');
+                return;
+            }
             
-            const data = {
-                title: document.getElementById('title').value,
-                firstName: document.getElementById('first_name').value,
-                middleName: document.getElementById('middle_name').value,
-                lastName: document.getElementById('last_name').value,
-                dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                mobile: mobile,  // Keep in UK format (07...)
-                email: document.getElementById('email').value,
-                building_number: document.getElementById('building_number').value,
-                building_name: document.getElementById('building_name').value,
-                flat: document.getElementById('flat').value,
-                street: document.getElementById('street').value,
-                post_town: document.getElementById('post_town').value,
-                post_code: document.getElementById('post_code').value
-            };
-            
-            Utils.showLoading('Verifying identity...');
+            // Step 1: Identity Verification
+            Utils.showLoading('Verifying your identity...');
             
             try {
-                const result = await API.validateIdentity(data);
+                // Keep mobile in UK format for identity validation
+                const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
+                
+                const data = {
+                    title: document.getElementById('title').value,
+                    firstName: document.getElementById('first_name').value,
+                    middleName: document.getElementById('middle_name').value,
+                    lastName: document.getElementById('last_name').value,
+                    dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
+                    mobile: mobile,
+                    email: document.getElementById('email').value,
+                    building_number: document.getElementById('building_number').value,
+                    building_name: document.getElementById('building_name').value,
+                    flat: document.getElementById('flat').value,
+                    street: document.getElementById('street').value,
+                    post_town: document.getElementById('post_town').value,
+                    post_code: document.getElementById('post_code').value
+                };
+                
+                const identityResult = await API.validateIdentity(data);
                 
                 const statusDiv = document.getElementById('identity_status');
                 const statusIcon = statusDiv.querySelector('.status-icon');
                 const statusTitle = statusDiv.querySelector('.status-title');
                 const statusMessage = statusDiv.querySelector('.status-message');
-                const scoreDisplay = statusDiv.querySelector('.score-display');
                 
                 statusDiv.style.display = 'block';
                 
-                if (result.success && result.passed) {
+                if (identityResult.success && identityResult.passed) {
                     AppState.identityVerified = true;
-                    AppState.identityScore = result.identityScore;
-                    AppState.minimumScore = result.minimumScore;
+                    AppState.identityScore = identityResult.identityScore;
+                    AppState.minimumScore = identityResult.minimumScore;
                     
                     statusIcon.textContent = '✓';
                     statusIcon.style.color = '#28a745';
                     statusTitle.textContent = 'Identity Verified';
-                    statusMessage.textContent = 'Your identity has been successfully verified.';
+                    statusMessage.textContent = 'Your identity has been successfully verified. Retrieving your finance information...';
                     
-                    // Hide score display completely
-                    if (scoreDisplay) {
-                        scoreDisplay.style.display = 'none';
+                    // Step 2: Retrieve Finance Information
+                    Utils.showLoading('Retrieving your vehicle finance information...');
+                    
+                    // Get credit report and process lenders
+                    const reportData = {
+                        ...data,
+                        clientReference: 'report'
+                    };
+                    
+                    const result = await API.getCreditReport(reportData);
+                    
+                    if (!result.data) {
+                        throw new Error('Failed to retrieve vehicle finance information');
                     }
                     
-                    document.getElementById('next_to_step5').disabled = false;
+                    // Process and store results
+                    const summaryReport = result.data.summaryReport || result.data;
+                    const accounts = summaryReport.accounts || [];
+                    AppState.foundLenders = accounts;
                     
-                    // Auto-retrieve credit report after successful verification
-                    setTimeout(() => {
-                        Utils.showLoading('Retrieving prior vehicle finance information...');
-                        this.retrieveFinanceInformation();
-                    }, 1500);
+                    // Upload to FLG silently in background
+                    const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
+                    
+                    const flgData = {
+                        name: summaryReport.name,
+                        dateOfBirth: (() => {
+                            if (accounts.length > 0 && accounts[0].dob) {
+                                const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
+                                return `${dd}/${mm}/${yyyy}`;
+                            }
+                            return '';
+                        })(),
+                        phone1: ukMobile,
+                        email: reportData.email,
+                        address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
+                        towncity: reportData.post_town,
+                        postcode: reportData.post_code,
+                        accounts: accounts,
+                        pdfUrl: result.data.pdfUrl
+                    };
+                    
+                    // Silently upload to FLG
+                    try {
+                        await API.uploadToFLG(flgData);
+                    } catch (error) {
+                        console.error('FLG upload failed:', error);
+                    }
+                    
+                    // Move to Step 5 to show lenders
+                    Navigation.showStep('step5');
+                    
                 } else {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
                     statusTitle.textContent = 'Verification Failed';
                     statusMessage.innerHTML = 'Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
-                    
-                    // Hide score display completely
-                    if (scoreDisplay) {
-                        scoreDisplay.style.display = 'none';
-                    }
-                    
-                    document.getElementById('next_to_step5').disabled = true;
                 }
             } catch (error) {
-                document.getElementById('identity_status').style.display = 'block';
-                document.querySelector('.status-icon').textContent = '✗';
-                document.querySelector('.status-title').textContent = 'Verification Error';
-                document.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
-                
-                // Hide score display in error case too
-                const scoreDisplay = document.querySelector('.score-display');
-                if (scoreDisplay) {
-                    scoreDisplay.style.display = 'none';
-                }
+                console.error('Verification error:', error);
+                const statusDiv = document.getElementById('identity_status');
+                statusDiv.style.display = 'block';
+                statusDiv.querySelector('.status-icon').textContent = '✗';
+                statusDiv.querySelector('.status-icon').style.color = '#dc3545';
+                statusDiv.querySelector('.status-title').textContent = 'Verification Error';
+                statusDiv.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
             } finally {
                 Utils.hideLoading();
             }
@@ -823,121 +890,40 @@ const EventHandlers = {
         
         // Navigation buttons
         document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
-        document.getElementById('next_to_step5').addEventListener('click', () => {
-            if (AppState.identityVerified) {
-                Navigation.showStep('step5');
-            }
-        });
     },
 
     initStep5() {
-        // Additional lenders array
-        AppState.additionalLenders = [];
+        // Display found lenders when step loads
+        this.displayLenders(AppState.foundLenders);
         
         // Add lender button
         document.getElementById('add_lender_btn').addEventListener('click', () => {
-            // Create modal for lender selection
-            const modal = document.createElement('div');
-            modal.className = 'lenders-modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Select Additional Lenders</h3>
-                        <button class="modal-close">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="text" class="lender-search" placeholder="Search lenders...">
-                        <div class="lenders-grid">
-                            ${AppState.lendersList.map(lender => `
-                                <div class="lender-option" data-name="${lender.name}">
-                                    ${lender.filename ? 
-                                        `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}">` :
-                                        '<div class="no-logo-placeholder">No Logo</div>'
-                                    }
-                                    <div>${lender.name}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary modal-cancel">Cancel</button>
-                        <button class="btn btn-primary modal-save">Add Selected</button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Modal functionality
-            const selectedLenders = new Set();
-            
-            modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
-            modal.querySelector('.modal-cancel').addEventListener('click', () => modal.remove());
-            
-            modal.querySelectorAll('.lender-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    const name = option.dataset.name;
-                    if (selectedLenders.has(name)) {
-                        selectedLenders.delete(name);
-                        option.classList.remove('selected');
-                    } else {
-                        selectedLenders.add(name);
-                        option.classList.add('selected');
-                    }
-                });
-            });
-            
-            modal.querySelector('.lender-search').addEventListener('input', (e) => {
-                const search = e.target.value.toLowerCase();
-                modal.querySelectorAll('.lender-option').forEach(option => {
-                    const name = option.dataset.name.toLowerCase();
-                    option.style.display = name.includes(search) ? 'flex' : 'none';
-                });
-            });
-            
-            modal.querySelector('.modal-save').addEventListener('click', () => {
-                selectedLenders.forEach(name => {
-                    const lender = AppState.lendersList.find(l => l.name === name);
-                    if (lender && !AppState.additionalLenders.find(l => l.name === name)) {
-                        AppState.additionalLenders.push(lender);
-                    }
-                });
-                modal.remove();
-                this.updateAdditionalLendersList();
-            });
+            this.showLenderModal();
         });
         
         // Navigation
         document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
         document.getElementById('next_to_step6').addEventListener('click', () => {
-            Navigation.populateReviewSummary();
+            this.updateFinalLendersDisplay();
             Navigation.showStep('step6');
         });
     },
 
     initStep6() {
-        // Enable submit button when consent is checked
-        const consentCheckbox = document.getElementById('final_consent_checkbox');
-        const submitButton = document.getElementById('final_submit_form');
-        
-        consentCheckbox.addEventListener('change', () => {
-            submitButton.disabled = !consentCheckbox.checked;
-        });
-        
-        // Navigation
-        document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
-        
         // Final submit
         document.getElementById('final_submit_form').addEventListener('click', async (e) => {
             e.preventDefault();
-            Utils.showLoading('Submitting your application...');
+            Utils.showLoading('Submitting your claim...');
             
             // Here you would normally submit all the collected data
             setTimeout(() => {
                 Utils.hideLoading();
-                alert('Thank you! Your vehicle finance check has been submitted successfully. We will contact you within 24 hours with any additional findings.');
+                alert('Thank you! Your vehicle finance claim has been submitted successfully. We will contact you within 24 hours with any additional findings.');
             }, 2000);
         });
+        
+        // Navigation
+        document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
     },
 
     initFormSubmission() {
@@ -947,6 +933,11 @@ const EventHandlers = {
     displayLenders(accounts) {
         const foundList = document.getElementById('found_list');
         foundList.innerHTML = '';
+        
+        if (accounts.length === 0) {
+            foundList.innerHTML = '<p style="text-align: center; color: #6c757d;">No finance agreements found in our database. Please use the "Add Additional Lenders" button below if you remember any specific lenders.</p>';
+            return;
+        }
         
         accounts.forEach(account => {
             const lenderName = account.lenderName || '';
@@ -963,6 +954,10 @@ const EventHandlers = {
             const useMatch = bestMatch.similarity >= 0.8 && bestMatch.lender;
             const displayName = useMatch ? bestMatch.lender.name : lenderName;
             const logoFile = useMatch ? bestMatch.lender.filename : null;
+            
+            // Store enhanced account data
+            account.displayName = displayName;
+            account.logoFile = logoFile;
             
             // Create lender row
             const row = document.createElement('div');
@@ -1005,87 +1000,136 @@ const EventHandlers = {
             foundList.appendChild(row);
         });
     },
-    
-    updateAdditionalLendersList() {
-        // This function would update the display of additional lenders
-        // For now, we'll just log them
+
+    showLenderModal() {
+        // Get list of already found lender names to exclude
+        const foundLenderNames = AppState.foundLenders.map(account => 
+            account.displayName || account.lenderName || ''
+        ).filter(name => name.trim() !== '');
+        
+        const modal = document.createElement('div');
+        modal.className = 'lenders-modal';
+        
+        // Filter out already found lenders
+        const availableLenders = AppState.lendersList.filter(lender => 
+            !foundLenderNames.some(foundName => 
+                Utils.similarity(foundName.toLowerCase(), lender.name.toLowerCase()) >= 0.8
+            )
+        );
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Select Additional Lenders</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="lender-search" placeholder="Search lenders...">
+                    <div class="lender-grid">
+                        ${availableLenders.map(lender => `
+                            <div class="lender-grid-item" data-name="${lender.name}">
+                                ${lender.filename ? 
+                                    `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="lender-grid-logo">` :
+                                    `<div class="no-logo-placeholder">No Logo</div>`
+                                }
+                                <div class="lender-grid-name">${lender.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary modal-cancel">Cancel</button>
+                    <button class="btn btn-primary modal-save">Add Selected</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Modal functionality
+        const selectedLenders = new Set();
+        
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('.modal-cancel').addEventListener('click', () => modal.remove());
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+        
+        modal.querySelectorAll('.lender-grid-item').forEach(option => {
+            option.addEventListener('click', () => {
+                const name = option.dataset.name;
+                if (selectedLenders.has(name)) {
+                    selectedLenders.delete(name);
+                    option.classList.remove('selected');
+                } else {
+                    selectedLenders.add(name);
+                    option.classList.add('selected');
+                }
+            });
+        });
+        
+        modal.querySelector('.lender-search').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            modal.querySelectorAll('.lender-grid-item').forEach(option => {
+                const name = option.dataset.name.toLowerCase();
+                option.style.display = name.includes(search) ? 'flex' : 'none';
+            });
+        });
+        
+        modal.querySelector('.modal-save').addEventListener('click', () => {
+            selectedLenders.forEach(name => {
+                const lender = AppState.lendersList.find(l => l.name === name);
+                if (lender && !AppState.additionalLenders.find(l => l.name === name)) {
+                    AppState.additionalLenders.push(lender);
+                }
+            });
+            modal.remove();
+            this.updateAdditionalLendersDisplay();
+        });
+    },
+
+    updateAdditionalLendersDisplay() {
+        // This could show additional lenders in the main list
+        // For now, they'll be included in the final display
         console.log('Additional lenders:', AppState.additionalLenders);
     },
-    
-    async retrieveFinanceInformation() {
-        try {
-            // Prepare data for credit report
-            const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
-            
-            const reportData = {
-                title: document.getElementById('title').value,
-                firstName: document.getElementById('first_name').value,
-                middleName: document.getElementById('middle_name').value,
-                lastName: document.getElementById('last_name').value,
-                dateOfBirth: `${document.getElementById('dob_year').value}-${String(document.getElementById('dob_month').value).padStart(2, '0')}-${String(document.getElementById('dob_day').value).padStart(2, '0')}`,
-                mobile: mobile,
-                email: document.getElementById('email').value,
-                building_number: document.getElementById('building_number').value,
-                building_name: document.getElementById('building_name').value,
-                flat: document.getElementById('flat').value,
-                street: document.getElementById('street').value,
-                post_town: document.getElementById('post_town').value,
-                post_code: document.getElementById('post_code').value,
-                clientReference: 'report'
-            };
-            
-            // Get credit report
-            const result = await API.getCreditReport(reportData);
-            
-            if (!result.data) {
-                throw new Error('Failed to retrieve vehicle finance information');
-            }
-            
-            // Process and display results
-            const summaryReport = result.data.summaryReport || result.data;
-            const accounts = summaryReport.accounts || [];
-            
-            // Upload to FLG silently in background
-            Utils.showLoading('Processing vehicle finance information...');
-            
-            // Ensure mobile is in UK format for FLG
-            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-            
-            const flgData = {
-                name: summaryReport.name,
-                dateOfBirth: (() => {
-                    if (accounts.length > 0 && accounts[0].dob) {
-                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                        return `${dd}/${mm}/${yyyy}`;
+
+    updateFinalLendersDisplay() {
+        const finalSection = document.getElementById('final_lenders_display');
+        const finalGrid = document.getElementById('final_lenders_grid');
+        
+        // Combine found and additional lenders
+        const allLenders = [
+            // Found lenders (enhanced with display info)
+            ...AppState.foundLenders.map(account => ({
+                name: account.displayName || account.lenderName || 'Unknown Lender',
+                filename: account.logoFile || null,
+                source: 'found'
+            })),
+            // Additional lenders
+            ...AppState.additionalLenders.map(lender => ({
+                name: lender.name,
+                filename: lender.filename || null,
+                source: 'manual'
+            }))
+        ];
+        
+        if (allLenders.length > 0) {
+            finalGrid.innerHTML = allLenders.map(lender => `
+                <div class="final-lender-item">
+                    ${lender.filename ? 
+                        `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="final-lender-logo">` :
+                        `<div class="final-no-logo">No Logo</div>`
                     }
-                    return '';
-                })(),
-                phone1: ukMobile,
-                email: reportData.email,
-                address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
-                towncity: reportData.post_town,
-                postcode: reportData.post_code,
-                accounts: accounts,
-                pdfUrl: result.data.pdfUrl
-            };
+                    <div class="final-lender-name">${lender.name}</div>
+                </div>
+            `).join('');
             
-            // Silently upload to FLG - don't show results to user
-            try {
-                await API.uploadToFLG(flgData);
-            } catch (error) {
-                // Silent fail - don't show error to user
-                console.error('FLG upload failed:', error);
-            }
-            
-            // Display lenders in Step 5
-            this.displayLenders(accounts);
-            Navigation.showStep('step5');
-            
-        } catch (error) {
-            console.error('Finance retrieval error:', error);
-            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
-        } finally {
-            Utils.hideLoading();
+            finalSection.style.display = 'block';
+        } else {
+            finalSection.style.display = 'none';
         }
     }
 };
@@ -1094,6 +1138,6 @@ const EventHandlers = {
 document.addEventListener('DOMContentLoaded', () => {
     EventHandlers.init();
     
-    // Ensure step 1 is visible on load
-    Navigation.showStep('step1');
+    // Start with welcome screen (step 0)
+    Navigation.showStep('step0');
 });
