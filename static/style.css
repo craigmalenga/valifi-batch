@@ -85,15 +85,15 @@ pre {
     overflow-x: auto;
 }
 
-/* ─── Container - NARROWER ON DESKTOP ─────────────────────────────────────── */
+/* ─── Container - ORIGINAL DESKTOP WIDTH ─────────────────────────────────────── */
 .container {
     width: 100%;
-    max-width: 700px; /* Reduced from 900px for sensible desktop width */
+    max-width: 900px; /* Restored to original desktop width */
     margin: 2rem auto;
     padding: 3rem;
     background-color: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    border-radius: 24px; /* Restored to original radius */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Restored to original shadow */
     position: relative;
     min-height: 600px;
     overflow-x: hidden;
