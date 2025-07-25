@@ -126,11 +126,9 @@ body > * {
     overflow-x: hidden;
 }
 
-/* Form Steps Container - Centers the form content */
+/* Form Steps Container - Full width within container */
 .form-steps-container {
     width: 100%;
-    display: flex;
-    justify-content: center;
     margin-top: 2rem;
     overflow-x: hidden;
 }
@@ -176,20 +174,13 @@ body > * {
     background: #28a745;
 }
 
-/* Form steps */
+/* Form steps - Full width within container */
 .form-step {
     display: none;
     animation: fadeIn var(--transition-base);
     min-height: 400px;
     width: 100%;
-    max-width: 600px;
-    padding: 0 1rem; /* Add horizontal padding */
-}
-
-@media (max-width: 600px) {
-    .form-step {
-        padding: 0; /* Remove padding on mobile since container has padding */
-    }
+    overflow-x: hidden;
 }
 
 /* Ensure form steps are visible when active */
@@ -473,9 +464,6 @@ h1, h2, h3, h4 {
 .form-section {
     margin-bottom: 2rem;
     width: 100%;
-    max-width: 600px; /* Limit width on desktop */
-    margin-left: auto;
-    margin-right: auto;
     overflow-x: hidden;
 }
 
