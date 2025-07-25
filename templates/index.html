@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=3.0"/>
-  <title>Credit Report Service</title>
+  <title>Vehicle Finance Check Service</title>
   <link rel="stylesheet" href="/static/style.css" />
   <!-- Fallback inline styles for immediate visual feedback -->
   <style>
@@ -516,7 +516,7 @@
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
             <h2 class="step-title">Review and Submit</h2>
-            <p class="step-subtitle">Please review your information before retrieving your credit report</p>
+            <p class="step-subtitle">Please review your information before retrieving your vehicle finance history</p>
           </div>
           
           <div class="form-section">
@@ -528,7 +528,7 @@
               <label class="checkbox-container">
                 <input type="checkbox" id="consent_checkbox" />
                 <span class="checkbox-label">
-                  I confirm that all information provided is accurate and I consent to Belmond obtaining relevant information from my credit file to assess prior vehicle finance.  This will not impact your credit score.
+                  I confirm that all information provided is accurate and I consent to Belmond obtaining relevant information to assess prior vehicle finance. This will not impact your credit score.
                 </span>
               </label>
             </div>
@@ -539,7 +539,7 @@
               <span class="btn-icon">←</span> Back
             </button>
             <button type="submit" class="btn btn-primary btn-large" id="submit_form" disabled>
-              <span class="btn-icon">📄</span> Get Credit Report
+              <span class="btn-icon">📄</span> Retrieve Finance History
             </button>
           </div>
         </div>
@@ -583,11 +583,6 @@
         <div class="loading-text">Processing...</div>
       </div>
     </div>
-    
-    <!-- Results & Debug -->
-    <div id="result" class="result-container" style="display:none;"></div>
-    <div id="flg_status" class="status-container"></div>
-    <div id="debug_container" class="debug-container" style="display:none;"></div>
   </div>
 
   <script src="/js/app.js"></script>

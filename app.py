@@ -236,9 +236,6 @@ class FLGClient:
             timeout=30
         )
 
-
-
-
 # ─── Lenders Service ──────────────────────────────────────────────────────────
 class LendersService:
     """Manages lender data and matching"""
@@ -492,7 +489,6 @@ def validate_identity():
             "details": str(e)
         }), 500
 
-
 @app.route("/query", methods=["POST"])
 @handle_errors
 def query_valifi():
@@ -665,26 +661,14 @@ def upload_summary():
         record_id = root.findtext("item/id")
     except Exception as e:
         logger.error(f"Failed parsing FLG XML: {e}")
-        return jsonify({"error": "Failed to parse FLG response", "details": str(e)}), 500
+        return jsonify({"error": "Failed to parse FLG response"}), 500
     
     if response.status_code != 200 or status != "0":
         logger.error(f"FLG upload failed: {response.text}")
-        return jsonify({
-            "error": "FLG upload failed",
-            "flg_status": status,
-            "flg_body": response.text,
-            "debug_data32": data32_str,
-            "debug_lenders": ",".join(acc.get("lenderName", "") for acc in accounts)
-        }), response.status_code or 500
+        return jsonify({"error": "FLG upload failed"}), response.status_code or 500
     
-    # Success
-    return jsonify({
-        "success": True,
-        "flg_status": status,
-        "flg_id": record_id,
-        "debug_data32": data32_str,
-        "debug_lenders": ",".join(acc.get("lenderName", "") for acc in accounts)
-    }), 200
+    # Success - but don't return debug info to frontend
+    return jsonify({"success": True}), 200
 
 @app.route("/flg/lead", methods=["POST"])
 @handle_errors

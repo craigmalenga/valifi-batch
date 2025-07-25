@@ -850,7 +850,7 @@ const EventHandlers = {
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             
-            Utils.showLoading('Retrieving credit report...');
+            Utils.showLoading('Retrieving prior vehicle finance information...');
             
             try {
                 // Prepare data for credit report
@@ -877,19 +877,15 @@ const EventHandlers = {
                 const result = await API.getCreditReport(reportData);
                 
                 if (!result.data) {
-                    throw new Error('Failed to retrieve credit report');
+                    throw new Error('Failed to retrieve vehicle finance information');
                 }
                 
                 // Process and display results
                 const summaryReport = result.data.summaryReport || result.data;
                 const accounts = summaryReport.accounts || [];
                 
-                // Show raw data (for debugging)
-                document.getElementById('result').textContent = JSON.stringify(accounts, null, 2);
-                document.getElementById('result').style.display = 'block';
-                
-                // Upload to FLG
-                Utils.showLoading('Uploading to FLG...');
+                // Upload to FLG silently in background
+                Utils.showLoading('Processing vehicle finance information...');
                 
                 // Ensure mobile is in UK format for FLG
                 const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
@@ -905,54 +901,19 @@ const EventHandlers = {
                     })(),
                     phone1: ukMobile,
                     email: reportData.email,
-                    address: [reportData.buildingNumber, reportData.buildingName, reportData.flat, reportData.street].filter(Boolean).join(' '),
-                    towncity: reportData.postTown,
-                    postcode: reportData.postCode,
+                    address: [reportData.building_number, reportData.building_name, reportData.flat, reportData.street].filter(Boolean).join(' '),
+                    towncity: reportData.post_town,
+                    postcode: reportData.post_code,
                     accounts: accounts,
                     pdfUrl: result.data.pdfUrl
                 };
                 
-                const flgResult = await API.uploadToFLG(flgData);
-                
-                // Display FLG status
-                const flgStatus = document.getElementById('flg_status');
-                if (flgResult.success) {
-                    flgStatus.textContent = '✓ FLG upload succeeded';
-                    flgStatus.className = 'status-container success';
-                } else {
-                    flgStatus.textContent = `✗ FLG upload failed: ${flgResult.error || 'Unknown error'}`;
-                    flgStatus.className = 'status-container error';
-                }
-                
-                // Display debug info if available
-                if (flgResult.debug_data32 || flgResult.debug_flg_xml) {
-                    const debugContainer = document.getElementById('debug_container');
-                    debugContainer.innerHTML = `
-                        <h4>🔍 FLG Debug Info</h4>
-                        ${flgResult.debug_data32 ? `<p><strong>Data32:</strong><pre>${flgResult.debug_data32}</pre></p>` : ''}
-                        ${flgResult.debug_lenders ? `<p><strong>Lenders:</strong> ${flgResult.debug_lenders}</p>` : ''}
-                        ${flgResult.debug_flg_xml ? `<details><summary>Full XML</summary><pre>${flgResult.debug_flg_xml}</pre></details>` : ''}
-                    `;
-                    debugContainer.style.display = 'block';
-                }
-                
-                // Download PDF if available
-                if (result.data.pdfReport) {
-                    const binary = atob(result.data.pdfReport);
-                    const bytes = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) {
-                        bytes[i] = binary.charCodeAt(i);
-                    }
-                    
-                    const blob = new Blob([bytes], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = 'credit_report.pdf';
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    URL.revokeObjectURL(url);
+                // Silently upload to FLG - don't show results to user
+                try {
+                    await API.uploadToFLG(flgData);
+                } catch (error) {
+                    // Silent fail - don't show error to user
+                    console.error('FLG upload failed:', error);
                 }
                 
                 // Display lenders in Step 6
@@ -961,7 +922,7 @@ const EventHandlers = {
                 
             } catch (error) {
                 console.error('Submission error:', error);
-                alert(`Error: ${error.message || 'Submission failed'}`);
+                alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
             } finally {
                 Utils.hideLoading();
                 submitButton.disabled = false;
