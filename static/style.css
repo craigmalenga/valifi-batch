@@ -85,18 +85,26 @@ pre {
     overflow-x: auto;
 }
 
-/* ─── Container - ORIGINAL DESKTOP WIDTH ─────────────────────────────────────── */
+/* ─── Container - FORCED DESKTOP WIDTH LIMIT ─────────────────────────────────── */
 .container {
     width: 100%;
-    max-width: 900px; /* Restored to original desktop width */
+    max-width: 900px !important; /* Force max width */
     margin: 2rem auto;
     padding: 3rem;
     background-color: #ffffff;
-    border-radius: 24px; /* Restored to original radius */
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Restored to original shadow */
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     position: relative;
     min-height: 600px;
     overflow-x: hidden;
+}
+
+/* Additional desktop width enforcement */
+@media (min-width: 769px) {
+    .container {
+        width: 900px !important;
+        max-width: 900px !important;
+    }
 }
 
 /* Ensure no child element can overflow */
