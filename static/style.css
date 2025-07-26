@@ -1070,6 +1070,11 @@ h1, h2, h3, h4 {
     flex-shrink: 0;
 }
 
+.checkbox-container input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
 .checkbox-label {
     flex: 1;
     color: var(--text-primary);
@@ -1103,7 +1108,7 @@ h1, h2, h3, h4 {
 
 .found-row {
     display: grid;
-    grid-template-columns: 80px 1fr auto; /* Reduced icon space from 100px to 80px */
+    grid-template-columns: 100px 1fr auto; /* Fixed width for logo column */
     gap: 0.75rem; /* Reduced gap for tighter layout */
     align-items: center;
     padding: 1rem; /* Consistent padding */
@@ -1122,12 +1127,17 @@ h1, h2, h3, h4 {
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100px; /* Fixed width to prevent overflow */
+    height: 60px; /* Fixed height */
+    overflow: hidden; /* Prevent overflow */
 }
 
 .lender-logo {
-    max-width: 60px; /* Reduced from 90px */
-    max-height: 40px; /* Reduced from 3.5em */
+    max-width: 90%; /* Leave some padding */
+    max-height: 50px; /* Slightly smaller than container */
     object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
 
 .no-logo {
@@ -1174,6 +1184,10 @@ h1, h2, h3, h4 {
         grid-template-columns: 1fr;
         text-align: center;
         gap: 1rem;
+    }
+    
+    .lender-icon {
+        margin: 0 auto;
     }
     
     .lender-name {
@@ -1231,9 +1245,7 @@ h1, h2, h3, h4 {
 /* ─── Combined Lenders Display ───────────────────────────────────────────────── */
 .combined-lenders-section {
     margin-top: 3rem;
-    padding: 2rem;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
+    padding: 0; /* Removed background */
 }
 
 .combined-lenders-section h3 {
@@ -1252,6 +1264,163 @@ h1, h2, h3, h4 {
     font-size: 0.8rem;
     color: var(--primary-color);
     font-style: italic;
+}
+
+/* ─── Final Lenders Summary ───────────────────────────────────────────────── */
+.final-lenders-summary {
+    background: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 2rem;
+}
+
+.final-lenders-summary h3 {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+}
+
+/* ─── FCA Claims Section ──────────────────────────────────────────────────── */
+.fca-claims-section {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.fca-claims-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.fca-intro {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.claim-type-item {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.claim-type-item .checkbox-label {
+    line-height: 1.6;
+}
+
+.claim-type-item .checkbox-label strong {
+    color: var(--text-primary);
+    font-size: 1.05rem;
+}
+
+/* ─── Terms and Signature Section ─────────────────────────────────────────── */
+.terms-signature-section {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.terms-acceptance {
+    margin-bottom: 2rem;
+}
+
+.terms-acceptance a {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.terms-acceptance a:hover {
+    color: var(--burgundy-color);
+}
+
+.fee-info {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+}
+
+.fee-info p {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.fee-info p:last-child {
+    margin-bottom: 0;
+}
+
+.fee-details {
+    font-weight: 600;
+    color: var(--text-primary) !important;
+}
+
+/* ─── Signature Section ───────────────────────────────────────────────────── */
+.signature-section {
+    margin-bottom: 2rem;
+}
+
+.signature-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.signature-box {
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: white;
+    padding: 1rem;
+}
+
+#signature_canvas {
+    width: 100%;
+    height: 150px;
+    border: 1px dashed var(--border-color);
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.signature-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.final-submit-container {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+/* Small button row adjustment for step 5 */
+#add_more_lenders_btn {
+    background-color: var(--primary-color) !important;
+}
+
+@media (max-width: 600px) {
+    .fca-claims-section,
+    .terms-signature-section,
+    .final-lenders-summary {
+        padding: 1.5rem;
+    }
+    
+    .signature-controls {
+        flex-direction: column;
+    }
+    
+    .btn-small {
+        width: 100%;
+    }
 }
 
 /* ─── Final Submit Card ────────────────────────────────────────────────────── */
@@ -1284,6 +1453,17 @@ h1, h2, h3, h4 {
 .final-submit-card p {
     margin-bottom: 2rem;
     color: var(--text-secondary);
+}
+
+/* Responsive button layout for step 5 */
+@media (max-width: 768px) {
+    #step5 .button-row {
+        flex-direction: column-reverse; /* Stack vertically on mobile */
+    }
+    
+    #step5 .button-row .btn {
+        width: 100%;
+    }
 }
 
 /* ─── Messages & Status ────────────────────────────────────────────────────── */

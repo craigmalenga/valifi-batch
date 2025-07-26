@@ -535,6 +535,7 @@
             </button>
           </div>
           
+          
           <div class="page-footer">
             <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
             <img src="/static/icons/trust_secure.png" alt="Trust and Security" class="trust-logo">
@@ -785,7 +786,6 @@
             </div>
 
             <div id="combined_lenders_display" class="combined-lenders-section" style="display:none;">
-              <h3>All Selected Finance Agreements</h3>
               <div id="combined_lenders_list" class="lenders-list">
                 <!-- JS will populate this with both found and manually added lenders -->
               </div>
@@ -793,13 +793,19 @@
           </div>
 
           <div class="button-row">
-            <button type="button" class="btn btn-secondary" id="back_to_step4">
-              <span class="btn-icon">←</span> Back
+            <button type="button" class="btn btn-primary" id="add_more_lenders_btn" style="background-color: var(--primary-color);">
+              <span class="btn-icon">+</span> Add Even More Lenders
             </button>
             <button type="button" class="btn btn-primary" id="next_to_step6">
               Final steps to submit your claim <span class="btn-icon">→</span>
             </button>
           </div>
+          
+          <div class="page-footer">
+            <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
+            <img src="/static/icons/trust_secure.png" alt="Trust and Security" class="trust-logo">
+          </div>
+        </div>
           
           <div class="page-footer">
             <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
@@ -815,14 +821,87 @@
           </div>
           
           <div class="form-section">
-            <div class="final-submit-card">
-              <div class="check-icon">🎯</div>
-              <h3>Ready to Submit Your Claim</h3>
-              <p>We've gathered all the information needed to process your vehicle finance claim. Click below to complete your submission.</p>
+            <!-- Lenders Summary -->
+            <div class="final-lenders-summary">
+              <h3>All Selected Finance Agreements</h3>
+              <div id="final_lenders_list" class="lenders-list">
+                <!-- JS will populate this -->
+              </div>
+            </div>
+            
+            <!-- FCA Claims Options -->
+            <div class="fca-claims-section">
+              <h3>Claim Types</h3>
+              <p class="fca-intro">We will pursue the following types of claims on your behalf:</p>
               
-              <button type="submit" class="btn btn-primary btn-large" id="final_submit_form">
-                <span class="btn-icon">✓</span> Submit My Claim
-              </button>
+              <div class="claim-type-item">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="general_claims" checked disabled />
+                  <span class="checkbox-label">
+                    <strong>General Commission Non-Disclosure Claims</strong><br>
+                    We will aim to pursue this for all lenders listed above where commission was not properly disclosed at the point of sale.
+                  </span>
+                </label>
+              </div>
+              
+              <div class="claim-type-item">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="irresponsible_lending" checked disabled />
+                  <span class="checkbox-label">
+                    <strong>Irresponsible Lending Claims</strong><br>
+                    Where applicable, we may pursue additional recovery if we can demonstrate the lender failed to properly assess your financial position before lending. This will depend on our findings during the investigation.
+                  </span>
+                </label>
+              </div>
+              
+              <div class="claim-type-item">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="affordability_claims" checked disabled />
+                  <span class="checkbox-label">
+                    <strong>Affordability Assessment Claims</strong><br>
+                    We will review whether proper affordability checks were conducted and pursue claims where lending decisions were made without adequate consideration of your circumstances.
+                  </span>
+                </label>
+              </div>
+            </div>
+            
+            <!-- Terms and Signature -->
+            <div class="terms-signature-section">
+              <div class="terms-acceptance">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="terms_checkbox" />
+                  <span class="checkbox-label">
+                    I read and agreed to both the <a href="https://belmondclaims.com/wp-content/uploads/2024/09/Pre-disclosure-document-motor-finance-claims-customer.pdf" target="_blank" rel="noopener noreferrer">Pre-Disclosure Agreement</a> and <a href="https://belmondclaims.com/wp-content/uploads/2024/09/Terms-and-conditions-motor-finance.pdf" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
+                  </span>
+                </label>
+              </div>
+              
+              <div class="fee-info">
+                <p>You do not need to use a claims management company to pursue a claim against a lender, you can do this yourself for free.</p>
+                <p>If unsuccessful with your claim you also have the option to refer the claim to the Financial Ombudsman Service yourself without incurring a fee.</p>
+                <p class="fee-details">Our fees range from 18% to 36% (including VAT) on successful claims. For further information please view our <a href="https://belmondclaims.com/terms-conditions/" target="_blank" rel="noopener noreferrer">fee table here</a>.</p>
+              </div>
+              
+              <div class="signature-section">
+                <p class="signature-label">Please sign your signature in the box below</p>
+                <div class="signature-box">
+                  <canvas id="signature_canvas"></canvas>
+                  <div class="signature-controls">
+                    <button type="button" class="btn btn-secondary btn-small" id="clear_signature">
+                      Clear
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-small" id="auto_sign">
+                      Auto-Sign
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="final-submit-container">
+                <button type="submit" class="btn btn-primary btn-large" id="final_submit_form" disabled>
+                  <span class="btn-icon">✓</span> Submit My Claim
+                </button>
+              </div>
             </div>
           </div>
 
@@ -831,6 +910,12 @@
               <span class="btn-icon">←</span> Back
             </button>
           </div>
+          
+          <div class="page-footer">
+            <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
+            <img src="/static/icons/trust_secure.png" alt="Trust and Security" class="trust-logo">
+          </div>
+        </div>
           
           <div class="page-footer">
             <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>

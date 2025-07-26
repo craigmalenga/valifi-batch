@@ -13,7 +13,8 @@ const AppState = {
     otpVerified: false,
     identityVerified: false,
     minimumScore: 40,  // Default, will be updated from server
-    changingMobile: false // Track if we're changing mobile
+    changingMobile: false, // Track if we're changing mobile
+    signatureSigned: false // Track if signature is provided
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
@@ -1021,15 +1022,47 @@ const EventHandlers = {
             this.showLenderModal();
         });
         
+        // Add Even More Lenders button (replaces back button)
+        const addMoreBtn = document.getElementById('add_more_lenders_btn');
+        if (addMoreBtn) {
+            addMoreBtn.addEventListener('click', () => {
+                this.showLenderModal();
+            });
+        }
+        
         // Navigation
-        document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
-        document.getElementById('next_to_step6').addEventListener('click', () => Navigation.showStep('step6'));
+        document.getElementById('next_to_step6').addEventListener('click', () => {
+            this.populateFinalLendersList();
+            Navigation.showStep('step6');
+        });
     },
 
     initStep6() {
+        // Initialize signature canvas
+        this.initSignatureCanvas();
+        
+        // Terms checkbox
+        const termsCheckbox = document.getElementById('terms_checkbox');
+        const submitButton = document.getElementById('final_submit_form');
+        
+        termsCheckbox.addEventListener('change', () => {
+            this.checkFinalSubmitReady();
+        });
+        
         // Final submit
-        document.getElementById('final_submit_form').addEventListener('click', async (e) => {
+        submitButton.addEventListener('click', async (e) => {
             e.preventDefault();
+            
+            if (!termsCheckbox.checked) {
+                alert('Please accept the terms and conditions to proceed.');
+                return;
+            }
+            
+            if (!AppState.signatureSigned) {
+                alert('Please provide your signature to proceed.');
+                return;
+            }
+            
             Utils.showLoading('Submitting your claim...');
             
             // Here you would normally submit all the collected data
@@ -1041,6 +1074,215 @@ const EventHandlers = {
         
         // Navigation
         document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
+    },
+
+    initSignatureCanvas() {
+        const canvas = document.getElementById('signature_canvas');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Set canvas size
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        // Drawing functions
+        const startDrawing = (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            lastX = x - rect.left;
+            lastY = y - rect.top;
+        };
+        
+        const draw = (e) => {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            const currentX = x - rect.left;
+            const currentY = y - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+            
+            AppState.signatureSigned = true;
+            this.checkFinalSubmitReady();
+        };
+        
+        const stopDrawing = () => {
+            isDrawing = false;
+        };
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e);
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+        
+        // Clear button
+        document.getElementById('clear_signature').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            AppState.signatureSigned = false;
+            this.checkFinalSubmitReady();
+        });
+        
+        // Auto-sign button
+        document.getElementById('auto_sign').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Get user's name
+            const firstName = AppState.formData.first_name || 'Signature';
+            const lastName = AppState.formData.last_name || '';
+            const fullName = `${firstName} ${lastName}`.trim();
+            
+            // Draw auto signature
+            ctx.font = '30px Brush Script MT, cursive';
+            ctx.fillStyle = '#000';
+            ctx.fillText(fullName, 20, canvas.height / 2 + 10);
+            
+            AppState.signatureSigned = true;
+            this.checkFinalSubmitReady();
+        });
+    },
+
+    checkFinalSubmitReady() {
+        const termsCheckbox = document.getElementById('terms_checkbox');
+        const submitButton = document.getElementById('final_submit_form');
+        
+        if (termsCheckbox.checked && AppState.signatureSigned) {
+            submitButton.disabled = false;
+        } else {
+            submitButton.disabled = true;
+        }
+    },
+
+    populateFinalLendersList() {
+        const finalList = document.getElementById('final_lenders_list');
+        if (!finalList) return;
+        
+        finalList.innerHTML = '';
+        
+        // Add found lenders
+        AppState.foundLenders.forEach(account => {
+            const row = document.createElement('div');
+            row.className = 'found-row';
+            
+            // Icon column
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'lender-icon';
+            
+            if (account.logoFile) {
+                const img = document.createElement('img');
+                img.src = `/static/icons/${encodeURIComponent(account.logoFile)}`;
+                img.alt = account.displayName;
+                img.className = 'lender-logo';
+                img.onerror = function() {
+                    iconDiv.innerHTML = `<div class="no-logo">${account.displayName}</div>`;
+                };
+                iconDiv.appendChild(img);
+            } else {
+                const noLogo = document.createElement('div');
+                noLogo.className = 'no-logo';
+                noLogo.textContent = account.displayName || account.lenderName;
+                iconDiv.appendChild(noLogo);
+            }
+            
+            // Name column
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'lender-name';
+            if (!account.logoFile) {
+                nameDiv.textContent = account.displayName || account.lenderName;
+            }
+            
+            // Date column
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'lender-date';
+            if (account.startDate) {
+                try {
+                    const date = new Date(account.startDate);
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    const year = String(date.getFullYear()).slice(-2);
+                    dateDiv.textContent = `From ${month} '${year}`;
+                } catch(e) {
+                    dateDiv.textContent = 'Found by check';
+                }
+            } else {
+                dateDiv.textContent = 'Found by check';
+            }
+            
+            row.appendChild(iconDiv);
+            row.appendChild(nameDiv);
+            row.appendChild(dateDiv);
+            finalList.appendChild(row);
+        });
+        
+        // Add manually selected lenders
+        AppState.additionalLenders.forEach(lender => {
+            const row = document.createElement('div');
+            row.className = 'found-row manual-row';
+            
+            // Icon column
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'lender-icon';
+            
+            if (lender.filename) {
+                const img = document.createElement('img');
+                img.src = `/static/icons/${encodeURIComponent(lender.filename)}`;
+                img.alt = lender.name;
+                img.className = 'lender-logo';
+                img.onerror = function() {
+                    iconDiv.innerHTML = `<div class="no-logo">${lender.name}</div>`;
+                };
+                iconDiv.appendChild(img);
+            } else {
+                const noLogo = document.createElement('div');
+                noLogo.className = 'no-logo';
+                noLogo.textContent = lender.name;
+                iconDiv.appendChild(noLogo);
+            }
+            
+            // Name column
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'lender-name';
+            if (!lender.filename) {
+                nameDiv.textContent = lender.name;
+            }
+            
+            // Date column
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'lender-date lender-source';
+            dateDiv.textContent = 'Added manually';
+            
+            row.appendChild(iconDiv);
+            row.appendChild(nameDiv);
+            row.appendChild(dateDiv);
+            finalList.appendChild(row);
+        });
     },
 
     initFormSubmission() {
