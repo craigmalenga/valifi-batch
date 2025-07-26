@@ -272,6 +272,14 @@ const Navigation = {
             step.classList.remove('active');
         });
         
+        // Clean up duplicate footers - ensure only one page-footer exists
+        const footers = document.querySelectorAll('.page-footer');
+        if (footers.length > 1) {
+            for (let i = 1; i < footers.length; i++) {
+                footers[i].remove();
+            }
+        }
+        
         // Then show only the requested step
         const stepElement = document.getElementById(stepId);
         if (stepElement) {
@@ -1020,7 +1028,7 @@ const EventHandlers = {
         // Display found lenders when step loads
         // Note: displayLenders will be called when we transition to this step
         
-        // Add Even More Lenders button (replaces back button)
+        // Add More Lenders button
         const addMoreBtn = document.getElementById('add_more_lenders_btn');
         if (addMoreBtn) {
             addMoreBtn.addEventListener('click', () => {
@@ -1080,62 +1088,53 @@ const EventHandlers = {
         
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
         
         // Set canvas actual size to match CSS size
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width;
+            canvas.height = rect.height;
             
-            // Set actual canvas size accounting for device pixel ratio
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            
-            // Scale the drawing context to match device pixel ratio
-            ctx.scale(dpr, dpr);
-            
-            // Set canvas CSS size
-            canvas.style.width = rect.width + 'px';
-            canvas.style.height = rect.height + 'px';
+            // Reset drawing context properties after resize
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#000033';
         }
         
         // Initial resize
         resizeCanvas();
         
         // Resize canvas when window resizes
-        window.addEventListener('resize', () => {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            resizeCanvas();
-            ctx.putImageData(imageData, 0, 0);
-        });
+        window.addEventListener('resize', resizeCanvas);
         
         // Get coordinates relative to canvas
         function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
-            let x, y;
             
-            if (e.touches) {
-                x = e.touches[0].clientX - rect.left;
-                y = e.touches[0].clientY - rect.top;
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
             } else {
-                x = e.clientX - rect.left;
-                y = e.clientY - rect.top;
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
             }
-            
-            return { x, y };
         }
         
         // Drawing functions
         const startDrawing = (e) => {
             isDrawing = true;
             const coords = getCoordinates(e);
-            lastX = coords.x;
-            lastY = coords.y;
             
-            // Start a path
             ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
+            ctx.moveTo(coords.x, coords.y);
+            
+            AppState.signatureSigned = true;
+            this.checkFinalSubmitReady();
         };
         
         const draw = (e) => {
@@ -1144,28 +1143,13 @@ const EventHandlers = {
             
             const coords = getCoordinates(e);
             
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#000';
-            
             ctx.lineTo(coords.x, coords.y);
             ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(coords.x, coords.y);
-            
-            lastX = coords.x;
-            lastY = coords.y;
-            
-            AppState.signatureSigned = true;
-            this.checkFinalSubmitReady();
         };
         
         const stopDrawing = () => {
             if (isDrawing) {
                 isDrawing = false;
-                ctx.beginPath();
             }
         };
         
@@ -1179,32 +1163,29 @@ const EventHandlers = {
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startDrawing(e);
-        });
+        }, { passive: false });
+        
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             draw(e);
-        });
+        }, { passive: false });
+        
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
             stopDrawing();
-        });
+        }, { passive: false });
         
         // Clear button
         document.getElementById('clear_signature').addEventListener('click', () => {
-            const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            ctx.clearRect(0, 0, rect.width, rect.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             AppState.signatureSigned = false;
             this.checkFinalSubmitReady();
         });
         
         // Auto-sign button
         document.getElementById('auto_sign').addEventListener('click', () => {
-            const rect = canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            
             // Clear canvas first
-            ctx.clearRect(0, 0, rect.width, rect.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Get user's name
             const firstName = AppState.formData.first_name || 'Signature';
@@ -1212,16 +1193,13 @@ const EventHandlers = {
             const fullName = `${firstName} ${lastName}`.trim();
             
             // Set up signature styling
-            ctx.font = 'italic 30px "Brush Script MT", "Lucida Handwriting", "Lucida Calligraphy", cursive';
+            ctx.font = 'italic 30px "Brush Script MT", "Lucida Handwriting", cursive';
             ctx.fillStyle = '#000033';
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
             
             // Draw the signature centered
-            const x = rect.width / 2;
-            const y = rect.height / 2;
-            
-            ctx.fillText(fullName, x, y);
+            ctx.fillText(fullName, canvas.width / 2, canvas.height / 2);
             
             AppState.signatureSigned = true;
             this.checkFinalSubmitReady();
@@ -1336,14 +1314,23 @@ const EventHandlers = {
         foundList.innerHTML = '';
         
         if (accounts.length === 0) {
-            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add Even More Lenders" button below if you remember any specific lenders.</p>';
+            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add More Lenders" button below if you remember any specific lenders.</p>';
             
-            // Show the "Add Even More Lenders" button
+            // Show the "Add More Lenders" button
             const addMoreBtn = document.getElementById('add_more_lenders_btn');
             if (addMoreBtn) {
                 addMoreBtn.style.display = 'block';
             }
             return;
+        }
+        
+        // If only one lender, use centered layout
+        if (accounts.length === 1) {
+            foundList.style.gridTemplateColumns = '1fr';
+            foundList.style.justifyItems = 'center';
+        } else {
+            foundList.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            foundList.style.justifyItems = 'unset';
         }
         
         accounts.forEach(account => {
@@ -1369,6 +1356,9 @@ const EventHandlers = {
             // Create lender row
             const row = document.createElement('div');
             row.className = 'found-row';
+            if (accounts.length === 1) {
+                row.style.maxWidth = '400px';
+            }
             
             // Icon column
             const iconDiv = document.createElement('div');
@@ -1416,7 +1406,7 @@ const EventHandlers = {
         if (AppState.additionalLenders.length > 0) {
             this.updateCombinedLendersDisplay();
         } else {
-            // Show the "Add Even More Lenders" button
+            // Show the "Add More Lenders" button
             const addMoreBtn = document.getElementById('add_more_lenders_btn');
             if (addMoreBtn) {
                 addMoreBtn.style.display = 'block';
@@ -1528,7 +1518,7 @@ const EventHandlers = {
         // Show combined section
         combinedSection.style.display = 'block';
         
-        // Show the "Add Even More Lenders" button
+        // Show the "Add More Lenders" button
         const addMoreBtn = document.getElementById('add_more_lenders_btn');
         if (addMoreBtn) {
             addMoreBtn.style.display = 'block';
@@ -1537,10 +1527,25 @@ const EventHandlers = {
         // Clear and repopulate with both found and manual lenders
         combinedList.innerHTML = '';
         
+        // Determine total count
+        const totalLenders = AppState.foundLenders.length + AppState.additionalLenders.length;
+        
+        // If only one total lender, use centered layout
+        if (totalLenders === 1) {
+            combinedList.style.gridTemplateColumns = '1fr';
+            combinedList.style.justifyItems = 'center';
+        } else {
+            combinedList.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            combinedList.style.justifyItems = 'unset';
+        }
+        
         // First add found lenders
         AppState.foundLenders.forEach(account => {
             const row = document.createElement('div');
             row.className = 'found-row';
+            if (totalLenders === 1) {
+                row.style.maxWidth = '400px';
+            }
             
             // Icon column
             const iconDiv = document.createElement('div');
@@ -1587,6 +1592,9 @@ const EventHandlers = {
         AppState.additionalLenders.forEach(lender => {
             const row = document.createElement('div');
             row.className = 'found-row manual-row';
+            if (totalLenders === 1) {
+                row.style.maxWidth = '400px';
+            }
             
             // Icon column
             const iconDiv = document.createElement('div');
