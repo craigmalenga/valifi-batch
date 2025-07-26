@@ -64,6 +64,7 @@ body {
     overflow-x: hidden;
     width: 100%;
     position: relative;
+    font-size: 1.2rem; /* Increased base font size by 20% */
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
@@ -214,11 +215,12 @@ body > * {
     }
     
     .container {
-        margin: 1rem;
+        margin: 0.5rem;
         padding: 2rem 1.5rem;
         border-radius: 12px;
         min-height: 500px;
-        max-width: calc(100vw - 2rem); /* Ensure container doesn't overflow viewport */
+        max-width: calc(100vw - 1rem); /* Reduced from 2rem to ensure full visibility */
+        width: calc(100vw - 1rem);
     }
     
     .form-step {
@@ -421,6 +423,17 @@ body > * {
     gap: 1.5rem;
 }
 
+/* Page Footer - Common across all pages */
+.page-footer {
+    margin-top: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
 .footer-disclaimer {
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -429,6 +442,7 @@ body > * {
     margin: 0;
     padding: 0 1rem;
     font-style: italic;
+    text-align: center;
 }
 
 .trust-logo {
@@ -476,12 +490,18 @@ body > * {
         gap: 1rem;
     }
     
+    .page-footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+    }
+    
     .footer-disclaimer {
         font-size: 0.75rem;
     }
     
     .trust-logo {
         width: 300px;
+        max-width: 90vw;
     }
 }
 
@@ -799,54 +819,6 @@ h1, h2, h3, h4 {
     grid-column: span 2;
 }
 
-/* ─── Prior Addresses Section ──────────────────────────────────────────────── */
-.prior-addresses-section {
-    background: var(--bg-secondary);
-    padding: 2rem;
-    border-radius: var(--radius-lg);
-    margin-top: 2rem;
-}
-
-.prior-addresses-section h3 {
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-    font-size: 1.25rem;
-}
-
-.prior-address-note {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    margin-bottom: 2rem;
-}
-
-.prior-address-item {
-    background: white;
-    padding: 1.5rem;
-    border-radius: var(--radius-md);
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-}
-
-.prior-address-remove {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: var(--error-color);
-    color: white;
-    border: none;
-    border-radius: var(--radius-round);
-    width: 24px;
-    height: 24px;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.address-edit-option {
-    margin-top: 1rem;
-    text-align: center;
-}
-
 /* ─── Buttons ──────────────────────────────────────────────────────────────── */
 .btn {
     padding: 0.875rem 2rem;
@@ -1147,8 +1119,8 @@ h1, h2, h3, h4 {
 }
 
 .lender-logo {
-    max-width: 100%;
-    height: 4em; /* Increased from 3em to 4em for bigger logos */
+    max-width: 90px; /* Reduced to fit within 100px column */
+    max-height: 3.5em; /* Reduced from 4em */
     object-fit: contain;
 }
 

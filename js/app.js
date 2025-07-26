@@ -649,15 +649,12 @@ const EventHandlers = {
             document.getElementById('post_town').value = addr.postTown || '';
             document.getElementById('post_code').value = addr.postcode || '';
             
-            // Show edit option
-            document.querySelector('.address-edit-option').style.display = 'block';
-            
             // Clear any validation errors
             Utils.clearError('street_error');
             Utils.clearError('post_town_error');
             Utils.clearError('post_code_error');
         });
-        
+       
         // Edit address details button
         document.getElementById('edit_address_details').addEventListener('click', () => {
             document.getElementById('manual_address_fields').style.display = 'block';
