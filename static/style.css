@@ -1383,6 +1383,8 @@ h1, h2, h3, h4 {
     border: 1px dashed var(--border-color);
     cursor: crosshair;
     touch-action: none;
+    background-color: #fff;
+    display: block;
 }
 
 .signature-controls {

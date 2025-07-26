@@ -336,6 +336,9 @@ const Navigation = {
                 AppState.formData[input.id] = input.value;
             }
         });
+        
+        // Debug log to ensure data is saved
+        console.log('Form data saved:', AppState.formData);
     },
 
     populateReviewSummary() {
@@ -1085,46 +1088,78 @@ const EventHandlers = {
         let lastX = 0;
         let lastY = 0;
         
-        // Set canvas size
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        // Set canvas size properly
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        
+        // Resize canvas when window resizes
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Get coordinates relative to canvas
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+            
+            if (e.touches) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+            
+            // Scale coordinates to canvas size
+            x = x * (canvas.width / rect.width);
+            y = y * (canvas.height / rect.height);
+            
+            return { x, y };
+        }
         
         // Drawing functions
         const startDrawing = (e) => {
             isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX || e.touches[0].clientX;
-            const y = e.clientY || e.touches[0].clientY;
-            lastX = x - rect.left;
-            lastY = y - rect.top;
+            const coords = getCoordinates(e);
+            lastX = coords.x;
+            lastY = coords.y;
+            
+            // Start a path
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
         };
         
         const draw = (e) => {
             if (!isDrawing) return;
+            e.preventDefault();
             
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX || e.touches[0].clientX;
-            const y = e.clientY || e.touches[0].clientY;
-            const currentX = x - rect.left;
-            const currentY = y - rect.top;
+            const coords = getCoordinates(e);
             
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(currentX, currentY);
-            ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#000';
+            
+            ctx.lineTo(coords.x, coords.y);
             ctx.stroke();
             
-            lastX = currentX;
-            lastY = currentY;
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+            
+            lastX = coords.x;
+            lastY = coords.y;
             
             AppState.signatureSigned = true;
             this.checkFinalSubmitReady();
         };
         
         const stopDrawing = () => {
-            isDrawing = false;
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.beginPath();
+            }
         };
         
         // Mouse events
@@ -1142,7 +1177,10 @@ const EventHandlers = {
             e.preventDefault();
             draw(e);
         });
-        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopDrawing();
+        });
         
         // Clear button
         document.getElementById('clear_signature').addEventListener('click', () => {
@@ -1153,6 +1191,7 @@ const EventHandlers = {
         
         // Auto-sign button
         document.getElementById('auto_sign').addEventListener('click', () => {
+            // Clear canvas first
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Get user's name
@@ -1160,10 +1199,18 @@ const EventHandlers = {
             const lastName = AppState.formData.last_name || '';
             const fullName = `${firstName} ${lastName}`.trim();
             
-            // Draw auto signature
-            ctx.font = '30px Brush Script MT, cursive';
-            ctx.fillStyle = '#000';
-            ctx.fillText(fullName, 20, canvas.height / 2 + 10);
+            // Set up signature styling
+            ctx.font = 'italic 30px "Brush Script MT", "Lucida Handwriting", "Lucida Calligraphy", cursive';
+            ctx.fillStyle = '#000033';
+            ctx.textBaseline = 'middle';
+            
+            // Measure text to center it
+            const textMetrics = ctx.measureText(fullName);
+            const x = (canvas.width - textMetrics.width) / 2;
+            const y = canvas.height / 2;
+            
+            // Draw the signature
+            ctx.fillText(fullName, x, y);
             
             AppState.signatureSigned = true;
             this.checkFinalSubmitReady();
@@ -1479,6 +1526,12 @@ const EventHandlers = {
         
         // Show combined section
         combinedSection.style.display = 'block';
+        
+        // Show the "Add Even More Lenders" button
+        const addMoreBtn = document.getElementById('add_more_lenders_btn');
+        if (addMoreBtn) {
+            addMoreBtn.style.display = 'block';
+        }
         
         // Clear and repopulate with both found and manual lenders
         combinedList.innerHTML = '';
