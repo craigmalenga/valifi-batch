@@ -297,6 +297,21 @@ const Navigation = {
             // Save form data
             this.saveFormData();
             
+            // Special handling for step 4 to ensure mobile is saved
+            if (stepId === 'step4') {
+                const mobileInput = document.getElementById('mobile');
+                if (mobileInput && mobileInput.value) {
+                    AppState.formData.mobile = mobileInput.value;
+                }
+            }
+            
+            // Initialize signature canvas when showing step 6
+            if (stepId === 'step6') {
+                setTimeout(() => {
+                    EventHandlers.initSignatureCanvas();
+                }, 100);
+            }
+            
             // Scroll to top of container
             const container = document.querySelector('.container');
             if (container) {
@@ -345,6 +360,12 @@ const Navigation = {
             }
         });
         
+        // Specifically ensure mobile is saved
+        const mobileInput = document.getElementById('mobile');
+        if (mobileInput && mobileInput.value) {
+            AppState.formData.mobile = mobileInput.value;
+        }
+        
         // Debug log to ensure data is saved
         console.log('Form data saved:', AppState.formData);
     },
@@ -352,6 +373,12 @@ const Navigation = {
     populateReviewSummary() {
         const summary = document.getElementById('review_summary');
         const data = AppState.formData;
+        
+        // Make sure we have the latest mobile value
+        const mobileInput = document.getElementById('mobile');
+        if (mobileInput) {
+            data.mobile = mobileInput.value;
+        }
         
         summary.innerHTML = `
             <h3>Your Information</h3>
@@ -808,6 +835,11 @@ const EventHandlers = {
         document.getElementById('back_to_step2').addEventListener('click', () => Navigation.showStep('step2'));
         document.getElementById('next_to_step4').addEventListener('click', () => {
             if (AppState.otpVerified) {
+                // Save mobile number before proceeding
+                const mobileInput = document.getElementById('mobile');
+                if (mobileInput) {
+                    AppState.formData.mobile = mobileInput.value;
+                }
                 // Populate review summary before showing step 4
                 Navigation.populateReviewSummary();
                 Navigation.showStep('step4');
@@ -1044,8 +1076,7 @@ const EventHandlers = {
     },
 
     initStep6() {
-        // Initialize signature canvas
-        this.initSignatureCanvas();
+        // Signature canvas is now initialized in showStep when step 6 is shown
         
         // Terms checkbox
         const termsCheckbox = document.getElementById('terms_checkbox');
@@ -1084,102 +1115,89 @@ const EventHandlers = {
 
     initSignatureCanvas() {
         const canvas = document.getElementById('signature_canvas');
-        if (!canvas) return;
+        if (!canvas) {
+            console.error('Signature canvas not found');
+            return;
+        }
         
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
         
-        // Set canvas actual size to match CSS size
-        function resizeCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            
-            // Reset drawing context properties after resize
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#000033';
-        }
+        // Set canvas size
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
         
-        // Initial resize
-        resizeCanvas();
-        
-        // Resize canvas when window resizes
-        window.addEventListener('resize', resizeCanvas);
-        
-        // Get coordinates relative to canvas
-        function getCoordinates(e) {
-            const rect = canvas.getBoundingClientRect();
-            
-            if (e.touches && e.touches.length > 0) {
-                return {
-                    x: e.touches[0].clientX - rect.left,
-                    y: e.touches[0].clientY - rect.top
-                };
-            } else {
-                return {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-            }
-        }
-        
-        // Drawing functions
-        const startDrawing = (e) => {
-            isDrawing = true;
-            const coords = getCoordinates(e);
-            
-            ctx.beginPath();
-            ctx.moveTo(coords.x, coords.y);
-            
-            AppState.signatureSigned = true;
-            this.checkFinalSubmitReady();
-        };
-        
-        const draw = (e) => {
-            if (!isDrawing) return;
-            e.preventDefault();
-            
-            const coords = getCoordinates(e);
-            
-            ctx.lineTo(coords.x, coords.y);
-            ctx.stroke();
-        };
-        
-        const stopDrawing = () => {
-            if (isDrawing) {
-                isDrawing = false;
-            }
-        };
+        // Set drawing style
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000033';
         
         // Mouse events
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            AppState.signatureSigned = true;
+            EventHandlers.checkFinalSubmitReady();
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        canvas.addEventListener('mouseout', () => {
+            isDrawing = false;
+        });
         
         // Touch events
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            startDrawing(e);
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            AppState.signatureSigned = true;
+            EventHandlers.checkFinalSubmitReady();
         }, { passive: false });
         
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            draw(e);
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
         }, { passive: false });
         
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            stopDrawing();
+            isDrawing = false;
         }, { passive: false });
         
         // Clear button
         document.getElementById('clear_signature').addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             AppState.signatureSigned = false;
-            this.checkFinalSubmitReady();
+            EventHandlers.checkFinalSubmitReady();
         });
         
         // Auto-sign button
@@ -1192,17 +1210,15 @@ const EventHandlers = {
             const lastName = AppState.formData.last_name || '';
             const fullName = `${firstName} ${lastName}`.trim();
             
-            // Set up signature styling
-            ctx.font = 'italic 30px "Brush Script MT", "Lucida Handwriting", cursive';
+            // Draw signature
+            ctx.font = 'italic 30px "Brush Script MT", cursive';
             ctx.fillStyle = '#000033';
-            ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
-            
-            // Draw the signature centered
+            ctx.textBaseline = 'middle';
             ctx.fillText(fullName, canvas.width / 2, canvas.height / 2);
             
             AppState.signatureSigned = true;
-            this.checkFinalSubmitReady();
+            EventHandlers.checkFinalSubmitReady();
         });
     },
 
@@ -1311,18 +1327,37 @@ const EventHandlers = {
 
     displayLenders(accounts) {
         const foundList = document.getElementById('found_list');
+        const stepHeader = document.querySelector('#step5 .step-header');
         foundList.innerHTML = '';
         
         if (accounts.length === 0) {
-            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add More Lenders" button below if you remember any specific lenders.</p>';
+            // Update header to indicate no lenders found
+            stepHeader.innerHTML = `
+                <h2 class="section-heading">Your Lenders</h2>
+                <p class="step-subtitle">We couldn't find any finance agreements in our initial check</p>
+            `;
             
-            // Show the "Add More Lenders" button
+            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add Lenders Manually" button below if you remember any specific lenders.</p>';
+            
+            // Change button text to "Add Lenders Manually"
             const addMoreBtn = document.getElementById('add_more_lenders_btn');
             if (addMoreBtn) {
+                const btnText = addMoreBtn.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = 'Add Lenders Manually';
+                } else {
+                    addMoreBtn.innerHTML = '<span class="btn-icon">+</span> Add Lenders Manually';
+                }
                 addMoreBtn.style.display = 'block';
             }
             return;
         }
+        
+        // Update header to indicate lenders were found
+        stepHeader.innerHTML = `
+            <h2 class="section-heading">Your Lenders</h2>
+            <p class="step-subtitle">We found the following finance agreements from your credit report</p>
+        `;
         
         // If only one lender, use centered layout
         if (accounts.length === 1) {
@@ -1406,9 +1441,15 @@ const EventHandlers = {
         if (AppState.additionalLenders.length > 0) {
             this.updateCombinedLendersDisplay();
         } else {
-            // Show the "Add More Lenders" button
+            // Show the "Add More Lenders" button with correct text
             const addMoreBtn = document.getElementById('add_more_lenders_btn');
             if (addMoreBtn) {
+                const btnText = addMoreBtn.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = 'Add More Lenders';
+                } else {
+                    addMoreBtn.innerHTML = '<span class="btn-icon">+</span> Add More Lenders';
+                }
                 addMoreBtn.style.display = 'block';
             }
         }
@@ -1518,9 +1559,15 @@ const EventHandlers = {
         // Show combined section
         combinedSection.style.display = 'block';
         
-        // Show the "Add More Lenders" button
+        // Show the "Add More Lenders" button with correct text
         const addMoreBtn = document.getElementById('add_more_lenders_btn');
         if (addMoreBtn) {
+            const btnText = addMoreBtn.querySelector('.btn-text');
+            if (btnText) {
+                btnText.textContent = 'Add More Lenders';
+            } else {
+                addMoreBtn.innerHTML = '<span class="btn-icon">+</span> Add More Lenders';
+            }
             addMoreBtn.style.display = 'block';
         }
         
