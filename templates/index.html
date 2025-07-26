@@ -341,14 +341,12 @@
   </style>
 </head>
 <body>
-  
   <!-- Front Loading Page -->
   <div class="loading-page" id="loadingPage">
     <div class="loading-content-container">
       <div class="loading-logo">🚗</div>
-
       <h1 class="loading-title">Vehicle Finance Check Service</h1>
-      <p class="loading-subtitle">Checking if your car finance was fair</p>
+      <p class="loading-subtitle">Helping you reclaim what's rightfully yours</p>
       <div class="loading-spinner"></div>
       <p class="loading-message">Preparing your secure form...</p>
     </div>
@@ -361,50 +359,33 @@
         JavaScript is required for this application to work.
       </div>
     </noscript>
-
+    
     <form id="searchForm" autocomplete="on" novalidate>
 
       <!-- === STEP 0: Welcome Screen === -->
       <div class="form-step active" id="step0">
         <div class="welcome-container">
-          <h1 class="welcome-title">Think You Overpaid on Car Finance?</h1>
-          <p class="welcome-subtitle">It’s free to check — takes just 60 seconds and won’t affect your credit.</p>
-
+          <h1 class="welcome-title">You could be owed £000s from your car finance – it's free to check and takes just 60 seconds</h1>
+          
           <div class="welcome-benefits">
             <div class="benefit-item">
               <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
-              <span class="benefit-text">
-                Free to Check<br>
-                <small>You can contact lenders yourself — but we handle the full process for free, with no upfront cost.</small>
-              </span>
+              <span class="benefit-text">Free to Check</span>
             </div>
-
             <div class="benefit-item">
               <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
-              <span class="benefit-text">
-                We Find Your Agreements for You<br>
-                <small>No paperwork needed — we securely scan your credit profile to find past car finance.</small>
-              </span>
+              <span class="benefit-text">We Find Your Agreements for You</span>
             </div>
-
             <div class="benefit-item">
               <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
-              <span class="benefit-text">
-                No win = no fee<br>
-                <small>If you're eligible and we recover funds, our fee comes from the payout. If not, you pay nothing.</small>
-              </span>
+              <span class="benefit-text">No win = no fee</span>
             </div>
           </div>
-
+          
           <div class="welcome-button-container">
             <button type="button" class="btn btn-primary btn-large" id="start_journey">
               Let's get started
             </button>
-          </div>
-
-          <!-- Optional Fine Print Footer -->
-          <div class="welcome-fineprint">
-            <small>We’ll explain our fees clearly if we think you may have a claim. Full details are shared before you decide to proceed.</small>
           </div>
         </div>
       </div>
@@ -555,6 +536,20 @@
                   Enter address manually
                 </button>
               </div>
+            </div>
+            
+            <!-- Prior Addresses Section moved from Step 1 -->
+            <div class="prior-addresses-section" style="margin-top: 2rem;">
+              <h3>Prior Addresses (Optional)</h3>
+              <p class="prior-address-note">Adding previous addresses helps us find more vehicle finance records in your name.</p>
+              
+              <div id="prior_addresses_list">
+                <!-- Prior addresses will be added here -->
+              </div>
+              
+              <button type="button" class="btn btn-secondary" id="add_prior_address">
+                <span class="btn-icon">+</span> Add Previous Address
+              </button>
             </div>
 
             <div class="address-fields" id="manual_address_fields" style="display:none;">
@@ -708,7 +703,7 @@
           </div>
         </div>
 
-        <!-- === STEP 5: Your Finance Agreements === -->
+        <!-- === STEP 5: Your Lenders === -->
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
             <h2 class="section-heading">Your Lenders</h2>
@@ -718,42 +713,6 @@
           <div class="form-section">
             <div id="found_list" class="lenders-list">
               <!-- JS will inject lender items here -->
-            </div>
-            
-            <!-- No Records Found Section - Only shown when no finance found -->
-            <div id="no_records_section" class="no-records-section" style="display:none;">
-              <div class="no-records-card">
-                <div class="no-records-icon">🔍</div>
-                <h3>No Finance Records Found</h3>
-                <p>We couldn't find any vehicle finance agreements with your current details. This might be because:</p>
-                <ul>
-                  <li>You've moved house recently and the finance was arranged at a previous address</li>
-                  <li>The finance was arranged under slightly different personal details</li>
-                  <li>The records haven't been updated in our system yet</li>
-                </ul>
-                
-                <div class="retry-options">
-                  <h4>Try a Different Address</h4>
-                  <p>If you've moved recently, trying your previous address might help us locate your finance agreements.</p>
-                  
-                  <div class="retry-address-lookup">
-                    <div class="form-group">
-                      <label class="form-label">Try Previous Postcode</label>
-                      <div class="postcode-lookup">
-                        <input type="text" id="retry_postcode" class="form-input" placeholder="Enter previous postcode" />
-                        <button type="button" class="btn btn-primary" id="retry_lookup_btn">
-                          <span class="btn-icon">🔍</span> Search Again
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="contact-fallback">
-                    <p><strong>Still no luck?</strong></p>
-                    <p>Please contact us directly at <a href="mailto:claims@belmondclaims.com">claims@belmondclaims.com</a> and we'll manually search our records for you.</p>
-                  </div>
-                </div>
-              </div>
             </div>
             
             <div class="additional-actions">
@@ -840,501 +799,6 @@
           loadingPage.style.display = 'none';
         }, 500);
       }, 2000);
-    });
-  </script>
-  
-  <!-- COMPREHENSIVE BUTTON HANDLERS FOR ALL STEPS -->
-  <script>
-    console.log('Setting up comprehensive button handlers...');
-    
-    function setupAllButtons() {
-      console.log('Initializing ALL form controls and buttons...');
-      
-      // ===== FORM CONTROLS SETUP =====
-      
-      // Populate day dropdown
-      const daySelect = document.getElementById('dob_day');
-      if (daySelect && daySelect.children.length <= 1) {
-        for (let i = 1; i <= 31; i++) {
-          const option = document.createElement('option');
-          option.value = i;
-          option.textContent = i;
-          daySelect.appendChild(option);
-        }
-      }
-      
-      // Populate month dropdown
-      const monthSelect = document.getElementById('dob_month');
-      if (monthSelect && monthSelect.children.length <= 1) {
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-        months.forEach((month, index) => {
-          const option = document.createElement('option');
-          option.value = index + 1;
-          option.textContent = month;
-          monthSelect.appendChild(option);
-        });
-      }
-      
-      // Setup year slider
-      const yearInput = document.getElementById('dob_year');
-      const yearSlider = document.getElementById('year_slider');
-      const sliderTooltip = document.getElementById('slider_tooltip');
-      
-      if (yearInput && yearSlider) {
-        const currentYear = new Date().getFullYear();
-        const maxYear = currentYear - 18;
-        yearSlider.max = maxYear;
-        yearInput.max = maxYear;
-        
-        yearInput.oninput = function() {
-          const year = parseInt(yearInput.value);
-          if (year >= 1900 && year <= maxYear) {
-            yearSlider.value = year;
-          }
-        };
-        
-        yearSlider.oninput = function() {
-          yearInput.value = yearSlider.value;
-          if (sliderTooltip) {
-            sliderTooltip.textContent = yearSlider.value;
-            sliderTooltip.classList.add('show');
-          }
-        };
-        
-        yearSlider.onchange = function() {
-          if (sliderTooltip) {
-            sliderTooltip.classList.remove('show');
-          }
-        };
-      }
-      
-      // ===== TITLE BUTTONS =====
-      document.querySelectorAll('.title-btn').forEach(btn => {
-        btn.onclick = function() {
-          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          const titleInput = document.getElementById('title');
-          if (titleInput) {
-            titleInput.value = this.dataset.value;
-          }
-        };
-      });
-      
-      // ===== STEP 1 BUTTONS =====
-      
-      // Clear button
-      const clearBtn = document.getElementById('clear_step1');
-      if (clearBtn) {
-        clearBtn.onclick = function() {
-          document.getElementById('searchForm').reset();
-          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
-          document.getElementById('title').value = '';
-        };
-      }
-      
-      // Step 1 to 2
-      const step1Next = document.getElementById('next_to_step2');
-      if (step1Next) {
-        step1Next.onclick = function() {
-          if (validateStep1()) {
-            showStep('step2');
-          }
-        };
-      }
-      
-      // ===== STEP 2 BUTTONS =====
-      
-      // Address lookup
-      const lookupBtn = document.getElementById('address_lookup_btn');
-      if (lookupBtn) {
-        lookupBtn.onclick = async function() {
-          const postcode = document.getElementById('lookup_postcode').value.trim();
-          if (!postcode) {
-            alert('Please enter a postcode');
-            return;
-          }
-          console.log('Looking up postcode:', postcode);
-          // Basic implementation - you can enhance this
-          alert('Address lookup feature - add your API call here');
-        };
-      }
-      
-      // Manual address toggle
-      const manualToggle = document.getElementById('manual_address_toggle');
-      const manualFields = document.getElementById('manual_address_fields');
-      if (manualToggle && manualFields) {
-        manualToggle.onclick = function() {
-          if (manualFields.style.display === 'none' || !manualFields.style.display) {
-            manualFields.style.display = 'block';
-            manualToggle.textContent = 'Use postcode lookup';
-          } else {
-            manualFields.style.display = 'none';
-            manualToggle.textContent = 'Enter address manually';
-          }
-        };
-      }
-      
-      // Step 2 navigation
-      const step2Back = document.getElementById('back_to_step1');
-      if (step2Back) {
-        step2Back.onclick = function() {
-          showStep('step1');
-        };
-      }
-      
-      const step2Next = document.getElementById('next_to_step3');
-      if (step2Next) {
-        step2Next.onclick = function() {
-          if (validateStep2()) {
-            showStep('step3');
-          }
-        };
-      }
-      
-      // ===== STEP 3 BUTTONS =====
-      
-      // Send OTP
-      const sendOtpBtn = document.getElementById('send_otp');
-      if (sendOtpBtn) {
-        sendOtpBtn.onclick = function() {
-          const mobile = document.getElementById('mobile').value.trim();
-          if (!mobile) {
-            alert('Please enter your mobile number');
-            return;
-          }
-          console.log('Sending OTP to:', mobile);
-          // Show OTP verification section
-          const otpSection = document.getElementById('otp_verification');
-          if (otpSection) {
-            otpSection.style.display = 'block';
-          }
-        };
-      }
-      
-      // Verify OTP
-      const verifyOtpBtn = document.getElementById('verify_otp');
-      if (verifyOtpBtn) {
-        verifyOtpBtn.onclick = function() {
-          const otp = document.getElementById('otp').value.trim();
-          if (!otp || otp.length !== 6) {
-            alert('Please enter a 6-digit code');
-            return;
-          }
-          console.log('Verifying OTP:', otp);
-          // Enable next button
-          const nextBtn = document.getElementById('next_to_step4');
-          if (nextBtn) {
-            nextBtn.disabled = false;
-          }
-        };
-      }
-      
-      // Step 3 navigation
-      const step3Back = document.getElementById('back_to_step2');
-      if (step3Back) {
-        step3Back.onclick = function() {
-          showStep('step2');
-        };
-      }
-      
-      const step3Next = document.getElementById('next_to_step4');
-      if (step3Next) {
-        step3Next.onclick = function() {
-          showStep('step4');
-        };
-      }
-      
-      // ===== STEP 4 BUTTONS =====
-      
-      // Consent checkbox
-      const consentCheckbox = document.getElementById('consent_checkbox');
-      const submitVerifyBtn = document.getElementById('submit_and_verify');
-      if (consentCheckbox && submitVerifyBtn) {
-        consentCheckbox.onchange = function() {
-          submitVerifyBtn.disabled = !consentCheckbox.checked;
-        };
-      }
-      
-      // Submit and verify
-      if (submitVerifyBtn) {
-        submitVerifyBtn.onclick = function() {
-          if (!consentCheckbox.checked) {
-            alert('Please confirm your consent to proceed');
-            return;
-          }
-          console.log('Starting identity verification...');
-          // Show identity status
-          const statusDiv = document.getElementById('identity_status');
-          if (statusDiv) {
-            statusDiv.style.display = 'block';
-            statusDiv.innerHTML = `
-              <div class="status-icon">✓</div>
-              <div class="status-content">
-                <h4 class="status-title">Identity Verified Successfully</h4>
-                <p class="status-message">Your identity has been verified successfully.</p>
-              </div>
-            `;
-          }
-          // Show continue section
-          const continueSection = document.getElementById('verified_continue');
-          if (continueSection) {
-            continueSection.style.display = 'block';
-          }
-          // Enable next button
-          const nextBtn = document.getElementById('next_to_step5');
-          if (nextBtn) {
-            nextBtn.disabled = false;
-          }
-        };
-      }
-      
-      // Step 4 navigation
-      const step4Back = document.getElementById('back_to_step3');
-      if (step4Back) {
-        step4Back.onclick = function() {
-          showStep('step3');
-        };
-      }
-      
-      const step4Next = document.getElementById('next_to_step5');
-      if (step4Next) {
-        step4Next.onclick = function() {
-          showStep('step5');
-        };
-      }
-      
-      // ===== STEP 5 BUTTONS =====
-      
-      // Step 5 navigation
-      const step5Back = document.getElementById('back_to_step4');
-      if (step5Back) {
-        step5Back.onclick = function() {
-          showStep('step4');
-        };
-      }
-      
-      const step5Next = document.getElementById('next_to_step6');
-      if (step5Next) {
-        step5Next.onclick = function() {
-          showStep('step6');
-        };
-      }
-      
-      // Retry address lookup
-      const retryLookupBtn = document.getElementById('retry_lookup_btn');
-      if (retryLookupBtn) {
-        retryLookupBtn.onclick = function() {
-          const retryPostcode = document.getElementById('retry_postcode').value.trim();
-          if (!retryPostcode) {
-            alert('Please enter a postcode to try again');
-            return;
-          }
-          console.log('Retrying with postcode:', retryPostcode);
-          alert('Searching again with new address... (This would trigger a new finance search)');
-          // This would trigger the finance search again with the new address
-        };
-      }
-      
-      // ===== STEP 6 BUTTONS =====
-      
-      // Final submit
-      const finalSubmit = document.getElementById('final_submit_form');
-      if (finalSubmit) {
-        finalSubmit.onclick = function() {
-          alert('Thank you! Your vehicle finance claim has been submitted successfully.');
-        };
-      }
-      
-      // Step 6 navigation
-      const step6Back = document.getElementById('back_to_step5');
-      if (step6Back) {
-        step6Back.onclick = function() {
-          showStep('step5');
-        };
-      }
-      
-      console.log('All buttons and controls initialized!');
-    }
-    
-    // ===== UTILITY FUNCTIONS =====
-    
-    function showStep(stepId) {
-      console.log('Showing step:', stepId);
-      
-      // Hide all steps
-      document.querySelectorAll('.form-step').forEach(step => {
-        step.style.display = 'none';
-        step.classList.remove('active');
-      });
-      
-      // Show target step
-      const targetStep = document.getElementById(stepId);
-      if (targetStep) {
-        targetStep.style.display = 'block';
-        targetStep.classList.add('active');
-      }
-      
-      // Update progress bar
-      const stepNumber = stepId.replace('step', '');
-      document.querySelectorAll('.progress-step').forEach(step => {
-        step.classList.remove('active', 'completed');
-        const num = step.dataset.step;
-        if (parseInt(num) < parseInt(stepNumber)) {
-          step.classList.add('completed');
-        } else if (num === stepNumber) {
-          step.classList.add('active');
-        }
-      });
-    }
-    
-    function validateStep1() {
-      const title = document.getElementById('title').value;
-      const firstName = document.getElementById('first_name').value.trim();
-      const lastName = document.getElementById('last_name').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const day = document.getElementById('dob_day').value;
-      const month = document.getElementById('dob_month').value;
-      const year = document.getElementById('dob_year').value;
-      
-      if (!title) { alert('Please select a title'); return false; }
-      if (!firstName) { alert('Please enter your first name'); return false; }
-      if (!lastName) { alert('Please enter your last name'); return false; }
-      if (!email || !email.includes('@')) { alert('Please enter a valid email address'); return false; }
-      if (!day || !month || !year) { alert('Please enter your complete date of birth'); return false; }
-      
-      return true;
-    }
-    
-    function showNoRecordsFound() {
-      // Hide the normal lenders list and additional actions
-      const foundList = document.getElementById('found_list');
-      const additionalActions = document.querySelector('.additional-actions');
-      if (foundList) foundList.style.display = 'none';
-      if (additionalActions) additionalActions.style.display = 'none';
-      
-      // Show the no records section
-      const noRecordsSection = document.getElementById('no_records_section');
-      if (noRecordsSection) {
-        noRecordsSection.style.display = 'block';
-      }
-    }
-    
-    function showFoundRecords() {
-      // Show the normal lenders list and additional actions
-      const foundList = document.getElementById('found_list');
-      const additionalActions = document.querySelector('.additional-actions');
-      if (foundList) foundList.style.display = 'block';
-      if (additionalActions) additionalActions.style.display = 'block';
-      
-      // Hide the no records section
-      const noRecordsSection = document.getElementById('no_records_section');
-      if (noRecordsSection) {
-        noRecordsSection.style.display = 'none';
-      }
-    }
-    
-    // Example usage - call showNoRecordsFound() when finance search returns empty
-    // or call showFoundRecords() when finance search returns results
-    
-    function validateStep2() {
-      const street = document.getElementById('street').value.trim();
-      const postTown = document.getElementById('post_town').value.trim();
-      const postCode = document.getElementById('post_code').value.trim();
-      
-      if (!street) { alert('Please enter your street address'); return false; }
-      if (!postTown) { alert('Please enter your town/city'); return false; }
-      if (!postCode) { alert('Please enter your post code'); return false; }
-      
-      return true;
-    }
-    
-    // ===== INITIALIZE EVERYTHING =====
-    
-    // Try multiple times to ensure everything works
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupAllButtons);
-    } else {
-      setupAllButtons();
-    }
-    
-    // Additional attempts with delays
-    setTimeout(setupAllButtons, 100);
-    setTimeout(setupAllButtons, 500);
-    setTimeout(setupAllButtons, 1000);
-    
-  </script>
-  
-  <!-- IMMEDIATE Button Handler for Welcome Screen -->
-  <script>
-  <script>
-    console.log('Setting up immediate button handler...');
-    
-    function setupStartButton() {
-      const startBtn = document.getElementById('start_journey');
-      if (startBtn) {
-        console.log('Found start button, adding click handler');
-        startBtn.onclick = function() {
-          console.log('Start button clicked!');
-          
-          // Hide step 0
-          const step0 = document.getElementById('step0');
-          if (step0) {
-            step0.style.display = 'none';
-            step0.classList.remove('active');
-          }
-          
-          // Show step 1
-          const step1 = document.getElementById('step1');
-          if (step1) {
-            step1.style.display = 'block';
-            step1.classList.add('active');
-          }
-          
-          // Show progress bar
-          const progressBar = document.getElementById('main_progress_bar');
-          if (progressBar) {
-            progressBar.style.display = 'flex';
-          }
-          
-          console.log('Switched to step 1');
-        };
-        return true;
-      }
-      return false;
-    }
-    
-    // Try multiple times to set up the button
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupStartButton);
-    } else {
-      setupStartButton();
-    }
-    
-    // Backup - try again after a short delay
-    setTimeout(setupStartButton, 100);
-    setTimeout(setupStartButton, 500);
-  </script>
-  
-  <!-- Debug script to check if resources loaded -->
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      console.log('DOM Content Loaded');
-      
-      // Check if main app.js loaded
-      if (typeof EventHandlers === 'undefined') {
-        console.error('app.js failed to load! Check the file path.');
-        // Basic fallback functionality for title buttons
-        document.querySelectorAll('.title-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('title').value = this.dataset.value;
-          });
-        });
-      } else {
-        console.log('app.js loaded successfully');
-      }
     });
   </script>
 </body>
