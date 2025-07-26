@@ -1,70 +1,4 @@
-/* ─── Comprehensive Mobile Text Size Improvements ─────────────────────────── */
-@media (max-width: 600px) {
-    /* Base text increases */
-    p, .form-label, .review-label, .review-value {
-        font-size: 1.1rem;
-    }
-    
-    /* Reduce padding to compensate for larger text */
-    .form-section {
-        margin-bottom: 1.5rem;
-    }
-    
-    .form-group {
-        margin-bottom: 1rem;
-    }
-    
-    .review-card {
-        padding: 1.25rem;
-    }
-    
-    .review-item {
-        padding: 0.75rem 0;
-    }
-    
-    .verification-card {
-        padding: 1.5rem;
-    }
-    
-    .info-note {
-        padding: 0.875rem;
-    }
-    
-    .info-note p {
-        font-size: 1.05rem;
-    }
-    
-    .status-message {
-        font-size: 1.1rem;
-    }
-    
-    .error-message {
-        font-size: 1rem;
-    }
-    
-    .btn {
-        font-size: 1.125rem;
-        padding: 0.875rem 1.5rem;
-    }
-    
-    .btn-large {
-        font-size: 1.25rem;
-        padding: 1rem 2rem;
-    }
-    
-    .step-subtitle {
-        font-size: 1.125rem;
-    }
-    
-    .lender-date {
-        font-size: 1.15rem;
-    }
-}/* Mobile body font increase */
-@media (max-width: 600px) {
-    body {
-        font-size: 1.3rem; /* Increased from 1.2rem */
-    }
-}/* static/css/style.css */
+/* static/css/style.css */
 
 /* ─── CSS Variables for Corporate Colors ──────────────────────────────────── */
 :root {
@@ -1190,9 +1124,14 @@ h1, h2, h3, h4 {
     overflow-x: hidden;
 }
 
+/* Mobile: 1 lender per row for steps 5 and 6 */
 @media (max-width: 768px) {
-    .lenders-list {
-        grid-template-columns: 1fr; /* Single column on mobile */
+    .lenders-list,
+    #step5 .lenders-list,
+    #step6 .lenders-list,
+    #final_lenders_list,
+    #combined_lenders_list {
+        grid-template-columns: 1fr !important; /* Single column on mobile */
     }
 }
 
@@ -1680,54 +1619,6 @@ h1, h2, h3, h4 {
     font-weight: 500;
 }
 
-/* ─── Error Modal (Modern Centered) ────────────────────────────────────────── */
-.error-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
-    backdrop-filter: blur(5px);
-}
-
-.error-modal-content {
-    background: white;
-    padding: 3rem;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    text-align: center;
-    max-width: 500px;
-    width: 90%;
-    animation: modalBounce 0.5s ease;
-}
-
-@keyframes modalBounce {
-    0% { transform: scale(0.8); opacity: 0; }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-.error-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.error-text {
-    font-size: 1.125rem;
-    color: var(--text-primary);
-    margin-bottom: 2rem;
-    line-height: 1.5;
-}
-
-.error-close {
-    min-width: 120px;
-}
-
 /* ─── Change Mobile Section ────────────────────────────────────────────────── */
 .change-mobile-section {
     margin-top: 2rem;
@@ -1932,11 +1823,11 @@ h1, h2, h3, h4 {
     }
 }
 
-/* ─── Comprehensive Mobile Text Size Improvements ─────────────────────────── */
+/* ─── Comprehensive Mobile Text Size Improvements (35% Increase) ────────────── */
 @media (max-width: 600px) {
-    /* Base text increases */
+    /* Base text increases - 35% larger */
     p, .form-label, .review-label, .review-value {
-        font-size: 1.1rem;
+        font-size: 1.35rem !important;
     }
     
     /* Reduce padding to compensate for larger text */
@@ -1965,48 +1856,86 @@ h1, h2, h3, h4 {
     }
     
     .info-note p {
-        font-size: 1.05rem;
+        font-size: 1.3rem !important;
     }
     
     .status-message {
-        font-size: 1.1rem;
+        font-size: 1.35rem !important;
     }
     
     .error-message {
-        font-size: 1rem;
+        font-size: 1.2rem !important;
     }
     
     .btn {
-        font-size: 1.125rem;
+        font-size: 1.35rem !important;
         padding: 0.875rem 1.5rem;
     }
     
     .btn-large {
-        font-size: 1.25rem;
+        font-size: 1.5rem !important;
         padding: 1rem 2rem;
     }
     
     .step-subtitle {
-        font-size: 1.125rem;
+        font-size: 1.35rem !important;
     }
     
     .lender-date {
-        font-size: 1.15rem;
+        font-size: 1.4rem !important;
+    }
+    
+    /* Additional text elements */
+    .checkbox-label {
+        font-size: 1.3rem !important;
+    }
+    
+    .title-btn {
+        font-size: 1.2rem !important;
+    }
+    
+    .form-input,
+    .form-select {
+        font-size: 1.35rem !important;
+    }
+    
+    .step-label {
+        font-size: 0.9rem !important;
+    }
+    
+    .section-heading {
+        font-size: 1.8rem !important;
+    }
+    
+    .step-title {
+        font-size: 1.6rem !important;
+    }
+    
+    .benefit-title {
+        font-size: 1.4rem !important;
+    }
+    
+    .benefit-subtext {
+        font-size: 1.1rem !important;
+    }
+    
+    .footer-disclaimer {
+        font-size: 1rem !important;
     }
     
     /* Fee info text */
     .fee-info p {
-        font-size: 1.05rem;
+        font-size: 1.3rem !important;
     }
     
     /* Signature section */
     .signature-label {
-        font-size: 1.1rem;
+        font-size: 1.3rem !important;
     }
     
     /* Progress bar step labels */
     .step-label {
-        font-size: 0.75rem;
+        font-size: 0.9rem !important;
         line-height: 1.2;
     }
 }
@@ -2284,4 +2213,137 @@ h1, h2, h3, h4 {
     flex-direction: column;
     gap: 2rem;
     margin-top: 2rem;
+}
+
+/* ─── Success Modal (Modern, Centered) ─────────────────────────────────────── */
+.success-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.success-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+}
+
+.success-modal-content {
+    position: relative;
+    background: white;
+    padding: 3rem;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    animation: successBounce 0.6s ease;
+    z-index: 1;
+}
+
+@keyframes successBounce {
+    0% { 
+        transform: scale(0.8) translateY(20px); 
+        opacity: 0; 
+    }
+    50% { 
+        transform: scale(1.05) translateY(-10px); 
+    }
+    100% { 
+        transform: scale(1) translateY(0); 
+        opacity: 1; 
+    }
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--success-color);
+    color: white;
+    font-size: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    animation: successPulse 2s infinite;
+}
+
+@keyframes successPulse {
+    0% { 
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); 
+    }
+    70% { 
+        box-shadow: 0 0 0 20px rgba(40, 167, 69, 0); 
+    }
+    100% { 
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); 
+    }
+}
+
+.success-title {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.success-message {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.success-note {
+    font-size: 1rem;
+    color: var(--text-light);
+    margin-bottom: 2rem;
+    font-style: italic;
+}
+
+.success-close {
+    min-width: 150px;
+    background: var(--success-color);
+}
+
+.success-close:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 600px) {
+    .success-modal-content {
+        padding: 2rem;
+        width: 95%;
+    }
+    
+    .success-title {
+        font-size: 1.75rem;
+    }
+    
+    .success-message {
+        font-size: 1.35rem;
+    }
+    
+    .success-note {
+        font-size: 1.2rem;
+    }
+    
+    .success-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
 }

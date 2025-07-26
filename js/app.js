@@ -34,15 +34,71 @@ const Utils = {
 
     // Show centered error modal
     showErrorModal(message) {
-        const modal = document.getElementById('error_modal');
-        const errorText = modal.querySelector('.error-text');
-        errorText.innerHTML = message;
-        modal.style.display = 'flex';
+        const modal = document.createElement('div');
+        modal.className = 'error-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            backdrop-filter: blur(5px);
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            padding: 3rem;
+            border-radius: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            animation: modalBounce 0.5s ease;
+        `;
+        
+        modalContent.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+            <div style="font-size: 1.125rem; color: #2c3e50; margin-bottom: 2rem; line-height: 1.5;">${message}</div>
+            <button class="btn btn-primary" style="min-width: 120px;">OK</button>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // Add animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes modalBounce {
+                0% { transform: scale(0.8); opacity: 0; }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Event handlers
+        modalContent.querySelector('button').addEventListener('click', () => {
+            modal.remove();
+            style.remove();
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                style.remove();
+            }
+        });
     },
 
-    // Hide error modal
+    // Hide error modal (no longer needed with new approach)
     hideErrorModal() {
-        document.getElementById('error_modal').style.display = 'none';
+        // Not used anymore
     },
 
     // Show error message
@@ -275,10 +331,17 @@ const Navigation = {
         // Clean up duplicate footers - ensure only one page-footer exists
         const footers = document.querySelectorAll('.page-footer');
         if (footers.length > 1) {
+            console.log(`Found ${footers.length} footers, removing duplicates`);
             for (let i = 1; i < footers.length; i++) {
                 footers[i].remove();
             }
         }
+        
+        // Also check inside form steps for any nested footers
+        allSteps.forEach(step => {
+            const nestedFooters = step.querySelectorAll('.page-footer');
+            nestedFooters.forEach(footer => footer.remove());
+        });
         
         // Then show only the requested step
         const stepElement = document.getElementById(stepId);
@@ -531,17 +594,8 @@ const EventHandlers = {
     },
 
     initErrorModal() {
-        const modal = document.getElementById('error_modal');
-        if (modal) {
-            const closeBtn = modal.querySelector('.error-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => Utils.hideErrorModal());
-            }
-            // Close on background click
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) Utils.hideErrorModal();
-            });
-        }
+        // Error modal is now created dynamically in showErrorModal
+        // No initialization needed
     },
 
     initStep0() {
@@ -1105,7 +1159,31 @@ const EventHandlers = {
             // Here you would normally submit all the collected data
             setTimeout(() => {
                 Utils.hideLoading();
-                alert('Thank you! Your vehicle finance claim has been submitted successfully. We will contact you within 24 hours with any additional findings.');
+                
+                // Show modern success modal
+                const modal = document.getElementById('success_modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    
+                    // Close button handler
+                    const closeBtn = modal.querySelector('.success-close');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', () => {
+                            modal.style.display = 'none';
+                            // Optionally redirect or close window
+                            if (window.opener) {
+                                window.close();
+                            }
+                        });
+                    }
+                    
+                    // Close on background click
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal || e.target.classList.contains('success-modal-overlay')) {
+                            modal.style.display = 'none';
+                        }
+                    });
+                }
             }, 2000);
         });
         
