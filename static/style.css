@@ -1091,7 +1091,7 @@ h1, h2, h3, h4 {
     }
 }
 
-/* ─── Lenders List - IMPROVED DESKTOP LAYOUT WITH 2 PER ROW ─────────────────────────────────────────── */
+/* ─── Lenders List - IMPROVED 50/50 SPLIT LAYOUT ─────────────────────────────────────────── */
 .lenders-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* 2 columns on desktop */
@@ -1108,10 +1108,10 @@ h1, h2, h3, h4 {
 
 .found-row {
     display: grid;
-    grid-template-columns: 100px 1fr auto; /* Fixed width for logo column */
-    gap: 0.75rem; /* Reduced gap for tighter layout */
+    grid-template-columns: 1fr 1fr; /* EXACT 50/50 split */
+    gap: 0;
     align-items: center;
-    padding: 1rem; /* Consistent padding */
+    padding: 1rem;
     border: 3px solid var(--green-color);
     border-radius: var(--radius-lg);
     background-color: white;
@@ -1123,60 +1123,54 @@ h1, h2, h3, h4 {
     transform: translateY(-2px);
 }
 
+/* Left side - Logo/Name container */
 .lender-icon {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
-    width: 100px; /* Fixed width to prevent overflow */
-    height: 60px; /* Fixed height */
-    overflow: hidden; /* Prevent overflow */
+    padding-right: 1rem;
 }
 
+/* Logo styling - force fit */
 .lender-logo {
-    max-width: 90%; /* Leave some padding */
-    max-height: 50px; /* Slightly smaller than container */
+    max-width: 100%;
+    max-height: 60px;
+    width: auto;
+    height: auto;
     object-fit: contain;
     display: block;
-    margin: 0 auto;
 }
 
 .no-logo {
-    width: 60px; /* Reduced from 80px */
-    height: 60px; /* Reduced from 80px */
-    border-radius: var(--radius-round);
     background-color: var(--navy-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: white;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
     font-weight: bold;
-    font-size: 0.7rem; /* Slightly smaller font */
+    font-size: 0.85rem;
     text-align: center;
-    padding: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
+/* Right side - Date container */
+.lender-date {
+    text-align: right;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding-left: 1rem;
+}
+
+/* Name column - only used when no logo */
 .lender-name {
     font-weight: 600;
     color: var(--text-primary);
     font-size: 1.125rem;
-    text-align: left; /* Ensure left alignment */
-}
-
-.desktop-hidden {
-    display: none;
-}
-
-@media (max-width: 600px) {
-    .desktop-hidden {
-        display: inline;
-    }
-}
-
-.lender-date {
-    text-align: right;
-    color: var(--text-secondary);
-    font-size: 1.1rem; /* Increased from 0.95rem */
-    font-weight: 500;
+    text-align: left;
+    display: none; /* Hidden by default, JS will show if needed */
 }
 
 @media (max-width: 600px) {
@@ -1187,14 +1181,16 @@ h1, h2, h3, h4 {
     }
     
     .lender-icon {
-        margin: 0 auto;
-    }
-    
-    .lender-name {
-        text-align: center;
+        justify-content: center;
+        padding-right: 0;
     }
     
     .lender-date {
+        text-align: center;
+        padding-left: 0;
+    }
+    
+    .lender-name {
         text-align: center;
     }
 }
@@ -1383,7 +1379,7 @@ h1, h2, h3, h4 {
     border: 1px dashed var(--border-color);
     cursor: crosshair;
     touch-action: none;
-    background-color: #fff;
+    background-color: #fafafa;
     display: block;
 }
 
@@ -1407,6 +1403,13 @@ h1, h2, h3, h4 {
 /* Small button row adjustment for step 5 */
 #add_more_lenders_btn {
     background-color: var(--primary-color) !important;
+}
+
+/* Step 5 button row with info note below */
+.step5-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 @media (max-width: 600px) {
@@ -2070,4 +2073,12 @@ h1, h2, h3, h4 {
 .loading-message {
     font-size: 1rem;
     color: #6c757d;
+}
+
+/* Step 5 specific layout adjustments */
+.step5-button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: 2rem;
 }

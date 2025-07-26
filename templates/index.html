@@ -388,9 +388,7 @@
       <!-- === STEP 0: Welcome Screen === -->
       <div class="form-step active" id="step0">
         <div class="welcome-container">
-          <h1 class="welcome-title">Think You Overpaid on Car Finance?<br>
-            It's free to check — takes just 60 seconds<br>
-            and won't affect your credit</h1>
+          <h1 class="welcome-title">Think You Overpaid on Car Finance?<br>It's free to check — takes just 60 seconds and won't affect your credit</h1>
           
           <div class="welcome-benefits">
             <div class="benefit-item">
@@ -748,26 +746,11 @@
         <div class="form-step" id="step5" style="display:none;">
           <div class="step-header">
             <h2 class="section-heading">Your Lenders</h2>
-            <p class="step-subtitle">Here's what our checks have found</p>
           </div>
           
           <div class="form-section">
             <div id="found_list" class="lenders-list">
               <!-- JS will inject lender items here -->
-            </div>
-            
-            <div class="additional-actions">
-              <button type="button" class="btn btn-primary" id="add_lender_btn">
-                <span class="btn-icon">+</span> Add Additional Lenders
-              </button>
-              
-              <div class="info-note">
-                <div class="info-icon">ℹ</div>
-                <p>
-                  Don't worry if you can't recall any details. We'll run additional checks over the next 24 hours 
-                  to search for historic contracts up to 7 years old. We'll contact you with any further matches found.
-                </p>
-              </div>
             </div>
 
             <div id="combined_lenders_display" class="combined-lenders-section" style="display:none;">
@@ -777,16 +760,24 @@
             </div>
           </div>
 
-          <div class="button-row">
-            <button type="button" class="btn btn-primary" id="add_more_lenders_btn" style="background-color: var(--primary-color); display: none;">
-              <span class="btn-icon">+</span> Add Even More Lenders
-            </button>
-            <button type="button" class="btn btn-primary" id="next_to_step6">
-              Final steps to submit your claim <span class="btn-icon">→</span>
-            </button>
+          <div class="step5-button-container">
+            <div class="button-row">
+              <button type="button" class="btn btn-primary" id="add_more_lenders_btn" style="background-color: var(--primary-color); display: none;">
+                <span class="btn-icon">+</span> Add Even More Lenders
+              </button>
+              <button type="button" class="btn btn-primary" id="next_to_step6">
+                Final steps to submit your claim <span class="btn-icon">→</span>
+              </button>
+            </div>
+            
+            <div class="info-note" style="margin-top: 2rem;">
+              <div class="info-icon">ℹ</div>
+              <p>
+                Don't worry if you can't recall any details. We'll run additional checks over the next 24 hours 
+                to search for historic contracts up to 7 years old. We'll contact you with any further matches found.
+              </p>
+            </div>
           </div>
-        </div>
-          
         </div>
 
         <!-- === STEP 6: Final Submit === -->

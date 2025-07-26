@@ -1020,11 +1020,6 @@ const EventHandlers = {
         // Display found lenders when step loads
         // Note: displayLenders will be called when we transition to this step
         
-        // Add lender button
-        document.getElementById('add_lender_btn').addEventListener('click', () => {
-            this.showLenderModal();
-        });
-        
         // Add Even More Lenders button (replaces back button)
         const addMoreBtn = document.getElementById('add_more_lenders_btn');
         if (addMoreBtn) {
@@ -1088,16 +1083,32 @@ const EventHandlers = {
         let lastX = 0;
         let lastY = 0;
         
-        // Set canvas size properly
+        // Set canvas actual size to match CSS size
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+            const dpr = window.devicePixelRatio || 1;
+            
+            // Set actual canvas size accounting for device pixel ratio
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            // Scale the drawing context to match device pixel ratio
+            ctx.scale(dpr, dpr);
+            
+            // Set canvas CSS size
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
         }
         
-        // Resize canvas when window resizes
-        window.addEventListener('resize', resizeCanvas);
+        // Initial resize
         resizeCanvas();
+        
+        // Resize canvas when window resizes
+        window.addEventListener('resize', () => {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            resizeCanvas();
+            ctx.putImageData(imageData, 0, 0);
+        });
         
         // Get coordinates relative to canvas
         function getCoordinates(e) {
@@ -1111,10 +1122,6 @@ const EventHandlers = {
                 x = e.clientX - rect.left;
                 y = e.clientY - rect.top;
             }
-            
-            // Scale coordinates to canvas size
-            x = x * (canvas.width / rect.width);
-            y = y * (canvas.height / rect.height);
             
             return { x, y };
         }
@@ -1184,15 +1191,20 @@ const EventHandlers = {
         
         // Clear button
         document.getElementById('clear_signature').addEventListener('click', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            ctx.clearRect(0, 0, rect.width, rect.height);
             AppState.signatureSigned = false;
             this.checkFinalSubmitReady();
         });
         
         // Auto-sign button
         document.getElementById('auto_sign').addEventListener('click', () => {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            
             // Clear canvas first
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, rect.width, rect.height);
             
             // Get user's name
             const firstName = AppState.formData.first_name || 'Signature';
@@ -1203,13 +1215,12 @@ const EventHandlers = {
             ctx.font = 'italic 30px "Brush Script MT", "Lucida Handwriting", "Lucida Calligraphy", cursive';
             ctx.fillStyle = '#000033';
             ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
             
-            // Measure text to center it
-            const textMetrics = ctx.measureText(fullName);
-            const x = (canvas.width - textMetrics.width) / 2;
-            const y = canvas.height / 2;
+            // Draw the signature centered
+            const x = rect.width / 2;
+            const y = rect.height / 2;
             
-            // Draw the signature
             ctx.fillText(fullName, x, y);
             
             AppState.signatureSigned = true;
@@ -1259,13 +1270,6 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'lender-name';
-            if (!account.logoFile) {
-                nameDiv.textContent = account.displayName || account.lenderName;
-            }
-            
             // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date';
@@ -1283,7 +1287,6 @@ const EventHandlers = {
             }
             
             row.appendChild(iconDiv);
-            row.appendChild(nameDiv);
             row.appendChild(dateDiv);
             finalList.appendChild(row);
         });
@@ -1313,20 +1316,12 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'lender-name';
-            if (!lender.filename) {
-                nameDiv.textContent = lender.name;
-            }
-            
             // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date lender-source';
             dateDiv.textContent = 'Added manually';
             
             row.appendChild(iconDiv);
-            row.appendChild(nameDiv);
             row.appendChild(dateDiv);
             finalList.appendChild(row);
         });
@@ -1341,7 +1336,13 @@ const EventHandlers = {
         foundList.innerHTML = '';
         
         if (accounts.length === 0) {
-            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add Additional Lenders" button below if you remember any specific lenders.</p>';
+            foundList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 2rem;">No finance agreements found in our database. Please use the "Add Even More Lenders" button below if you remember any specific lenders.</p>';
+            
+            // Show the "Add Even More Lenders" button
+            const addMoreBtn = document.getElementById('add_more_lenders_btn');
+            if (addMoreBtn) {
+                addMoreBtn.style.display = 'block';
+            }
             return;
         }
         
@@ -1392,14 +1393,6 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column - ONLY show when NO logo
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'lender-name';
-            if (!logoFile) {
-                nameDiv.textContent = displayName;
-            }
-            // If logo exists, leave name column empty
-            
             // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date';
@@ -1415,7 +1408,6 @@ const EventHandlers = {
             }
             
             row.appendChild(iconDiv);
-            row.appendChild(nameDiv);
             row.appendChild(dateDiv);
             foundList.appendChild(row);
         });
@@ -1423,6 +1415,12 @@ const EventHandlers = {
         // Update combined display if there are additional lenders
         if (AppState.additionalLenders.length > 0) {
             this.updateCombinedLendersDisplay();
+        } else {
+            // Show the "Add Even More Lenders" button
+            const addMoreBtn = document.getElementById('add_more_lenders_btn');
+            if (addMoreBtn) {
+                addMoreBtn.style.display = 'block';
+            }
         }
     },
 
@@ -1435,14 +1433,17 @@ const EventHandlers = {
         // Also get manually added lender names
         const manualLenderNames = AppState.additionalLenders.map(lender => lender.name);
         
+        // Combine all existing lenders (found + manual) to prevent duplicates
+        const allExistingNames = [...foundLenderNames, ...manualLenderNames];
+        
         const modal = document.createElement('div');
         modal.className = 'lenders-modal';
         
-        // Filter out already found lenders and manually added ones
+        // Filter out already found/added lenders
         const availableLenders = AppState.lendersList.filter(lender => 
-            !foundLenderNames.some(foundName => 
-                Utils.similarity(foundName.toLowerCase(), lender.name.toLowerCase()) >= 0.8
-            ) && !manualLenderNames.includes(lender.name)
+            !allExistingNames.some(existingName => 
+                Utils.similarity(existingName.toLowerCase(), lender.name.toLowerCase()) >= 0.8
+            )
         );
         
         modal.innerHTML = `
@@ -1561,13 +1562,6 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'lender-name';
-            if (!account.logoFile) {
-                nameDiv.textContent = account.displayName || account.lenderName;
-            }
-            
             // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date';
@@ -1585,7 +1579,6 @@ const EventHandlers = {
             }
             
             row.appendChild(iconDiv);
-            row.appendChild(nameDiv);
             row.appendChild(dateDiv);
             combinedList.appendChild(row);
         });
@@ -1615,20 +1608,12 @@ const EventHandlers = {
                 iconDiv.appendChild(noLogo);
             }
             
-            // Name column
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'lender-name';
-            if (!lender.filename) {
-                nameDiv.textContent = lender.name;
-            }
-            
             // Date column
             const dateDiv = document.createElement('div');
             dateDiv.className = 'lender-date lender-source';
             dateDiv.textContent = 'Added manually';
             
             row.appendChild(iconDiv);
-            row.appendChild(nameDiv);
             row.appendChild(dateDiv);
             combinedList.appendChild(row);
         });
