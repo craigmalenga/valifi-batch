@@ -361,7 +361,7 @@ body > * {
 .welcome-title {
     font-size: 2.25rem;
     font-weight: 700;
-    color: var(--purple-color);
+    color: var(--burgundy-color);
     margin-bottom: 3rem;
     line-height: 1.3;
 }
@@ -527,7 +527,7 @@ h1, h2, h3, h4 {
 }
 
 .section-heading {
-    color: var(--purple-color);
+    color: var(--burgundy-color);
     text-align: center;
     font-size: 2rem;
     margin-bottom: 0.5rem;
@@ -1447,6 +1447,19 @@ h1, h2, h3, h4 {
     font-size: 0.9rem;
 }
 
+/* Auto-Sign button special styling */
+#auto_sign {
+    background-color: var(--burgundy-color);
+    color: white;
+    font-weight: bold;
+}
+
+#auto_sign:hover {
+    background-color: #6d0840;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
 .final-submit-container {
     text-align: center;
     margin-top: 2rem;
@@ -2181,7 +2194,7 @@ h1, h2, h3, h4 {
 
 .loading-title {
     font-size: 2rem;
-    color: var(--purple-color);
+    color: var(--burgundy-color);
     margin-bottom: 1rem;
     font-weight: 700;
 }
