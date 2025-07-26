@@ -7,7 +7,6 @@ const AppState = {
     lendersList: [],
     foundLenders: [], // Lenders found by Valifi
     additionalLenders: [], // Lenders manually added
-    priorAddresses: [], // Prior addresses
     reportData: null, // Stored report data
     identityScore: null,
     otpSent: false,
@@ -623,9 +622,6 @@ const EventHandlers = {
                     });
                     
                     document.getElementById('address_container').style.display = 'block';
-                    
-                    // DON'T auto-show manual fields after selection
-                    document.querySelector('.address-edit-option').style.display = 'none';
                 }
             } catch (error) {
                 Utils.showError('address_error', error.message || 'Address lookup failed');
@@ -654,15 +650,6 @@ const EventHandlers = {
             Utils.clearError('post_town_error');
             Utils.clearError('post_code_error');
         });
-       
-        // Edit address details button
-        document.getElementById('edit_address_details').addEventListener('click', () => {
-            document.getElementById('manual_address_fields').style.display = 'block';
-            manualToggle.textContent = 'Hide address fields';
-        });
-        
-        // Prior addresses functionality
-        this.initPriorAddresses();
         
         // Navigation buttons
         document.getElementById('back_to_step1').addEventListener('click', () => Navigation.showStep('step1'));
@@ -671,58 +658,6 @@ const EventHandlers = {
                 Navigation.showStep('step3');
             }
         });
-    },
-
-    initPriorAddresses() {
-        AppState.priorAddresses = [];
-        
-        document.getElementById('add_prior_address').addEventListener('click', () => {
-            const priorList = document.getElementById('prior_addresses_list');
-            const index = AppState.priorAddresses.length;
-            
-            const priorAddressDiv = document.createElement('div');
-            priorAddressDiv.className = 'prior-address-item';
-            priorAddressDiv.dataset.index = index;
-            priorAddressDiv.innerHTML = `
-                <button type="button" class="prior-address-remove" onclick="EventHandlers.removePriorAddress(${index})">×</button>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Street</label>
-                        <input type="text" class="form-input prior-street" placeholder="e.g. High Street" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Town/City</label>
-                        <input type="text" class="form-input prior-town" placeholder="e.g. London" />
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Post Code</label>
-                        <input type="text" class="form-input prior-postcode" placeholder="e.g. SW1A 1AA" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Years Lived There</label>
-                        <select class="form-select prior-years">
-                            <option value="">Select...</option>
-                            <option value="less-than-1">Less than 1 year</option>
-                            <option value="1-2">1-2 years</option>
-                            <option value="2-5">2-5 years</option>
-                            <option value="5-plus">5+ years</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-            
-            priorList.appendChild(priorAddressDiv);
-            AppState.priorAddresses.push({index});
-        });
-    },
-    
-    removePriorAddress(index) {
-        const element = document.querySelector(`[data-index="${index}"]`);
-        if (element) {
-            element.remove();
-        }
     },
 
     initStep3() {
@@ -862,26 +797,6 @@ const EventHandlers = {
                 // Keep mobile in UK format for identity validation
                 const mobile = document.getElementById('mobile').value.replace(/\D/g, '');
                 
-                // Collect prior addresses
-                const priorAddressElements = document.querySelectorAll('.prior-address-item');
-                const priorAddresses = [];
-                
-                priorAddressElements.forEach(element => {
-                    const street = element.querySelector('.prior-street').value.trim();
-                    const town = element.querySelector('.prior-town').value.trim();
-                    const postcode = element.querySelector('.prior-postcode').value.trim();
-                    const years = element.querySelector('.prior-years').value;
-                    
-                    if (street && town && postcode) {
-                        priorAddresses.push({
-                            street,
-                            postTown: town,
-                            postCode: postcode,
-                            yearsLived: years
-                        });
-                    }
-                });
-                
                 const data = {
                     title: document.getElementById('title').value,
                     firstName: document.getElementById('first_name').value,
@@ -895,8 +810,7 @@ const EventHandlers = {
                     flat: document.getElementById('flat').value,
                     street: document.getElementById('street').value,
                     post_town: document.getElementById('post_town').value,
-                    post_code: document.getElementById('post_code').value,
-                    priorAddresses: priorAddresses
+                    post_code: document.getElementById('post_code').value
                 };
                 
                 const identityResult = await API.validateIdentity(data);
