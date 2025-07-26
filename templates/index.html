@@ -156,6 +156,17 @@
       border-radius: 12px;
     }
     
+    @media (max-width: 600px) {
+      .form-label {
+        font-size: 1.1rem;
+      }
+      
+      .form-input, .form-select {
+        font-size: 1.2rem;
+        padding: 0.75rem 0.875rem;
+      }
+    }
+    
     .title-button-group {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -322,44 +333,37 @@
       border-top: 1px solid #dee2e6;
     }
     
-    @media (max-width: 768px) {
+    @media (max-width: 600px) {
+      body {
+        font-size: 1.3rem;
+      }
+      
+      p {
+        font-size: 1.1rem;
+        line-height: 1.5;
+      }
+      
       .container {
         margin: 0.5rem;
-        padding: 1.5rem;
+        padding: 1.25rem;
         max-width: calc(100vw - 1rem);
         width: calc(100vw - 1rem);
       }
-      
-      .progress-bar {
-        margin-bottom: 2rem;
-        padding: 1rem;
-        gap: 0.5rem;
-      }
-      
-      /* Hide connector lines on mobile */
-      .progress-step:not(:last-child)::after {
-        display: none;
-      }
-      
-      .button-row {
-        flex-direction: column;
-      }
-      
-      .btn {
-        width: 100%;
-      }
-      
-      .title-button-group {
-        grid-template-columns: repeat(3, 1fr);
-      }
-      
-      .title-btn-other {
-        grid-column: 2 / 4;
-      }
-      
-      .dob-container {
-        grid-template-columns: 1fr;
-      }
+    
+    @media (max-width: 768px) {
+    }
+    
+    /* Signature canvas */
+    #signature_canvas {
+      width: 100%;
+      height: 150px;
+      border: 2px dashed #dee2e6;
+      border-radius: 6px;
+      cursor: crosshair;
+      touch-action: none;
+      background-color: #ffffff;
+      display: block;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
     }
   </style>
 </head>
@@ -843,6 +847,7 @@
                 <p class="signature-label">Please sign your signature in the box below</p>
                 <div class="signature-box">
                   <canvas id="signature_canvas"></canvas>
+                  <p class="signature-hint desktop-only" style="font-size: 0.9rem; color: #6c757d; margin: 0.5rem 0; text-align: center;">Draw your signature with your mouse or use Auto-Sign</p>
                   <div class="signature-controls">
                     <button type="button" class="btn btn-secondary btn-small" id="clear_signature">
                       Clear
