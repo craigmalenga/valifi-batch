@@ -688,7 +688,7 @@
         <div class="form-step" id="step4" style="display:none;">
           <div class="step-header">
             <h2 class="step-title">Prove it's Really You</h2>
-            <p class="step-subtitle">To protect your identity and ensure secure access, we'll verify you using your mobile number before proceeding</p>
+            <p class="step-subtitle">To protect your identity and ensure secure access, we'll verify your identity using your mobile number before proceeding</p>
           </div>
           
           <div class="form-section">
@@ -719,8 +719,27 @@
               </div>
             </div>
             
-            <div id="verified_continue" style="display:none; text-align: center; margin-top: 2rem;">
-              <p style="color: var(--text-secondary); margin-bottom: 1rem;">Identity verification complete. Ready to search for your finance records?</p>
+            <div id="verified_continue" style="display:none; margin-top: 2rem;">
+              <p style="color: var(--text-secondary); margin-bottom: 1.5rem; text-align: center;">Identity verification complete. Ready to search for your finance records?</p>
+              
+              <div class="consent-section" style="margin-top: 0;">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="credit_consent_checkbox" />
+                  <span class="checkbox-label">
+                    I consent to a soft credit check to examine my credit report for prior motor vehicle finance. This is guaranteed to have no impact on my credit score.
+                  </span>
+                </label>
+              </div>
+            </div>
+            
+            <div id="change_mobile_section" class="change-mobile-section" style="display:none;">
+              <div class="info-note" style="margin-top: 2rem;">
+                <div class="info-icon">ℹ️</div>
+                <p>If you have a different mobile number that may be linked to your credit file, please try that number instead.</p>
+              </div>
+              <button type="button" class="btn btn-secondary" id="change_mobile_btn" style="margin-top: 1rem;">
+                <span class="btn-icon">📱</span> Try Different Mobile Number
+              </button>
             </div>
           </div>
           
@@ -765,10 +784,10 @@
               </div>
             </div>
 
-            <div id="final_lenders_display" class="final-lenders-section" style="display:none;">
-              <h3>Your Selected Finance Agreements</h3>
-              <div id="final_lenders_grid" class="final-lenders-grid">
-                <!-- JS will populate this -->
+            <div id="combined_lenders_display" class="combined-lenders-section" style="display:none;">
+              <h3>All Selected Finance Agreements</h3>
+              <div id="combined_lenders_list" class="lenders-list">
+                <!-- JS will populate this with both found and manually added lenders -->
               </div>
             </div>
           </div>
@@ -828,6 +847,15 @@
       <div class="loading-content">
         <div class="spinner"></div>
         <div class="loading-text">Processing...</div>
+      </div>
+    </div>
+    
+    <!-- Centered Error Modal -->
+    <div id="error_modal" class="error-modal" style="display:none;">
+      <div class="error-modal-content">
+        <div class="error-icon">⚠️</div>
+        <div class="error-text"></div>
+        <button class="btn btn-primary error-close">OK</button>
       </div>
     </div>
   </div>

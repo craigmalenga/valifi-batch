@@ -1086,21 +1086,27 @@ h1, h2, h3, h4 {
     }
 }
 
-/* ─── Lenders List - IMPROVED DESKTOP LAYOUT ─────────────────────────────────────────── */
+/* ─── Lenders List - IMPROVED DESKTOP LAYOUT WITH 2 PER ROW ─────────────────────────────────────────── */
 .lenders-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on desktop */
     gap: 1rem;
     width: 100%;
     overflow-x: hidden;
 }
 
+@media (max-width: 768px) {
+    .lenders-list {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
+}
+
 .found-row {
     display: grid;
-    grid-template-columns: 100px 1fr auto; /* Increased icon space from 80px to 100px */
-    gap: 1rem; /* Reduced gap from 1.5rem to 1rem for tighter layout */
+    grid-template-columns: 80px 1fr auto; /* Reduced icon space from 100px to 80px */
+    gap: 0.75rem; /* Reduced gap for tighter layout */
     align-items: center;
-    padding: 1rem; /* Reduced padding from 1.5rem to 1rem */
+    padding: 1rem; /* Consistent padding */
     border: 3px solid var(--green-color);
     border-radius: var(--radius-lg);
     background-color: white;
@@ -1119,14 +1125,14 @@ h1, h2, h3, h4 {
 }
 
 .lender-logo {
-    max-width: 90px; /* Reduced to fit within 100px column */
-    max-height: 3.5em; /* Reduced from 4em */
+    max-width: 60px; /* Reduced from 90px */
+    max-height: 40px; /* Reduced from 3.5em */
     object-fit: contain;
 }
 
 .no-logo {
-    width: 80px; /* Increased from 60px to 80px */
-    height: 80px; /* Increased from 60px to 80px */
+    width: 60px; /* Reduced from 80px */
+    height: 60px; /* Reduced from 80px */
     border-radius: var(--radius-round);
     background-color: var(--navy-color);
     display: flex;
@@ -1134,7 +1140,7 @@ h1, h2, h3, h4 {
     justify-content: center;
     color: white;
     font-weight: bold;
-    font-size: 0.8rem; /* Slightly increased font size */
+    font-size: 0.7rem; /* Slightly smaller font */
     text-align: center;
     padding: 0.5rem;
 }
@@ -1159,7 +1165,8 @@ h1, h2, h3, h4 {
 .lender-date {
     text-align: right;
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 1.1rem; /* Increased from 0.95rem */
+    font-weight: 500;
 }
 
 @media (max-width: 600px) {
@@ -1221,69 +1228,30 @@ h1, h2, h3, h4 {
     }
 }
 
-/* ─── Final Lenders Display ───────────────────────────────────────────────── */
-.final-lenders-section {
+/* ─── Combined Lenders Display ───────────────────────────────────────────────── */
+.combined-lenders-section {
     margin-top: 3rem;
     padding: 2rem;
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
 }
 
-.final-lenders-section h3 {
+.combined-lenders-section h3 {
     color: var(--text-primary);
     margin-bottom: 2rem;
     text-align: center;
 }
 
-.final-lenders-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 1.5rem;
-    justify-items: center;
+/* Manual lender row styling */
+.manual-row {
+    border-color: var(--primary-color) !important;
+    background-color: #f0f8ff;
 }
 
-.final-lender-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    background: white;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    min-height: 120px;
-    width: 100%;
-    max-width: 150px;
-}
-
-.final-lender-logo {
-    max-width: 100%;
-    height: 60px;
-    object-fit: contain;
-    margin-bottom: 0.5rem;
-}
-
-.final-lender-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: center;
-    line-height: 1.2;
-}
-
-.final-no-logo {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-round);
-    background-color: var(--navy-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 0.7rem;
-    text-align: center;
-    margin-bottom: 0.5rem;
+.manual-row .lender-source {
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    font-style: italic;
 }
 
 /* ─── Final Submit Card ────────────────────────────────────────────────────── */
@@ -1412,6 +1380,59 @@ h1, h2, h3, h4 {
     color: white;
     font-size: 1.25rem;
     font-weight: 500;
+}
+
+/* ─── Error Modal (Modern Centered) ────────────────────────────────────────── */
+.error-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    backdrop-filter: blur(5px);
+}
+
+.error-modal-content {
+    background: white;
+    padding: 3rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    animation: modalBounce 0.5s ease;
+}
+
+@keyframes modalBounce {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.error-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.error-text {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.error-close {
+    min-width: 120px;
+}
+
+/* ─── Change Mobile Section ────────────────────────────────────────────────── */
+.change-mobile-section {
+    margin-top: 2rem;
 }
 
 /* ─── Results & Debug (Hidden from users) ──────────────────────────────────── */

@@ -12,7 +12,8 @@ const AppState = {
     otpSent: false,
     otpVerified: false,
     identityVerified: false,
-    minimumScore: 40  // Default, will be updated from server
+    minimumScore: 40,  // Default, will be updated from server
+    changingMobile: false // Track if we're changing mobile
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
@@ -28,6 +29,19 @@ const Utils = {
     // Hide loading overlay
     hideLoading() {
         document.getElementById('loading_overlay').style.display = 'none';
+    },
+
+    // Show centered error modal
+    showErrorModal(message) {
+        const modal = document.getElementById('error_modal');
+        const errorText = modal.querySelector('.error-text');
+        errorText.innerHTML = message;
+        modal.style.display = 'flex';
+    },
+
+    // Hide error modal
+    hideErrorModal() {
+        document.getElementById('error_modal').style.display = 'none';
     },
 
     // Show error message
@@ -463,6 +477,9 @@ const EventHandlers = {
         
         // Form submission
         this.initFormSubmission();
+        
+        // Error modal handler
+        this.initErrorModal();
     },
 
     async loadLenders() {
@@ -471,6 +488,20 @@ const EventHandlers = {
             AppState.lendersList = await response.json();
         } catch (error) {
             console.error('Failed to load lenders:', error);
+        }
+    },
+
+    initErrorModal() {
+        const modal = document.getElementById('error_modal');
+        if (modal) {
+            const closeBtn = modal.querySelector('.error-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => Utils.hideErrorModal());
+            }
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) Utils.hideErrorModal();
+            });
         }
     },
 
@@ -783,10 +814,35 @@ const EventHandlers = {
             submitButton.disabled = !consentCheckbox.checked;
         });
         
+        // Credit consent checkbox logic
+        const creditConsentCheckbox = document.getElementById('credit_consent_checkbox');
+        const nextButton = document.getElementById('next_to_step5');
+        
+        // Function to check if both consents are given
+        const checkBothConsents = () => {
+            if (AppState.identityVerified && consentCheckbox.checked && creditConsentCheckbox.checked) {
+                nextButton.disabled = false;
+            } else {
+                nextButton.disabled = true;
+            }
+        };
+        
+        creditConsentCheckbox.addEventListener('change', checkBothConsents);
+        
         // Submit & Verify Identity button
         document.getElementById('submit_and_verify').addEventListener('click', async () => {
             if (!consentCheckbox.checked) {
                 alert('Please confirm your consent to proceed.');
+                return;
+            }
+            
+            // If we're changing mobile, allow update
+            if (AppState.changingMobile) {
+                Navigation.showStep('step3');
+                // Reset the mobile verification state
+                AppState.otpSent = false;
+                AppState.otpVerified = false;
+                AppState.changingMobile = false;
                 return;
             }
             
@@ -838,34 +894,56 @@ const EventHandlers = {
                         clientReference: 'report'
                     };
                     
-                    // Show the continue section
+                    // Show the continue section with credit consent
                     document.getElementById('verified_continue').style.display = 'block';
                     
-                    // Enable continue button
-                    document.getElementById('next_to_step5').disabled = false;
+                    // Hide change mobile section
+                    document.getElementById('change_mobile_section').style.display = 'none';
+                    
+                    // Check if both consents are given
+                    checkBothConsents();
                     
                 } else {
                     statusIcon.textContent = '⚠️';
                     statusIcon.style.color = '#dc3545';
                     statusTitle.textContent = 'Verification Failed';
-                    statusMessage.innerHTML = 'We were unable to verify your identity. Please try again with a mobile likely linked to your credit file. If you continue to fail this test please email us on <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a> noting the issue and we will get back to you.';
+                    statusMessage.innerHTML = 'We were unable to verify your identity. Please try a different mobile number linked to your credit file, or contact us:<br><br>' +
+                        '<strong>Email:</strong> <a href="mailto:claim@belmondclaims.com" style="color: #721c24; text-decoration: underline;">claim@belmondclaims.com</a><br>' +
+                        '<strong>Phone:</strong> 03300948438<br>' +
+                        'Monday to Friday, 9am – 6pm';
                     
                     document.getElementById('next_to_step5').disabled = true;
+                    
+                    // Show change mobile section
+                    document.getElementById('change_mobile_section').style.display = 'block';
                 }
             } catch (error) {
                 console.error('Verification error:', error);
-                const statusDiv = document.getElementById('identity_status');
-                statusDiv.style.display = 'block';
-                statusDiv.querySelector('.status-icon').textContent = '✗';
-                statusDiv.querySelector('.status-icon').style.color = '#dc3545';
-                statusDiv.querySelector('.status-title').textContent = 'Verification Error';
-                statusDiv.querySelector('.status-message').textContent = 'An error occurred during verification. Please try again.';
+                Utils.showErrorModal('An error occurred during verification. Please try again.');
                 
                 document.getElementById('next_to_step5').disabled = true;
             } finally {
                 Utils.hideLoading();
             }
         });
+        
+        // Change mobile button
+        const changeMobileBtn = document.getElementById('change_mobile_btn');
+        if (changeMobileBtn) {
+            changeMobileBtn.addEventListener('click', () => {
+                AppState.changingMobile = true;
+                Navigation.showStep('step3');
+                // Clear previous mobile and OTP state
+                document.getElementById('mobile').value = '';
+                document.getElementById('otp').value = '';
+                document.getElementById('otp_verification').style.display = 'none';
+                document.getElementById('otp_message').style.display = 'none';
+                document.getElementById('otp_status').textContent = '';
+                document.getElementById('next_to_step4').disabled = true;
+                AppState.otpSent = false;
+                AppState.otpVerified = false;
+            });
+        }
         
         // Navigation buttons
         document.getElementById('back_to_step3').addEventListener('click', () => Navigation.showStep('step3'));
@@ -928,7 +1006,7 @@ const EventHandlers = {
             
         } catch (error) {
             console.error('Finance retrieval error:', error);
-            alert(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
+            Utils.showErrorModal(`Error: ${error.message || 'Failed to retrieve vehicle finance information'}`);
         } finally {
             Utils.hideLoading();
         }
@@ -945,10 +1023,7 @@ const EventHandlers = {
         
         // Navigation
         document.getElementById('back_to_step4').addEventListener('click', () => Navigation.showStep('step4'));
-        document.getElementById('next_to_step6').addEventListener('click', () => {
-            this.updateFinalLendersDisplay();
-            Navigation.showStep('step6');
-        });
+        document.getElementById('next_to_step6').addEventListener('click', () => Navigation.showStep('step6'));
     },
 
     initStep6() {
@@ -1055,6 +1130,11 @@ const EventHandlers = {
             row.appendChild(dateDiv);
             foundList.appendChild(row);
         });
+        
+        // Update combined display if there are additional lenders
+        if (AppState.additionalLenders.length > 0) {
+            this.updateCombinedLendersDisplay();
+        }
     },
 
     showLenderModal() {
@@ -1063,14 +1143,17 @@ const EventHandlers = {
             account.displayName || account.lenderName || ''
         ).filter(name => name.trim() !== '');
         
+        // Also get manually added lender names
+        const manualLenderNames = AppState.additionalLenders.map(lender => lender.name);
+        
         const modal = document.createElement('div');
         modal.className = 'lenders-modal';
         
-        // Filter out already found lenders
+        // Filter out already found lenders and manually added ones
         const availableLenders = AppState.lendersList.filter(lender => 
             !foundLenderNames.some(foundName => 
                 Utils.similarity(foundName.toLowerCase(), lender.name.toLowerCase()) >= 0.8
-            )
+            ) && !manualLenderNames.includes(lender.name)
         );
         
         modal.innerHTML = `
@@ -1083,7 +1166,7 @@ const EventHandlers = {
                     <input type="text" class="lender-search" placeholder="Search lenders...">
                     <div class="lender-grid">
                         ${availableLenders.map(lender => `
-                            <div class="lender-grid-item" data-name="${lender.name}">
+                            <div class="lender-grid-item" data-name="${lender.name}" data-filename="${lender.filename || ''}">
                                 ${lender.filename ? 
                                     `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="lender-grid-logo">` :
                                     `<div class="no-logo-placeholder">${lender.name}</div>`
@@ -1141,50 +1224,119 @@ const EventHandlers = {
                 }
             });
             modal.remove();
-            this.updateAdditionalLendersDisplay();
+            this.updateCombinedLendersDisplay();
         });
     },
 
-    updateAdditionalLendersDisplay() {
-        // This could show additional lenders in the main list
-        // For now, they'll be included in the final display
-        console.log('Additional lenders:', AppState.additionalLenders);
-    },
-
-    updateFinalLendersDisplay() {
-        const finalSection = document.getElementById('final_lenders_display');
-        const finalGrid = document.getElementById('final_lenders_grid');
+    updateCombinedLendersDisplay() {
+        const combinedSection = document.getElementById('combined_lenders_display');
+        const combinedList = document.getElementById('combined_lenders_list');
         
-        // Combine found and additional lenders
-        const allLenders = [
-            // Found lenders (enhanced with display info)
-            ...AppState.foundLenders.map(account => ({
-                name: account.displayName || account.lenderName || 'Unknown Lender',
-                filename: account.logoFile || null,
-                source: 'found'
-            })),
-            // Additional lenders
-            ...AppState.additionalLenders.map(lender => ({
-                name: lender.name,
-                filename: lender.filename || null,
-                source: 'manual'
-            }))
-        ];
+        // Clear the found list
+        document.getElementById('found_list').innerHTML = '';
         
-        if (allLenders.length > 0) {
-            finalGrid.innerHTML = allLenders.map(lender => `
-                <div class="final-lender-item">
-                    ${lender.filename ? 
-                        `<img src="/static/icons/${encodeURIComponent(lender.filename)}" alt="${lender.name}" class="final-lender-logo">` :
-                        `<div class="final-no-logo">${lender.name}</div>`
-                    }
-                </div>
-            `).join('');
+        // Show combined section
+        combinedSection.style.display = 'block';
+        
+        // Clear and repopulate with both found and manual lenders
+        combinedList.innerHTML = '';
+        
+        // First add found lenders
+        AppState.foundLenders.forEach(account => {
+            const row = document.createElement('div');
+            row.className = 'found-row';
             
-            finalSection.style.display = 'block';
-        } else {
-            finalSection.style.display = 'none';
-        }
+            // Icon column
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'lender-icon';
+            
+            if (account.logoFile) {
+                const img = document.createElement('img');
+                img.src = `/static/icons/${encodeURIComponent(account.logoFile)}`;
+                img.alt = account.displayName;
+                img.className = 'lender-logo';
+                img.onerror = function() {
+                    iconDiv.innerHTML = `<div class="no-logo">${account.displayName}</div>`;
+                };
+                iconDiv.appendChild(img);
+            } else {
+                const noLogo = document.createElement('div');
+                noLogo.className = 'no-logo';
+                noLogo.textContent = account.displayName || account.lenderName;
+                iconDiv.appendChild(noLogo);
+            }
+            
+            // Name column
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'lender-name';
+            if (!account.logoFile) {
+                nameDiv.textContent = account.displayName || account.lenderName;
+            }
+            
+            // Date column
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'lender-date';
+            if (account.startDate) {
+                try {
+                    const date = new Date(account.startDate);
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    const year = String(date.getFullYear()).slice(-2);
+                    dateDiv.textContent = `From ${month} '${year}`;
+                } catch(e) {
+                    dateDiv.textContent = 'Found by check';
+                }
+            } else {
+                dateDiv.textContent = 'Found by check';
+            }
+            
+            row.appendChild(iconDiv);
+            row.appendChild(nameDiv);
+            row.appendChild(dateDiv);
+            combinedList.appendChild(row);
+        });
+        
+        // Then add manually selected lenders
+        AppState.additionalLenders.forEach(lender => {
+            const row = document.createElement('div');
+            row.className = 'found-row manual-row';
+            
+            // Icon column
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'lender-icon';
+            
+            if (lender.filename) {
+                const img = document.createElement('img');
+                img.src = `/static/icons/${encodeURIComponent(lender.filename)}`;
+                img.alt = lender.name;
+                img.className = 'lender-logo';
+                img.onerror = function() {
+                    iconDiv.innerHTML = `<div class="no-logo">${lender.name}</div>`;
+                };
+                iconDiv.appendChild(img);
+            } else {
+                const noLogo = document.createElement('div');
+                noLogo.className = 'no-logo';
+                noLogo.textContent = lender.name;
+                iconDiv.appendChild(noLogo);
+            }
+            
+            // Name column
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'lender-name';
+            if (!lender.filename) {
+                nameDiv.textContent = lender.name;
+            }
+            
+            // Date column
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'lender-date lender-source';
+            dateDiv.textContent = 'Added manually';
+            
+            row.appendChild(iconDiv);
+            row.appendChild(nameDiv);
+            row.appendChild(dateDiv);
+            combinedList.appendChild(row);
+        });
     }
 };
 
