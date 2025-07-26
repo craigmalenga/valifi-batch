@@ -432,7 +432,7 @@ body > * {
 }
 
 .trust-logo {
-    width: 120px;
+    width: 360px;
     height: auto;
     opacity: 0.8;
     transition: opacity var(--transition-base);
@@ -481,7 +481,7 @@ body > * {
     }
     
     .trust-logo {
-        width: 100px;
+        width: 300px;
     }
 }
 

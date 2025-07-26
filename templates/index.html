@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+.trust-logo {
+        width: 300px;
+      }<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -300,6 +302,17 @@
       overflow-x: hidden;
     }
     
+    .trust-logo {
+      width: 360px;
+      height: auto;
+      opacity: 0.8;
+      transition: opacity 0.3s ease;
+    }
+    
+    .trust-logo:hover {
+      opacity: 1;
+    }
+    
     @media (max-width: 768px) {
       .container {
         margin: 1rem;
@@ -336,6 +349,10 @@
       
       .dob-container {
         grid-template-columns: 1fr;
+      }
+      
+      .trust-logo {
+        width: 300px;
       }
     }
   </style>
@@ -399,7 +416,7 @@
             </button>
             
             <div class="welcome-footer">
-              <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. Full details are shared before you decide to proceed.</p>
+              <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
               <img src="/static/icons/trust_secure.png" alt="Trust and Security" class="trust-logo">
             </div>
           </div>
