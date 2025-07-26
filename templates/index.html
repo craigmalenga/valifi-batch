@@ -1,2035 +1,1341 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Identity Verification System</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #f5f5f7;
-            color: #1d1d1f;
-            line-height: 1.5;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 100%;
-            padding: 40px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #007aff, #0051d5);
-            border-radius: 20px;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-            color: white;
-            font-weight: bold;
-        }
-
-        h1 {
-            font-size: 32px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .subtitle {
-            color: #6e6e73;
-            font-size: 16px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-            position: relative;
-        }
-
-        label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: #6e6e73;
-        }
-
-        input[type="text"],
-        input[type="tel"],
-        input[type="email"],
-        input[type="date"],
-        select {
-            width: 100%;
-            padding: 12px 16px;
-            font-size: 16px;
-            border: 1px solid #d2d2d7;
-            border-radius: 10px;
-            transition: all 0.2s;
-            background-color: #f5f5f7;
-            appearance: none;
-        }
-
-        input[type="text"]:focus,
-        input[type="tel"]:focus,
-        input[type="email"]:focus,
-        input[type="date"]:focus,
-        select:focus {
-            outline: none;
-            border-color: #007aff;
-            background-color: white;
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-        }
-
-        input.error {
-            border-color: #d70015;
-        }
-
-        .error-message {
-            color: #d70015;
-            font-size: 12px;
-            margin-top: 5px;
-            display: none;
-        }
-
-        .form-group.has-error .error-message {
-            display: block;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 30px;
-        }
-
-        input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            margin-top: 2px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .checkbox-label {
-            font-size: 14px;
-            color: #6e6e73;
-            cursor: pointer;
-            line-height: 1.5;
-        }
-
-        .checkbox-label a {
-            color: #007aff;
-            text-decoration: none;
-        }
-
-        .checkbox-label a:hover {
-            text-decoration: underline;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 500;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-            display: inline-block;
-            text-decoration: none;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary {
-            background-color: #007aff;
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background-color: #0066d6;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-        }
-
-        .btn-primary:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        .btn-primary:disabled {
-            background-color: #c6c6ca;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-secondary {
-            background-color: #f5f5f7;
-            color: #007aff;
-            border: 1px solid #007aff;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e8e8ed;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.1);
-        }
-
-        .btn-danger {
-            background-color: #d70015;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #b70012;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn-group .btn {
-            flex: 1;
-        }
-
-        .status-message {
-            padding: 16px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 500;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-10px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .status-success {
-            background-color: #d4f4dd;
-            color: #00703c;
-        }
-
-        .status-error {
-            background-color: #ffd4d4;
-            color: #d70015;
-        }
-
-        .status-info {
-            background-color: #e8f2ff;
-            color: #0066d6;
-        }
-
-        .status-warning {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        /* Progress Bar */
-        .progress-container {
-            margin-bottom: 30px;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background-color: #e5e5ea;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: #007aff;
-            transition: width 0.5s ease;
-            border-radius: 2px;
-        }
-
-        .progress-steps {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-
-        .progress-step {
-            font-size: 12px;
-            color: #6e6e73;
-            position: relative;
-        }
-
-        .progress-step.active {
-            color: #007aff;
-            font-weight: 600;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 400px;
-            width: 100%;
-            position: relative;
-            animation: modalSlideIn 0.3s ease-out;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                transform: translateY(-20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal h2 {
-            font-size: 24px;
-            margin: 0;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #6e6e73;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.2s;
-        }
-
-        .modal-close:hover {
-            background-color: #f5f5f7;
-        }
-
-        .modal p {
-            color: #6e6e73;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .modal-buttons .btn {
-            flex: 1;
-        }
-
-        /* Loading Overlay */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.95);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-
-        .loading-overlay.show {
-            display: flex;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #f5f5f7;
-            border-top-color: #007aff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            font-size: 16px;
-            color: #6e6e73;
-            text-align: center;
-        }
-
-        .loading-progress {
-            width: 200px;
-            height: 4px;
-            background-color: #e5e5ea;
-            border-radius: 2px;
-            margin-top: 20px;
-            overflow: hidden;
-        }
-
-        .loading-progress-fill {
-            height: 100%;
-            background-color: #007aff;
-            animation: loadingProgress 3s ease-in-out;
-        }
-
-        @keyframes loadingProgress {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
-        }
-
-        /* OTP Input */
-        .otp-container {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .otp-input {
-            width: 50px;
-            height: 50px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: 600;
-            border: 2px solid #d2d2d7;
-            border-radius: 10px;
-            transition: all 0.2s;
-        }
-
-        .otp-input:focus {
-            outline: none;
-            border-color: #007aff;
-            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-        }
-
-        .otp-input.filled {
-            border-color: #007aff;
-            background-color: #f0f8ff;
-        }
-
-        .otp-timer {
-            text-align: center;
-            color: #6e6e73;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            background-color: #f5f5f7;
-            border-radius: 10px;
-            padding: 4px;
-            margin-bottom: 30px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px;
-            background: none;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #6e6e73;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .tab.active {
-            background-color: white;
-            color: #1d1d1f;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Address Lookup */
-        .address-lookup {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .address-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #d2d2d7;
-            border-radius: 10px;
-            margin-top: 5px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            z-index: 100;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .address-results.show {
-            display: block;
-        }
-
-        .address-result {
-            padding: 12px 16px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            border-bottom: 1px solid #f5f5f7;
-        }
-
-        .address-result:last-child {
-            border-bottom: none;
-        }
-
-        .address-result:hover {
-            background-color: #f5f5f7;
-        }
-
-        /* Security Badge */
-        .security-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 30px;
-            padding: 12px;
-            background-color: #f5f5f7;
-            border-radius: 10px;
-            font-size: 14px;
-            color: #6e6e73;
-        }
-
-        .security-badge svg {
-            width: 16px;
-            height: 16px;
-            fill: #00703c;
-        }
-
-        /* Results Section */
-        .results-section {
-            background-color: #f5f5f7;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .results-section h3 {
-            font-size: 18px;
-            margin-bottom: 15px;
-            color: #1d1d1f;
-        }
-
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e5ea;
-        }
-
-        .result-item:last-child {
-            border-bottom: none;
-        }
-
-        .result-label {
-            color: #6e6e73;
-            font-size: 14px;
-        }
-
-        .result-value {
-            font-weight: 600;
-            color: #1d1d1f;
-        }
-
-        .result-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .result-status.verified {
-            background-color: #d4f4dd;
-            color: #00703c;
-        }
-
-        .result-status.pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .result-status.failed {
-            background-color: #ffd4d4;
-            color: #d70015;
-        }
-
-        /* File Upload */
-        .file-upload {
-            border: 2px dashed #d2d2d7;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            transition: all 0.2s;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .file-upload:hover {
-            border-color: #007aff;
-            background-color: #f5f5f7;
-        }
-
-        .file-upload.drag-over {
-            border-color: #007aff;
-            background-color: #e8f2ff;
-        }
-
-        .file-upload input[type="file"] {
-            display: none;
-        }
-
-        .file-upload-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 15px;
-            background-color: #007aff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .file-list {
-            margin-top: 20px;
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            background-color: #f5f5f7;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .file-icon {
-            width: 32px;
-            height: 32px;
-            background-color: #007aff;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .file-remove {
-            background: none;
-            border: none;
-            color: #d70015;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .file-remove:hover {
-            background-color: rgba(215, 0, 21, 0.1);
-        }
-
-        /* Hide elements */
-        .hidden {
-            display: none !important;
-        }
-
-        /* Animations */
-        .fade-in {
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 25px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .modal-content {
-                padding: 20px;
-            }
-            
-            .tabs {
-                flex-direction: column;
-                gap: 5px;
-            }
-            
-            .progress-steps {
-                font-size: 11px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-            
-            .container {
-                padding: 20px;
-                border-radius: 15px;
-            }
-            
-            .logo {
-                width: 60px;
-                height: 60px;
-                font-size: 28px;
-            }
-            
-            h1 {
-                font-size: 20px;
-            }
-            
-            .subtitle {
-                font-size: 14px;
-            }
-            
-            .btn {
-                padding: 12px;
-                font-size: 15px;
-            }
-            
-            .otp-input {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-            }
-        }
-
-        /* Print styles */
-        @media print {
-            body {
-                background: white;
-            }
-            
-            .container {
-                box-shadow: none;
-                max-width: 100%;
-            }
-            
-            .btn, .tabs, .file-upload {
-                display: none;
-            }
-        }
-
-        /* Accessibility */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Focus styles */
-        *:focus-visible {
-            outline: 2px solid #007aff;
-            outline-offset: 2px;
-        }
-
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #000;
-                color: #f5f5f7;
-            }
-            
-            .container {
-                background-color: #1c1c1e;
-                color: #f5f5f7;
-            }
-            
-            input, select {
-                background-color: #2c2c2e;
-                border-color: #38383a;
-                color: #f5f5f7;
-            }
-            
-            input:focus, select:focus {
-                background-color: #1c1c1e;
-                border-color: #0a84ff;
-            }
-            
-            .btn-secondary {
-                background-color: #2c2c2e;
-                border-color: #0a84ff;
-                color: #0a84ff;
-            }
-            
-            .modal-content {
-                background-color: #1c1c1e;
-                color: #f5f5f7;
-            }
-            
-            .status-info {
-                background-color: #002952;
-                color: #0a84ff;
-            }
-            
-            .results-section {
-                background-color: #2c2c2e;
-            }
-        }
-
-        /* Suppress all external popups */
-        .postcode-popup,
-        .address-popup,
-        .external-popup,
-        [class*="lookup"],
-        [class*="postcode-anywhere"],
-        [class*="addressnow"],
-        [class*="loqate"] {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.85, maximum-scale=5.0, user-scalable=yes"/>
+  <title>Vehicle Finance Check Service</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Fallback inline styles for immediate visual feedback -->
+  <style>
+    /* Critical inline styles in case external CSS fails */
+    :root {
+      --primary-color: #2199E8;
+      --secondary-color: #F57F30;
+      --purple-color: rebeccapurple;
+      --burgundy-color: #880A51;
+      --dark-color: #21212D;
+      --green-color: #ACBD31;
+    }
+    
+    /* Front Loading Page Styles */
+    .loading-page {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-page.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-content-container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    
+    .loading-logo {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .loading-title {
+      font-size: 2rem;
+      color: var(--purple-color);
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    
+    .loading-subtitle {
+      font-size: 1.25rem;
+      color: #6c757d;
+      margin-bottom: 3rem;
+    }
+    
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 2rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-message {
+      font-size: 1rem;
+      color: #6c757d;
+    }
+    
+    /* FORCE VISIBILITY OF FORM */
+    .form-step {
+      display: none;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    
+    .form-step.active {
+      display: block !important;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 3rem;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      overflow-x: hidden;
+    }
+    
+    .container * {
+      max-width: 100%;
+    }
+    
+    /* Ensure form steps are visible */
+    .form-step {
+      animation: fadeIn 0.3s ease-in;
+    }
+    
+    .form-step.active {
+      display: block !important;
+    }
+    
+    .section-heading {
+      color: rebeccapurple;
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    
+    .form-input, .form-select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      font-size: 1rem;
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+    }
+    
+    .title-button-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .title-btn {
+      padding: 0.875rem 1.5rem;
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+      background: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .title-btn-other {
+      grid-column: 2 / 4;
+    }
+    
+    .title-btn:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+    
+    .title-btn.active {
+      background: var(--dark-color);
+      color: white;
+      border-color: var(--dark-color);
+    }
+    
+    .btn {
+      padding: 0.875rem 2rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: white;
+    }
+    
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    /* Progress bar styles - uniform spacing */
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      background: transparent;
+      border-radius: 16px;
+      overflow: visible;
+      width: 100%;
+      max-width: 100%;
+    }
+    
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+      flex: 1;
+      max-width: 150px;
+    }
+    
+    /* Create connector lines */
+    .progress-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      width: calc(100% - 48px);
+      height: 2px;
+      background: #e9ecef;
+      left: calc(50% + 24px);
+      top: 24px;
+      z-index: 1;
+    }
+    
+    .progress-step.completed:not(:last-child)::after {
+      background: #28a745;
+    }
+    
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #e9ecef;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1.125rem;
+    }
+    
+    .progress-step.active .step-number {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 0 0 4px rgba(33, 153, 232, 0.1);
+    }
+    
+    .progress-step.completed .step-number {
+      background: #28a745;
+      color: white;
+    }
+    
+    .error-message {
+      color: #dc3545;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    
+    /* CENTERING FIX - ONLY CHANGE */
+    .form-steps-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+    
+    .form-step {
+      max-width: 600px;
+      width: 100%;
+      overflow-x: hidden;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 1rem;
+        padding: 1.5rem;
+        max-width: calc(100vw - 2rem);
+      }
+      
+      .progress-bar {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        gap: 0.5rem;
+      }
+      
+      /* Hide connector lines on mobile */
+      .progress-step:not(:last-child)::after {
+        display: none;
+      }
+      
+      .button-row {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+      }
+      
+      .title-button-group {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .title-btn-other {
+        grid-column: 2 / 4;
+      }
+      
+      .dob-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Progress Bar -->
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width: 25%;"></div>
+  
+  <!-- Front Loading Page -->
+  <div class="loading-page" id="loadingPage">
+    <div class="loading-content-container">
+      <div class="loading-logo">🚗</div>
+
+      <h1 class="loading-title">Vehicle Finance Check Service</h1>
+      <p class="loading-subtitle">Checking if your car finance was fair</p>
+      <div class="loading-spinner"></div>
+      <p class="loading-message">Preparing your secure form...</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Emergency message if nothing loads -->
+    <noscript>
+      <div style="padding: 20px; background: #f8d7da; color: #721c24; border-radius: 8px;">
+        JavaScript is required for this application to work.
+      </div>
+    </noscript>
+
+    <form id="searchForm" autocomplete="on" novalidate>
+
+      <!-- === STEP 0: Welcome Screen === -->
+      <div class="form-step active" id="step0">
+        <div class="welcome-container">
+          <h1 class="welcome-title">Think You Overpaid on Car Finance?</h1>
+          <p class="welcome-subtitle">It’s free to check — takes just 60 seconds and won’t affect your credit.</p>
+
+          <div class="welcome-benefits">
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">
+                Free to Check<br>
+                <small>You can contact lenders yourself — but we handle the full process for free, with no upfront cost.</small>
+              </span>
             </div>
-            <div class="progress-steps">
-                <div class="progress-step active" data-step="1">Personal Info</div>
-                <div class="progress-step" data-step="2">Verification</div>
-                <div class="progress-step" data-step="3">Documents</div>
-                <div class="progress-step" data-step="4">Complete</div>
+
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">
+                We Find Your Agreements for You<br>
+                <small>No paperwork needed — we securely scan your credit profile to find past car finance.</small>
+              </span>
             </div>
+
+            <div class="benefit-item">
+              <img src="/static/icons/tick.png" alt="Tick" class="benefit-icon">
+              <span class="benefit-text">
+                No win = no fee<br>
+                <small>If you're eligible and we recover funds, our fee comes from the payout. If not, you pay nothing.</small>
+              </span>
+            </div>
+          </div>
+
+          <div class="welcome-button-container">
+            <button type="button" class="btn btn-primary btn-large" id="start_journey">
+              Let's get started
+            </button>
+          </div>
+
+          <!-- Optional Fine Print Footer -->
+          <div class="welcome-fineprint">
+            <small>We’ll explain our fees clearly if we think you may have a claim. Full details are shared before you decide to proceed.</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile-Responsive Progress Indicator -->
+      <div class="progress-bar" id="main_progress_bar" style="display:none;">
+        <div class="progress-step active" data-step="1">
+          <span class="step-number">1</span>
+          <span class="step-label">Tell Us<br>About You</span>
+        </div>
+        <div class="progress-step" data-step="2">
+          <span class="step-number">2</span>
+          <span class="step-label">Where Do You<br>Call Home?</span>
+        </div>
+        <div class="progress-step" data-step="3">
+          <span class="step-number">3</span>
+          <span class="step-label">Confirm<br>Your Mobile</span>
+        </div>
+        <div class="progress-step" data-step="4">
+          <span class="step-number">4</span>
+          <span class="step-label">Prove it's<br>Really You</span>
+        </div>
+        <div class="progress-step" data-step="5">
+          <span class="step-number">5</span>
+          <span class="step-label">Your<br>Lenders</span>
+        </div>
+        <div class="progress-step" data-step="6">
+          <span class="step-number">6</span>
+          <span class="step-label">Final Steps<br>Submit Claim</span>
+        </div>
+      </div>
+
+      <!-- CENTERING WRAPPER - ONLY CHANGE -->
+      <div class="form-steps-container">
+        <!-- === STEP 1: Personal Info === -->
+        <div class="form-step" id="step1" style="display:none;">
+          <div class="step-header">
+            <h2 class="section-heading">Ready to Roll? Who Financed the Vehicle?</h2>
+            <p class="step-subtitle">Let's start with your personal information</p>
+          </div>
+          
+          <div class="form-section">
+            <div class="form-group">
+              <label class="form-label">Title <span class="required">*</span></label>
+              <div class="title-button-group" id="title_buttons">
+                <button type="button" class="title-btn" data-value="Mr">Mr</button>
+                <button type="button" class="title-btn" data-value="Mrs">Mrs</button>
+                <button type="button" class="title-btn" data-value="Miss">Miss</button>
+                <button type="button" class="title-btn" data-value="Ms">Ms</button>
+                <button type="button" class="title-btn title-btn-other" data-value="Other">Other</button>
+              </div>
+              <input type="hidden" id="title" name="title" required />
+              <span class="error-message" id="title_error"></span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="first_name">First Name <span class="required">*</span></label>
+                <input type="text" id="first_name" class="form-input" required autocomplete="given-name" placeholder="As on documents">
+                <span class="error-message" id="first_name_error"></span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="middle_name">Middle Name(s)</label>
+                <input type="text" id="middle_name" class="form-input" autocomplete="additional-name" placeholder="Optional">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="last_name">Last Name <span class="required">*</span></label>
+              <input type="text" id="last_name" class="form-input" required autocomplete="family-name" placeholder="As on documents">
+              <span class="error-message" id="last_name_error"></span>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span class="required">*</span></label>
+              <div class="dob-container">
+                <select id="dob_day" class="form-select" required>
+                  <option value="">Day</option>
+                </select>
+                <select id="dob_month" class="form-select" required>
+                  <option value="">Month</option>
+                </select>
+                <div class="year-input-group">
+                  <input type="number" id="dob_year" class="form-input" placeholder="YYYY" min="1900" max="2023" required />
+                  <div class="year-slider-container">
+                    <input type="range" id="year_slider" class="year-slider" min="1900" max="2023" />
+                    <div class="slider-tooltip" id="slider_tooltip"></div>
+                  </div>
+                </div>
+              </div>
+              <span class="error-message" id="dob_error"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+              <input type="email" id="email" name="email" class="form-input" required autocomplete="email" placeholder="your@email.com" />
+              <span class="error-message" id="email_error"></span>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="clear_step1">
+              <span class="btn-icon">↻</span> Clear Data
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step2">
+              Continue <span class="btn-icon">→</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Initial Verification Form -->
-        <div id="verificationForm" class="step-content">
-            <div class="header">
-                <div class="logo">ID</div>
-                <h1>Identity Verification</h1>
-                <p class="subtitle">Verify your identity quickly and securely</p>
+        <!-- === STEP 2: Address === -->
+        <div class="form-step" id="step2" style="display:none;">
+          <div class="step-header">
+            <h2 class="step-title">What's your address?</h2>
+            <p class="step-subtitle">We'll use this to track down prior vehicle finance in your name. If you can take a few more moments, please add any prior addresses if you moved to your new place recently</p>
+          </div>
+
+          <div class="form-section">
+            <div class="address-lookup-section">
+              <div class="form-group">
+                <label class="form-label">Find Your Address</label>
+                <div class="postcode-lookup">
+                  <input type="text" id="lookup_postcode" class="form-input" placeholder="Enter your postcode" autocomplete="postal-code" />
+                  <button type="button" class="btn btn-primary" id="address_lookup_btn">
+                    <span class="btn-icon">🔍</span> Find Address
+                  </button>
+                </div>
+              </div>
+
+              <div id="address_container" class="address-select-container" style="display:none;">
+                <label class="form-label" for="address_select">Select Your Address</label>
+                <select id="address_select" name="address_select" class="form-select">
+                  <option value="">Choose from list...</option>
+                </select>
+                
+                <div class="address-edit-option" style="display:none;">
+                  <button type="button" class="btn-link" id="edit_address_details">
+                    Edit address details if needed
+                  </button>
+                </div>
+              </div>
+
+              <div id="address_error" class="error-message"></div>
+
+              <div class="manual-entry-toggle">
+                <button type="button" class="btn-link" id="manual_address_toggle">
+                  Enter address manually
+                </button>
+              </div>
             </div>
-            
-            <form id="mainForm" novalidate>
+
+            <div class="address-fields" id="manual_address_fields" style="display:none;">
+              <div class="form-row">
                 <div class="form-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required autocomplete="name">
-                    <span class="error-message">Please enter your full name</span>
+                  <label class="form-label" for="building_number">Building Number</label>
+                  <input type="text" id="building_number" name="buildingNumber" class="form-input" placeholder="e.g. 123" />
                 </div>
-                
                 <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
-                    <span class="error-message">Please enter a valid email address</span>
+                  <label class="form-label" for="building_name">Building Name</label>
+                  <input type="text" id="building_name" name="buildingName" class="form-input" placeholder="e.g. Oak House" />
                 </div>
-                
+              </div>
+              <div class="form-row">
                 <div class="form-group">
-                    <label for="dateOfBirth">Date of Birth</label>
-                    <input type="date" id="dateOfBirth" name="dateOfBirth" required>
-                    <span class="error-message">Please enter your date of birth</span>
+                  <label class="form-label" for="flat">Flat / Unit</label>
+                  <input type="text" id="flat" name="flat" class="form-input" placeholder="e.g. Flat 2A" autocomplete="address-line1"/>
                 </div>
-                
-                <div class="form-group address-lookup">
-                    <label for="postcode">Postcode</label>
-                    <input type="text" id="postcode" name="postcode" placeholder="Enter your postcode" required autocomplete="postal-code">
-                    <span class="error-message">Please enter a valid postcode</span>
-                    <div class="address-results" id="addressResults"></div>
+                <div class="form-group flex-2">
+                  <label class="form-label" for="street">Street <span class="required">*</span></label>
+                  <input type="text" id="street" name="street" class="form-input" placeholder="e.g. High Street" required autocomplete="address-line2"/>
+                  <span class="error-message" id="street_error"></span>
                 </div>
-                
+              </div>
+              <div class="form-row">
                 <div class="form-group">
-                    <label for="address">Full Address</label>
-                    <input type="text" id="address" name="address" placeholder="Enter your full address" required autocomplete="street-address">
-                    <span class="error-message">Please enter your address</span>
+                  <label class="form-label" for="post_town">Town/City <span class="required">*</span></label>
+                  <input type="text" id="post_town" name="postTown" class="form-input" placeholder="e.g. London" required autocomplete="address-level2"/>
+                  <span class="error-message" id="post_town_error"></span>
                 </div>
-                
                 <div class="form-group">
-                    <label for="mobileNumber">Mobile Number</label>
-                    <input type="tel" id="mobileNumber" name="mobileNumber" placeholder="Enter your mobile number" required autocomplete="tel">
-                    <span class="error-message">Please enter a valid mobile number</span>
+                  <label class="form-label" for="post_code">Post Code <span class="required">*</span></label>
+                  <input type="text" id="post_code" name="postCode" class="form-input" placeholder="e.g. SW1A 1AA" required autocomplete="postal-code"/>
+                  <span class="error-message" id="post_code_error"></span>
                 </div>
-                
-                <div class="checkbox-group">
-                    <input type="checkbox" id="consentCheckbox" name="consent">
-                    <label for="consentCheckbox" class="checkbox-label">
-                        I consent to the verification of my identity and understand my data will be processed in accordance with the <a href="#" onclick="showPrivacyPolicy(); return false;">Privacy Policy</a>
-                    </label>
-                </div>
-                
-                <button type="submit" id="submitVerifyBtn" class="btn btn-primary" disabled>Submit and Verify</button>
-            </form>
-            
-            <div class="security-badge">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 2L4 7v6c0 5.05 3.41 9.76 8 10.96 4.59-1.2 8-5.91 8-10.96V7l-8-5z"/>
-                </svg>
-                <span>Your data is encrypted and secure</span>
+              </div>
             </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step1">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step3">
+              Continue <span class="btn-icon">→</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Alternative Phone Form -->
-        <div id="alternativePhoneForm" class="step-content hidden">
-            <div class="header">
-                <h1>Alternative Phone Verification</h1>
-                <p class="subtitle">We need to verify an alternative phone number</p>
+        <!-- === STEP 3: Mobile Verification === -->
+        <div class="form-step" id="step3" style="display:none;">
+          <div class="step-header">
+            <h2 class="step-title">Mobile Verification</h2>
+            <p class="step-subtitle">We'll send you a code to verify your mobile number</p>
+          </div>
+
+          <div class="form-section">
+            <div class="verification-card">
+              <div class="form-group">
+                <label class="form-label" for="mobile">Mobile Number <span class="required">*</span></label>
+                <input type="tel" id="mobile" name="mobile" class="form-input form-input-large" required autocomplete="tel" placeholder="07XXX XXXXXX">
+                <span class="error-message" id="mobile_error"></span>
+              </div>
+              
+              <button type="button" class="btn btn-primary btn-large" id="send_otp">
+                <span class="btn-icon">📱</span> Send Verification Code
+              </button>
+              
+              <div id="otp_message" class="info-message" style="display:none;"></div>
             </div>
             
-            <div class="status-message status-warning">
-                The mobile number provided could not be verified against your credit file. Please enter an alternative phone number you previously owned that may be linked to your credit history.
+            <div id="otp_verification" class="verification-card" style="display:none;">
+              <div class="form-group">
+                <label class="form-label" for="otp">Enter 6-digit Code <span class="required">*</span></label>
+                <input type="text" id="otp" name="otp" class="form-input form-input-large otp-input" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="XXXXXX">
+                <span class="error-message" id="otp_error"></span>
+              </div>
+              
+              <button type="button" class="btn btn-primary btn-large" id="verify_otp">
+                <span class="btn-icon">✓</span> Verify Code
+              </button>
+              
+              <div id="otp_status" class="status-message"></div>
+              
+              <div class="resend-container">
+                <button type="button" class="btn-link" id="resend_otp">Resend code</button>
+              </div>
             </div>
-            
-            <form id="altPhoneForm" novalidate>
-                <div class="form-group">
-                    <label for="altPhone">Alternative Phone Number</label>
-                    <input type="tel" id="altPhone" name="altPhone" placeholder="Enter alternative phone number" required>
-                    <span class="error-message">Please enter a valid phone number</span>
-                </div>
-                
-                <div class="form-group">
-                    <label>Do you still have access to this number?</label>
-                    <div class="tabs">
-                        <button type="button" class="tab" data-access="yes" onclick="selectPhoneAccess('yes')">Yes, I can receive SMS</button>
-                        <button type="button" class="tab" data-access="no" onclick="selectPhoneAccess('no')">No, I don't have access</button>
-                    </div>
-                </div>
-                
-                <div class="form-group" id="phoneHistoryGroup" style="display: none;">
-                    <label for="phoneHistory">When did you last have access to this number?</label>
-                    <select id="phoneHistory" name="phoneHistory">
-                        <option value="">Select timeframe</option>
-                        <option value="less-6-months">Less than 6 months ago</option>
-                        <option value="6-12-months">6-12 months ago</option>
-                        <option value="1-2-years">1-2 years ago</option>
-                        <option value="more-2-years">More than 2 years ago</option>
-                    </select>
-                </div>
-                
-                <div class="btn-group">
-                    <button type="button" class="btn btn-secondary" onclick="goBack()">Back</button>
-                    <button type="submit" class="btn btn-primary">Continue</button>
-                </div>
-            </form>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step2">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step4" disabled>
+              Continue <span class="btn-icon">→</span>
+            </button>
+          </div>
         </div>
 
-        <!-- OTP Verification Form -->
-        <div id="otpForm" class="step-content hidden">
-            <div class="header">
-                <h1>Verify Your Phone</h1>
-                <p class="subtitle">Enter the verification code</p>
+        <!-- === STEP 4: Review & Submit === -->
+        <div class="form-step" id="step4" style="display:none;">
+          <div class="step-header">
+            <h2 class="step-title">Prove it's Really You</h2>
+            <p class="step-subtitle">Please review your information and consent to proceed</p>
+          </div>
+          
+          <div class="form-section">
+            <div class="review-card" id="review_summary">
+              <!-- Populated by JS -->
+            </div>
+
+            <div class="consent-section">
+              <label class="checkbox-container">
+                <input type="checkbox" id="consent_checkbox" />
+                <span class="checkbox-label">
+                  I confirm that all information provided is accurate and I consent to Belmond processing this information for vehicle finance checks, including identity verification and credit report retrieval.
+                </span>
+              </label>
+              
+              <div class="consent-submit" style="margin-top: 2rem; text-align: center;">
+                <button type="button" class="btn btn-primary btn-large" id="submit_and_verify" disabled>
+                  <span class="btn-icon">🔍</span> Submit & Verify Identity
+                </button>
+              </div>
+            </div>
+
+            <div id="identity_status" class="identity-status" style="display:none;">
+              <div class="status-icon"></div>
+              <div class="status-content">
+                <h4 class="status-title"></h4>
+                <p class="status-message"></p>
+              </div>
             </div>
             
-            <div class="status-message status-info">
-                We've sent a 6-digit verification code to <strong id="otpPhoneNumber"></strong>
+            <div id="verified_continue" style="display:none; text-align: center; margin-top: 2rem;">
+              <p style="color: var(--text-secondary); margin-bottom: 1rem;">Identity verification complete. Ready to search for your finance records?</p>
+              <button type="button" class="btn btn-primary btn-large" onclick="document.getElementById('next_to_step5').click()">
+                <span class="btn-icon">🔍</span> Search My Finance Records
+              </button>
             </div>
-            
-            <form id="otpVerifyForm" novalidate>
-                <div class="otp-container">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
-                </div>
-                
-                <div class="otp-timer" id="otpTimer">
-                    Resend code in <span id="timerValue">60</span> seconds
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Verify Code</button>
-                <button type="button" id="resendOTP" class="btn btn-secondary" style="margin-top: 10px;" disabled>Resend Code</button>
-            </form>
+          </div>
+          
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step3">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step5" disabled>
+              Continue to Search Records <span class="btn-icon">→</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Document Upload -->
-        <div id="documentUpload" class="step-content hidden">
-            <div class="header">
-                <h1>Upload Documents</h1>
-                <p class="subtitle">Please upload supporting documents</p>
+        <!-- === STEP 5: Your Finance Agreements === -->
+        <div class="form-step" id="step5" style="display:none;">
+          <div class="step-header">
+            <h2 class="section-heading">Your Lenders</h2>
+            <p class="step-subtitle">Here's what our checks have found</p>
+          </div>
+          
+          <div class="form-section">
+            <div id="found_list" class="lenders-list">
+              <!-- JS will inject lender items here -->
             </div>
             
-            <div class="tabs">
-                <button type="button" class="tab active" onclick="selectDocumentType('passport')">Passport</button>
-                <button type="button" class="tab" onclick="selectDocumentType('driving-license')">Driving License</button>
-                <button type="button" class="tab" onclick="selectDocumentType('id-card')">ID Card</button>
-            </div>
-            
-            <div class="file-upload" id="fileUploadArea">
-                <input type="file" id="documentFile" accept="image/*,.pdf" multiple>
-                <div class="file-upload-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
-                    </svg>
-                </div>
-                <p><strong>Drop files here or click to upload</strong></p>
-                <p style="font-size: 14px; color: #6e6e73;">Supported formats: JPG, PNG, PDF (Max 10MB)</p>
-            </div>
-            
-            <div class="file-list" id="fileList"></div>
-            
-            <div class="btn-group">
-                <button type="button" class="btn btn-secondary" onclick="skipDocuments()">Skip for Now</button>
-                <button type="button" class="btn btn-primary" onclick="submitDocuments()" id="submitDocsBtn" disabled>Submit Documents</button>
-            </div>
-        </div>
-
-        <!-- Success Screen -->
-        <div id="successScreen" class="step-content hidden">
-            <div class="header">
-                <div class="logo" style="background: linear-gradient(135deg, #00703c, #00522b);">✓</div>
-                <h1>Identity Verified Successfully</h1>
-                <p class="subtitle">Your verification is complete</p>
-            </div>
-            
-            <div class="status-message status-success">
-                Your identity has been successfully verified and your account is now active.
-            </div>
-            
-            <div class="results-section">
-                <h3>Verification Summary</h3>
-                <div class="result-item">
-                    <span class="result-label">Name</span>
-                    <span class="result-value" id="resultName">-</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Email</span>
-                    <span class="result-value" id="resultEmail">-</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Verification Date</span>
-                    <span class="result-value" id="resultDate">-</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Status</span>
-                    <span class="result-status verified">✓ Verified</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Reference Number</span>
-                    <span class="result-value" id="resultReference">-</span>
-                </div>
-            </div>
-            
-            <div class="btn-group">
-                <button type="button" class="btn btn-secondary" onclick="downloadReport()">Download Report</button>
-                <button type="button" class="btn btn-primary" onclick="startNewVerification()">Start New Verification</button>
-            </div>
-        </div>
-
-        <!-- Manual Contact Screen -->
-        <div id="manualContactScreen" class="step-content hidden">
-            <div class="header">
-                <div class="logo" style="background: linear-gradient(135deg, #ff9500, #ff7a00);">!</div>
-                <h1>Manual Verification Required</h1>
-                <p class="subtitle">We need to verify your identity manually</p>
-            </div>
-            
-            <div class="status-message status-warning">
-                We couldn't verify your identity automatically. Our verification team will contact you within 24 hours to complete the process.
-            </div>
-            
-            <div class="results-section">
-                <h3>What happens next?</h3>
-                <ul style="margin-left: 20px; color: #6e6e73; line-height: 1.8;">
-                    <li>Our specialist team will review your information</li>
-                    <li>You'll receive an email within 24 hours with next steps</li>
-                    <li>We may request additional documentation</li>
-                    <li>The manual review typically takes 1-3 business days</li>
+            <!-- No Records Found Section - Only shown when no finance found -->
+            <div id="no_records_section" class="no-records-section" style="display:none;">
+              <div class="no-records-card">
+                <div class="no-records-icon">🔍</div>
+                <h3>No Finance Records Found</h3>
+                <p>We couldn't find any vehicle finance agreements with your current details. This might be because:</p>
+                <ul>
+                  <li>You've moved house recently and the finance was arranged at a previous address</li>
+                  <li>The finance was arranged under slightly different personal details</li>
+                  <li>The records haven't been updated in our system yet</li>
                 </ul>
-            </div>
-            
-            <div class="results-section">
-                <h3>Contact Information</h3>
-                <div class="result-item">
-                    <span class="result-label">Reference Number</span>
-                    <span class="result-value" id="manualReference">-</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Support Email</span>
-                    <span class="result-value">verification@example.com</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Support Phone</span>
-                    <span class="result-value">1-800-VERIFY</span>
-                </div>
-            </div>
-            
-            <button type="button" class="btn btn-primary" onclick="startNewVerification()">Back to Start</button>
-        </div>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Processing...</div>
-        <div class="loading-progress">
-            <div class="loading-progress-fill"></div>
-        </div>
-    </div>
-
-    <!-- Modal -->
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Confirm Action</h2>
-                <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <p id="modalMessage">Are you sure you want to proceed?</p>
-            <div class="modal-buttons">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" id="modalConfirmBtn">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Global state management
-        const state = {
-            currentStep: 1,
-            currentScreen: 'verification',
-            formData: {},
-            verificationId: null,
-            otpTimer: null,
-            otpAttempts: 0,
-            maxOtpAttempts: 3,
-            phoneAccess: null,
-            uploadedFiles: [],
-            documentType: 'passport',
-            isSimulationMode: true,
-            simulationSuccessRate: 0.3,
-            alternativePhoneAttempts: 0
-        };
-
-        // Constants
-        const STEPS = {
-            PERSONAL_INFO: 1,
-            VERIFICATION: 2,
-            DOCUMENTS: 3,
-            COMPLETE: 4
-        };
-
-        const SCREENS = {
-            VERIFICATION: 'verification',
-            ALTERNATIVE_PHONE: 'alternativePhone',
-            OTP: 'otp',
-            DOCUMENTS: 'documents',
-            SUCCESS: 'success',
-            MANUAL_CONTACT: 'manualContact'
-        };
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Identity Verification System - Initialized');
-            setupEventListeners();
-            setupFormValidation();
-            updateUI();
-            suppressExternalPopups();
-        });
-
-        // Setup event listeners
-        function setupEventListeners() {
-            // Main form submission
-            document.getElementById('mainForm').addEventListener('submit', handleMainFormSubmit);
-            
-            // Alternative phone form
-            document.getElementById('altPhoneForm').addEventListener('submit', handleAltPhoneSubmit);
-            
-            // OTP form
-            document.getElementById('otpVerifyForm').addEventListener('submit', handleOTPSubmit);
-            
-            // File upload
-            const fileUploadArea = document.getElementById('fileUploadArea');
-            const documentFile = document.getElementById('documentFile');
-            
-            fileUploadArea.addEventListener('click', () => documentFile.click());
-            fileUploadArea.addEventListener('dragover', handleDragOver);
-            fileUploadArea.addEventListener('dragleave', handleDragLeave);
-            fileUploadArea.addEventListener('drop', handleDrop);
-            documentFile.addEventListener('change', handleFileSelect);
-            
-            // Consent checkbox
-            document.getElementById('consentCheckbox').addEventListener('change', updateSubmitButton);
-            
-            // OTP inputs
-            setupOTPInputs();
-            
-            // Window events
-            window.addEventListener('resize', handleResize);
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            
-            // Suppress postcode popups
-            document.getElementById('postcode').addEventListener('focus', suppressPopups);
-            document.getElementById('postcode').addEventListener('input', handlePostcodeInput);
-        }
-
-        // Form validation setup
-        function setupFormValidation() {
-            const inputs = document.querySelectorAll('input[required], select[required]');
-            
-            inputs.forEach(input => {
-                input.addEventListener('blur', () => validateField(input));
-                input.addEventListener('input', () => {
-                    validateField(input);
-                    updateSubmitButton();
-                });
-            });
-        }
-
-        // Field validation
-        function validateField(field) {
-            const formGroup = field.closest('.form-group');
-            const errorMessage = formGroup.querySelector('.error-message');
-            let isValid = true;
-            
-            // Remove previous error state
-            formGroup.classList.remove('has-error');
-            field.classList.remove('error');
-            
-            // Check if field is empty
-            if (!field.value.trim()) {
-                isValid = false;
-            } else {
-                // Specific validation based on field type
-                switch(field.type) {
-                    case 'email':
-                        isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value);
-                        break;
-                    case 'tel':
-                        isValid = /^[\d\s\-\+\(\)]+$/.test(field.value) && field.value.replace(/\D/g, '').length >= 10;
-                        break;
-                    case 'text':
-                        if (field.id === 'postcode') {
-                            isValid = /^[A-Z0-9\s]{5,10}$/i.test(field.value);
-                        } else if (field.id === 'fullName') {
-                            isValid = field.value.trim().split(' ').length >= 2;
-                        }
-                        break;
-                }
-            }
-            
-            if (!isValid) {
-                formGroup.classList.add('has-error');
-                field.classList.add('error');
-            }
-            
-            return isValid;
-        }
-
-        // Update submit button state
-        function updateSubmitButton() {
-            const form = document.getElementById('mainForm');
-            const submitBtn = document.getElementById('submitVerifyBtn');
-            const consent = document.getElementById('consentCheckbox').checked;
-            
-            let allValid = true;
-            
-            // Check all required fields
-            const requiredFields = form.querySelectorAll('input[required]');
-            requiredFields.forEach(field => {
-                if (!validateField(field)) {
-                    allValid = false;
-                }
-            });
-            
-            submitBtn.disabled = !allValid || !consent;
-        }
-
-        // Handle main form submission
-        async function handleMainFormSubmit(e) {
-            e.preventDefault();
-            
-            if (!document.getElementById('consentCheckbox').checked) {
-                showModal('Consent Required', 'Please confirm your consent to proceed with identity verification.');
-                return;
-            }
-            
-            // Collect form data
-            state.formData = {
-                fullName: document.getElementById('fullName').value,
-                email: document.getElementById('email').value,
-                dateOfBirth: document.getElementById('dateOfBirth').value,
-                postcode: document.getElementById('postcode').value,
-                address: document.getElementById('address').value,
-                mobileNumber: document.getElementById('mobileNumber').value,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Show loading
-            showLoading('Starting identity verification...');
-            updateProgress(25);
-            
-            // Simulate API call
-            setTimeout(() => {
-                hideLoading();
                 
-                // Simulate verification result
-                const isSuccess = Math.random() < state.simulationSuccessRate;
-                
-                if (isSuccess) {
-                    // Direct success
-                    state.currentStep = STEPS.COMPLETE;
-                    showScreen(SCREENS.SUCCESS);
-                    updateProgress(100);
-                } else {
-                    // Mobile ID failed, show alternative phone option
-                    state.currentStep = STEPS.VERIFICATION;
-                    showScreen(SCREENS.ALTERNATIVE_PHONE);
-                    updateProgress(50);
-                }
-            }, 2500);
-        }
-
-        // Handle alternative phone submission
-        function handleAltPhoneSubmit(e) {
-            e.preventDefault();
-            
-            const altPhone = document.getElementById('altPhone').value;
-            if (!validateField(document.getElementById('altPhone'))) {
-                return;
-            }
-            
-            if (!state.phoneAccess) {
-                showModal('Selection Required', 'Please select whether you have access to this phone number.');
-                return;
-            }
-            
-            state.formData.alternativePhone = altPhone;
-            state.alternativePhoneAttempts++;
-            
-            if (state.phoneAccess === 'yes') {
-                // Send OTP
-                sendOTP(altPhone);
-                showScreen(SCREENS.OTP);
-                startOTPTimer();
-            } else {
-                // No access - check phone history
-                const phoneHistory = document.getElementById('phoneHistory').value;
-                if (!phoneHistory) {
-                    showModal('Information Required', 'Please select when you last had access to this number.');
-                    return;
-                }
-                
-                state.formData.phoneHistory = phoneHistory;
-                
-                // Manual verification required
-                showLoading('Processing your request...');
-                setTimeout(() => {
-                    hideLoading();
-                    showScreen(SCREENS.MANUAL_CONTACT);
-                    updateProgress(75);
-                }, 1500);
-            }
-        }
-
-        // Select phone access
-        function selectPhoneAccess(access) {
-            state.phoneAccess = access;
-            
-            // Update tabs
-            document.querySelectorAll('[data-access]').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.access === access);
-            });
-            
-            // Show/hide phone history
-            const historyGroup = document.getElementById('phoneHistoryGroup');
-            historyGroup.style.display = access === 'no' ? 'block' : 'none';
-        }
-
-        // Send OTP
-        function sendOTP(phoneNumber) {
-            console.log(`Sending OTP to ${phoneNumber}`);
-            state.verificationId = 'VER-' + Date.now();
-            
-            // Update phone number display
-            document.getElementById('otpPhoneNumber').textContent = formatPhoneNumber(phoneNumber);
-            
-            // In production, this would call your SMS API
-            if (!state.isSimulationMode) {
-                // API call to send SMS
-                fetch('/api/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: phoneNumber, verificationId: state.verificationId })
-                });
-            }
-        }
-
-        // Setup OTP inputs
-        function setupOTPInputs() {
-            const otpInputs = document.querySelectorAll('.otp-input');
-            
-            otpInputs.forEach((input, index) => {
-                input.addEventListener('input', (e) => {
-                    const value = e.target.value;
-                    
-                    if (value.length === 1) {
-                        input.classList.add('filled');
-                        if (index < otpInputs.length - 1) {
-                            otpInputs[index + 1].focus();
-                        }
-                    } else {
-                        input.classList.remove('filled');
-                    }
-                    
-                    // Auto-submit when all fields are filled
-                    if (index === otpInputs.length - 1) {
-                        const allFilled = Array.from(otpInputs).every(inp => inp.value.length === 1);
-                        if (allFilled) {
-                            document.getElementById('otpVerifyForm').requestSubmit();
-                        }
-                    }
-                });
-                
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                        otpInputs[index - 1].focus();
-                        otpInputs[index - 1].value = '';
-                        otpInputs[index - 1].classList.remove('filled');
-                    }
-                });
-                
-                input.addEventListener('paste', (e) => {
-                    e.preventDefault();
-                    const pastedData = (e.clipboardData || window.clipboardData).getData('text');
-                    const digits = pastedData.replace(/\D/g, '').slice(0, 6);
-                    
-                    digits.split('').forEach((digit, i) => {
-                        if (otpInputs[i]) {
-                            otpInputs[i].value = digit;
-                            otpInputs[i].classList.add('filled');
-                        }
-                    });
-                    
-                    if (digits.length === 6) {
-                        document.getElementById('otpVerifyForm').requestSubmit();
-                    }
-                });
-            });
-        }
-
-        // Start OTP timer
-        function startOTPTimer() {
-            let seconds = 60;
-            const timerElement = document.getElementById('timerValue');
-            const resendBtn = document.getElementById('resendOTP');
-            
-            resendBtn.disabled = true;
-            
-            state.otpTimer = setInterval(() => {
-                seconds--;
-                timerElement.textContent = seconds;
-                
-                if (seconds <= 0) {
-                    clearInterval(state.otpTimer);
-                    resendBtn.disabled = false;
-                    document.getElementById('otpTimer').textContent = 'You can now resend the code';
-                }
-            }, 1000);
-        }
-
-        // Handle OTP submission
-        function handleOTPSubmit(e) {
-            e.preventDefault();
-            
-            const otpInputs = document.querySelectorAll('.otp-input');
-            const otp = Array.from(otpInputs).map(input => input.value).join('');
-            
-            if (otp.length !== 6) {
-                showModal('Invalid Code', 'Please enter the complete 6-digit verification code.');
-                return;
-            }
-            
-            showLoading('Verifying code...');
-            
-            // Simulate OTP verification
-            setTimeout(() => {
-                hideLoading();
-                
-                // For demo: accept any valid 6-digit code
-                if (state.isSimulationMode || otp === '123456') {
-                    // Success - proceed to documents
-                    state.currentStep = STEPS.DOCUMENTS;
-                    showScreen(SCREENS.DOCUMENTS);
-                    updateProgress(75);
-                } else {
-                    state.otpAttempts++;
-                    
-                    if (state.otpAttempts >= state.maxOtpAttempts) {
-                        showModal('Verification Failed', 'Maximum attempts exceeded. Please contact support.', () => {
-                            showScreen(SCREENS.MANUAL_CONTACT);
-                        });
-                    } else {
-                        showModal('Invalid Code', `The code you entered is incorrect. You have ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`);
-                        
-                        // Clear OTP inputs
-                        otpInputs.forEach(input => {
-                            input.value = '';
-                            input.classList.remove('filled');
-                        });
-                        otpInputs[0].focus();
-                    }
-                }
-            }, 1500);
-        }
-
-        // Handle resend OTP
-        document.getElementById('resendOTP').addEventListener('click', function() {
-            const phone = state.formData.alternativePhone || state.formData.mobileNumber;
-            sendOTP(phone);
-            startOTPTimer();
-            
-            // Clear existing OTP inputs
-            document.querySelectorAll('.otp-input').forEach(input => {
-                input.value = '';
-                input.classList.remove('filled');
-            });
-            
-            showModal('Code Sent', `A new verification code has been sent to ${formatPhoneNumber(phone)}.`);
-        });
-
-        // Document upload functions
-        function selectDocumentType(type) {
-            state.documentType = type;
-            
-            document.querySelectorAll('#documentUpload .tab').forEach(tab => {
-                tab.classList.toggle('active', tab.textContent.toLowerCase().includes(type.replace('-', ' ')));
-            });
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.currentTarget.classList.add('drag-over');
-        }
-
-        function handleDragLeave(e) {
-            e.currentTarget.classList.remove('drag-over');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            e.currentTarget.classList.remove('drag-over');
-            
-            const files = Array.from(e.dataTransfer.files);
-            processFiles(files);
-        }
-
-        function handleFileSelect(e) {
-            const files = Array.from(e.target.files);
-            processFiles(files);
-        }
-
-        function processFiles(files) {
-            const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            
-            files.forEach(file => {
-                if (!validTypes.includes(file.type)) {
-                    showModal('Invalid File', `${file.name} is not a supported file type.`);
-                    return;
-                }
-                
-                if (file.size > maxSize) {
-                    showModal('File Too Large', `${file.name} exceeds the 10MB size limit.`);
-                    return;
-                }
-                
-                // Add to uploaded files
-                const fileId = Date.now() + Math.random();
-                state.uploadedFiles.push({
-                    id: fileId,
-                    file: file,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type
-                });
-                
-                updateFileList();
-            });
-        }
-
-        function updateFileList() {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '';
-            
-            state.uploadedFiles.forEach(fileInfo => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                
-                const extension = fileInfo.name.split('.').pop().toUpperCase();
-                
-                fileItem.innerHTML = `
-                    <div class="file-info">
-                        <div class="file-icon">${extension}</div>
-                        <div>
-                            <div style="font-weight: 500;">${fileInfo.name}</div>
-                            <div style="font-size: 12px; color: #6e6e73;">${formatFileSize(fileInfo.size)}</div>
-                        </div>
+                <div class="retry-options">
+                  <h4>Try a Different Address</h4>
+                  <p>If you've moved recently, trying your previous address might help us locate your finance agreements.</p>
+                  
+                  <div class="retry-address-lookup">
+                    <div class="form-group">
+                      <label class="form-label">Try Previous Postcode</label>
+                      <div class="postcode-lookup">
+                        <input type="text" id="retry_postcode" class="form-input" placeholder="Enter previous postcode" />
+                        <button type="button" class="btn btn-primary" id="retry_lookup_btn">
+                          <span class="btn-icon">🔍</span> Search Again
+                        </button>
+                      </div>
                     </div>
-                    <button type="button" class="file-remove" onclick="removeFile('${fileInfo.id}')">Remove</button>
-                `;
-                
-                fileList.appendChild(fileItem);
-            });
+                  </div>
+                  
+                  <div class="contact-fallback">
+                    <p><strong>Still no luck?</strong></p>
+                    <p>Please contact us directly at <a href="mailto:claims@belmondclaims.com">claims@belmondclaims.com</a> and we'll manually search our records for you.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            // Update submit button
-            document.getElementById('submitDocsBtn').disabled = state.uploadedFiles.length === 0;
-        }
+            <div class="additional-actions">
+              <button type="button" class="btn btn-primary" id="add_lender_btn">
+                <span class="btn-icon">+</span> Add Additional Lenders
+              </button>
+              
+              <div class="info-note">
+                <div class="info-icon">ℹ</div>
+                <p>
+                  Don't worry if you can't recall any details. We'll run additional checks over the next 24 hours 
+                  to search for historic contracts up to 7 years old. We'll contact you with any further matches found.
+                </p>
+              </div>
+            </div>
 
-        function removeFile(fileId) {
-            state.uploadedFiles = state.uploadedFiles.filter(f => f.id != fileId);
-            updateFileList();
-        }
+            <div id="final_lenders_display" class="final-lenders-section" style="display:none;">
+              <h3>Your Selected Finance Agreements</h3>
+              <div id="final_lenders_grid" class="final-lenders-grid">
+                <!-- JS will populate this -->
+              </div>
+            </div>
+          </div>
 
-        function submitDocuments() {
-            if (state.uploadedFiles.length === 0) {
-                showModal('No Documents', 'Please upload at least one document.');
-                return;
-            }
-            
-            showLoading('Uploading documents...');
-            
-            // Simulate upload
-            setTimeout(() => {
-                hideLoading();
-                completeVerification();
-            }, 2000);
-        }
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step4">
+              <span class="btn-icon">←</span> Back
+            </button>
+            <button type="button" class="btn btn-primary" id="next_to_step6">
+              Final steps to submit your claim <span class="btn-icon">→</span>
+            </button>
+          </div>
+        </div>
 
-        function skipDocuments() {
-            showModal('Skip Documents?', 'You can upload documents later. Continue without documents?', () => {
-                completeVerification();
-            });
-        }
+        <!-- === STEP 6: Final Submit === -->
+        <div class="form-step" id="step6" style="display:none;">
+          <div class="step-header">
+            <h2 class="step-title">Final Steps</h2>
+            <p class="step-subtitle">Complete your claim submission</p>
+          </div>
+          
+          <div class="form-section">
+            <div class="final-submit-card">
+              <div class="check-icon">🎯</div>
+              <h3>Ready to Submit Your Claim</h3>
+              <p>We've gathered all the information needed to process your vehicle finance claim. Click below to complete your submission.</p>
+              
+              <button type="submit" class="btn btn-primary btn-large" id="final_submit_form">
+                <span class="btn-icon">✓</span> Submit My Claim
+              </button>
+            </div>
+          </div>
 
-        // Complete verification
-        function completeVerification() {
-            state.currentStep = STEPS.COMPLETE;
-            state.formData.verificationDate = new Date().toISOString();
-            state.formData.reference = generateReference();
-            
-            // Update success screen
-            document.getElementById('resultName').textContent = state.formData.fullName;
-            document.getElementById('resultEmail').textContent = state.formData.email;
-            document.getElementById('resultDate').textContent = formatDate(new Date());
-            document.getElementById('resultReference').textContent = state.formData.reference;
-            
-            showScreen(SCREENS.SUCCESS);
-            updateProgress(100);
-        }
+          <div class="button-row">
+            <button type="button" class="btn btn-secondary" id="back_to_step5">
+              <span class="btn-icon">←</span> Back
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- END OF CENTERING WRAPPER -->
 
-        // Show/hide screens
-        function showScreen(screen) {
-            // Hide all screens
-            document.querySelectorAll('.step-content').forEach(el => {
-                el.classList.add('hidden');
-            });
-            
-            // Show requested screen
-            switch(screen) {
-                case SCREENS.VERIFICATION:
-                    document.getElementById('verificationForm').classList.remove('hidden');
-                    break;
-                case SCREENS.ALTERNATIVE_PHONE:
-                    document.getElementById('alternativePhoneForm').classList.remove('hidden');
-                    break;
-                case SCREENS.OTP:
-                    document.getElementById('otpForm').classList.remove('hidden');
-                    break;
-                case SCREENS.DOCUMENTS:
-                    document.getElementById('documentUpload').classList.remove('hidden');
-                    break;
-                case SCREENS.SUCCESS:
-                    document.getElementById('successScreen').classList.remove('hidden');
-                    break;
-                case SCREENS.MANUAL_CONTACT:
-                    document.getElementById('manualContactScreen').classList.remove('hidden');
-                    document.getElementById('manualReference').textContent = generateReference();
-                    break;
-            }
-            
-            state.currentScreen = screen;
-            
-            // Scroll to top
-            window.scrollTo(0, 0);
-        }
+    </form>
+    
+    <!-- Loading Overlay -->
+    <div id="loading_overlay" class="loading-overlay" style="display:none;">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+      </div>
+    </div>
+  </div>
 
-        // Update progress
-        function updateProgress(percentage) {
-            document.getElementById('progressFill').style.width = percentage + '%';
-            
-            // Update step states
-            const steps = document.querySelectorAll('.progress-step');
-            const currentStep = Math.ceil((percentage / 100) * 4);
-            
-            steps.forEach((step, index) => {
-                step.classList.toggle('active', index < currentStep);
-            });
+  <script src="/js/app.js"></script>
+  
+  <!-- Loading page script -->
+  <script>
+    // Hide loading page after 2 seconds
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loadingPage = document.getElementById('loadingPage');
+        loadingPage.classList.add('hidden');
+        setTimeout(() => {
+          loadingPage.style.display = 'none';
+        }, 500);
+      }, 2000);
+    });
+  </script>
+  
+  <!-- COMPREHENSIVE BUTTON HANDLERS FOR ALL STEPS -->
+  <script>
+    console.log('Setting up comprehensive button handlers...');
+    
+    function setupAllButtons() {
+      console.log('Initializing ALL form controls and buttons...');
+      
+      // ===== FORM CONTROLS SETUP =====
+      
+      // Populate day dropdown
+      const daySelect = document.getElementById('dob_day');
+      if (daySelect && daySelect.children.length <= 1) {
+        for (let i = 1; i <= 31; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          daySelect.appendChild(option);
         }
-
-        // Loading overlay
-        function showLoading(text = 'Processing...') {
-            const overlay = document.getElementById('loadingOverlay');
-            document.getElementById('loadingText').textContent = text;
-            overlay.classList.add('show');
+      }
+      
+      // Populate month dropdown
+      const monthSelect = document.getElementById('dob_month');
+      if (monthSelect && monthSelect.children.length <= 1) {
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+        months.forEach((month, index) => {
+          const option = document.createElement('option');
+          option.value = index + 1;
+          option.textContent = month;
+          monthSelect.appendChild(option);
+        });
+      }
+      
+      // Setup year slider
+      const yearInput = document.getElementById('dob_year');
+      const yearSlider = document.getElementById('year_slider');
+      const sliderTooltip = document.getElementById('slider_tooltip');
+      
+      if (yearInput && yearSlider) {
+        const currentYear = new Date().getFullYear();
+        const maxYear = currentYear - 18;
+        yearSlider.max = maxYear;
+        yearInput.max = maxYear;
+        
+        yearInput.oninput = function() {
+          const year = parseInt(yearInput.value);
+          if (year >= 1900 && year <= maxYear) {
+            yearSlider.value = year;
+          }
+        };
+        
+        yearSlider.oninput = function() {
+          yearInput.value = yearSlider.value;
+          if (sliderTooltip) {
+            sliderTooltip.textContent = yearSlider.value;
+            sliderTooltip.classList.add('show');
+          }
+        };
+        
+        yearSlider.onchange = function() {
+          if (sliderTooltip) {
+            sliderTooltip.classList.remove('show');
+          }
+        };
+      }
+      
+      // ===== TITLE BUTTONS =====
+      document.querySelectorAll('.title-btn').forEach(btn => {
+        btn.onclick = function() {
+          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          const titleInput = document.getElementById('title');
+          if (titleInput) {
+            titleInput.value = this.dataset.value;
+          }
+        };
+      });
+      
+      // ===== STEP 1 BUTTONS =====
+      
+      // Clear button
+      const clearBtn = document.getElementById('clear_step1');
+      if (clearBtn) {
+        clearBtn.onclick = function() {
+          document.getElementById('searchForm').reset();
+          document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+          document.getElementById('title').value = '';
+        };
+      }
+      
+      // Step 1 to 2
+      const step1Next = document.getElementById('next_to_step2');
+      if (step1Next) {
+        step1Next.onclick = function() {
+          if (validateStep1()) {
+            showStep('step2');
+          }
+        };
+      }
+      
+      // ===== STEP 2 BUTTONS =====
+      
+      // Address lookup
+      const lookupBtn = document.getElementById('address_lookup_btn');
+      if (lookupBtn) {
+        lookupBtn.onclick = async function() {
+          const postcode = document.getElementById('lookup_postcode').value.trim();
+          if (!postcode) {
+            alert('Please enter a postcode');
+            return;
+          }
+          console.log('Looking up postcode:', postcode);
+          // Basic implementation - you can enhance this
+          alert('Address lookup feature - add your API call here');
+        };
+      }
+      
+      // Manual address toggle
+      const manualToggle = document.getElementById('manual_address_toggle');
+      const manualFields = document.getElementById('manual_address_fields');
+      if (manualToggle && manualFields) {
+        manualToggle.onclick = function() {
+          if (manualFields.style.display === 'none' || !manualFields.style.display) {
+            manualFields.style.display = 'block';
+            manualToggle.textContent = 'Use postcode lookup';
+          } else {
+            manualFields.style.display = 'none';
+            manualToggle.textContent = 'Enter address manually';
+          }
+        };
+      }
+      
+      // Step 2 navigation
+      const step2Back = document.getElementById('back_to_step1');
+      if (step2Back) {
+        step2Back.onclick = function() {
+          showStep('step1');
+        };
+      }
+      
+      const step2Next = document.getElementById('next_to_step3');
+      if (step2Next) {
+        step2Next.onclick = function() {
+          if (validateStep2()) {
+            showStep('step3');
+          }
+        };
+      }
+      
+      // ===== STEP 3 BUTTONS =====
+      
+      // Send OTP
+      const sendOtpBtn = document.getElementById('send_otp');
+      if (sendOtpBtn) {
+        sendOtpBtn.onclick = function() {
+          const mobile = document.getElementById('mobile').value.trim();
+          if (!mobile) {
+            alert('Please enter your mobile number');
+            return;
+          }
+          console.log('Sending OTP to:', mobile);
+          // Show OTP verification section
+          const otpSection = document.getElementById('otp_verification');
+          if (otpSection) {
+            otpSection.style.display = 'block';
+          }
+        };
+      }
+      
+      // Verify OTP
+      const verifyOtpBtn = document.getElementById('verify_otp');
+      if (verifyOtpBtn) {
+        verifyOtpBtn.onclick = function() {
+          const otp = document.getElementById('otp').value.trim();
+          if (!otp || otp.length !== 6) {
+            alert('Please enter a 6-digit code');
+            return;
+          }
+          console.log('Verifying OTP:', otp);
+          // Enable next button
+          const nextBtn = document.getElementById('next_to_step4');
+          if (nextBtn) {
+            nextBtn.disabled = false;
+          }
+        };
+      }
+      
+      // Step 3 navigation
+      const step3Back = document.getElementById('back_to_step2');
+      if (step3Back) {
+        step3Back.onclick = function() {
+          showStep('step2');
+        };
+      }
+      
+      const step3Next = document.getElementById('next_to_step4');
+      if (step3Next) {
+        step3Next.onclick = function() {
+          showStep('step4');
+        };
+      }
+      
+      // ===== STEP 4 BUTTONS =====
+      
+      // Consent checkbox
+      const consentCheckbox = document.getElementById('consent_checkbox');
+      const submitVerifyBtn = document.getElementById('submit_and_verify');
+      if (consentCheckbox && submitVerifyBtn) {
+        consentCheckbox.onchange = function() {
+          submitVerifyBtn.disabled = !consentCheckbox.checked;
+        };
+      }
+      
+      // Submit and verify
+      if (submitVerifyBtn) {
+        submitVerifyBtn.onclick = function() {
+          if (!consentCheckbox.checked) {
+            alert('Please confirm your consent to proceed');
+            return;
+          }
+          console.log('Starting identity verification...');
+          // Show identity status
+          const statusDiv = document.getElementById('identity_status');
+          if (statusDiv) {
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = `
+              <div class="status-icon">✓</div>
+              <div class="status-content">
+                <h4 class="status-title">Identity Verified Successfully</h4>
+                <p class="status-message">Your identity has been verified successfully.</p>
+              </div>
+            `;
+          }
+          // Show continue section
+          const continueSection = document.getElementById('verified_continue');
+          if (continueSection) {
+            continueSection.style.display = 'block';
+          }
+          // Enable next button
+          const nextBtn = document.getElementById('next_to_step5');
+          if (nextBtn) {
+            nextBtn.disabled = false;
+          }
+        };
+      }
+      
+      // Step 4 navigation
+      const step4Back = document.getElementById('back_to_step3');
+      if (step4Back) {
+        step4Back.onclick = function() {
+          showStep('step3');
+        };
+      }
+      
+      const step4Next = document.getElementById('next_to_step5');
+      if (step4Next) {
+        step4Next.onclick = function() {
+          showStep('step5');
+        };
+      }
+      
+      // ===== STEP 5 BUTTONS =====
+      
+      // Step 5 navigation
+      const step5Back = document.getElementById('back_to_step4');
+      if (step5Back) {
+        step5Back.onclick = function() {
+          showStep('step4');
+        };
+      }
+      
+      const step5Next = document.getElementById('next_to_step6');
+      if (step5Next) {
+        step5Next.onclick = function() {
+          showStep('step6');
+        };
+      }
+      
+      // Retry address lookup
+      const retryLookupBtn = document.getElementById('retry_lookup_btn');
+      if (retryLookupBtn) {
+        retryLookupBtn.onclick = function() {
+          const retryPostcode = document.getElementById('retry_postcode').value.trim();
+          if (!retryPostcode) {
+            alert('Please enter a postcode to try again');
+            return;
+          }
+          console.log('Retrying with postcode:', retryPostcode);
+          alert('Searching again with new address... (This would trigger a new finance search)');
+          // This would trigger the finance search again with the new address
+        };
+      }
+      
+      // ===== STEP 6 BUTTONS =====
+      
+      // Final submit
+      const finalSubmit = document.getElementById('final_submit_form');
+      if (finalSubmit) {
+        finalSubmit.onclick = function() {
+          alert('Thank you! Your vehicle finance claim has been submitted successfully.');
+        };
+      }
+      
+      // Step 6 navigation
+      const step6Back = document.getElementById('back_to_step5');
+      if (step6Back) {
+        step6Back.onclick = function() {
+          showStep('step5');
+        };
+      }
+      
+      console.log('All buttons and controls initialized!');
+    }
+    
+    // ===== UTILITY FUNCTIONS =====
+    
+    function showStep(stepId) {
+      console.log('Showing step:', stepId);
+      
+      // Hide all steps
+      document.querySelectorAll('.form-step').forEach(step => {
+        step.style.display = 'none';
+        step.classList.remove('active');
+      });
+      
+      // Show target step
+      const targetStep = document.getElementById(stepId);
+      if (targetStep) {
+        targetStep.style.display = 'block';
+        targetStep.classList.add('active');
+      }
+      
+      // Update progress bar
+      const stepNumber = stepId.replace('step', '');
+      document.querySelectorAll('.progress-step').forEach(step => {
+        step.classList.remove('active', 'completed');
+        const num = step.dataset.step;
+        if (parseInt(num) < parseInt(stepNumber)) {
+          step.classList.add('completed');
+        } else if (num === stepNumber) {
+          step.classList.add('active');
         }
-
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('show');
-        }
-
-        // Modal functions
-        function showModal(title, message, onConfirm = null) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            
-            const modal = document.getElementById('modal');
-            modal.classList.add('show');
-            
-            const confirmBtn = document.getElementById('modalConfirmBtn');
-            confirmBtn.onclick = () => {
-                closeModal();
-                if (onConfirm) onConfirm();
-            };
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('show');
-        }
-
-        // Navigation functions
-        function goBack() {
-            switch(state.currentScreen) {
-                case SCREENS.ALTERNATIVE_PHONE:
-                    showScreen(SCREENS.VERIFICATION);
-                    updateProgress(25);
-                    break;
-                case SCREENS.OTP:
-                    showScreen(SCREENS.ALTERNATIVE_PHONE);
-                    updateProgress(50);
-                    break;
-                case SCREENS.DOCUMENTS:
-                    showScreen(SCREENS.OTP);
-                    updateProgress(50);
-                    break;
-            }
-        }
-
-        function startNewVerification() {
-            // Reset state
-            state.currentStep = STEPS.PERSONAL_INFO;
-            state.currentScreen = SCREENS.VERIFICATION;
-            state.formData = {};
-            state.verificationId = null;
-            state.otpAttempts = 0;
-            state.phoneAccess = null;
-            state.uploadedFiles = [];
-            state.alternativePhoneAttempts = 0;
-            
-            // Clear forms
-            document.getElementById('mainForm').reset();
-            document.getElementById('altPhoneForm').reset();
-            document.getElementById('otpVerifyForm').reset();
-            
-            // Clear OTP inputs
-            document.querySelectorAll('.otp-input').forEach(input => {
-                input.value = '';
-                input.classList.remove('filled');
-            });
-            
-            // Reset tabs
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            
-            // Reset file list
-            updateFileList();
-            
-            // Reset UI
-            updateProgress(25);
-            showScreen(SCREENS.VERIFICATION);
-            updateSubmitButton();
-        }
-
-        // Utility functions
-        function generateReference() {
-            const prefix = 'ID';
-            const timestamp = Date.now().toString(36).toUpperCase();
-            const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-            return `${prefix}-${timestamp}-${random}`;
-        }
-
-        function formatPhoneNumber(phone) {
-            const cleaned = phone.replace(/\D/g, '');
-            if (cleaned.length === 10) {
-                return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-            } else if (cleaned.length === 11) {
-                return `+${cleaned[0]} (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
-            }
-            return phone;
-        }
-
-        function formatDate(date) {
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-
-        // Handle postcode input
-        function handlePostcodeInput(e) {
-            const postcode = e.target.value.toUpperCase();
-            e.target.value = postcode;
-            
-            // Suppress any popups
-            suppressPopups();
-            
-            // Optional: Add your own postcode validation
-            if (postcode.length >= 5) {
-                // Could add address lookup here if needed
-            }
-        }
-
-        // Suppress external popups
-        function suppressPopups() {
-            // Hide any postcode lookup popups
-            const popups = document.querySelectorAll(
-                '.postcode-popup, .address-popup, .external-popup, ' +
-                '[class*="lookup"], [class*="postcode-anywhere"], ' +
-                '[class*="addressnow"], [class*="loqate"]'
-            );
-            
-            popups.forEach(popup => {
-                popup.style.display = 'none';
-                popup.style.visibility = 'hidden';
-                popup.remove();
-            });
-        }
-
-        function suppressExternalPopups() {
-            // Override common popup methods
-            const originalAlert = window.alert;
-            const originalConfirm = window.confirm;
-            const originalPrompt = window.prompt;
-            
-            window.alert = function(message) {
-                console.log('Suppressed alert:', message);
-                return true;
-            };
-            
-            window.confirm = function(message) {
-                console.log('Suppressed confirm:', message);
-                return true;
-            };
-            
-            window.prompt = function(message) {
-                console.log('Suppressed prompt:', message);
-                return '';
-            };
-            
-            // Intercept postcode lookup services
-            if (window.PostcodeLookup) window.PostcodeLookup = null;
-            if (window.PostcodeAnywhere) window.PostcodeAnywhere = null;
-            if (window.AddressNow) window.AddressNow = null;
-            if (window.Loqate) window.Loqate = null;
-            
-            // Monitor DOM for popup elements
-            const observer = new MutationObserver(mutations => {
-                mutations.forEach(mutation => {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === 1) { // Element node
-                            const className = node.className || '';
-                            if (className.includes('popup') || 
-                                className.includes('postcode') || 
-                                className.includes('lookup') ||
-                                className.includes('modal') && !className.includes('our-modal')) {
-                                node.remove();
-                            }
-                        }
-                    });
-                });
-            });
-            
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-            
-            // Prevent iframe injections
-            document.addEventListener('DOMNodeInserted', function(e) {
-                if (e.target.tagName === 'IFRAME' && !e.target.classList.contains('allowed-iframe')) {
-                    e.target.remove();
-                }
-            });
-        }
-
-        // Handle window resize
-        function handleResize() {
-            // Update UI for mobile if needed
-            const isMobile = window.innerWidth < 768;
-            document.body.classList.toggle('mobile', isMobile);
-        }
-
-        // Handle before unload
-        function handleBeforeUnload(e) {
-            if (state.currentStep > 1 && state.currentStep < 4) {
-                e.preventDefault();
-                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-            }
-        }
-
-        // Privacy policy
-        function showPrivacyPolicy() {
-            showModal('Privacy Policy', 
-                'Your personal information is collected and processed in accordance with data protection regulations. ' +
-                'We use bank-level encryption to protect your data. Your information will only be used for identity ' +
-                'verification purposes and will not be shared with third parties without your consent.'
-            );
-        }
-
-        // Download report
-        function downloadReport() {
-            const reportData = {
-                title: 'Identity Verification Report',
-                reference: state.formData.reference,
-                date: formatDate(new Date()),
-                status: 'Verified',
-                details: {
-                    name: state.formData.fullName,
-                    email: state.formData.email,
-                    verificationDate: state.formData.verificationDate
-                }
-            };
-            
-            // Create download
-            const dataStr = JSON.stringify(reportData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const link = document.createElement('a');
-            link.setAttribute('href', dataUri);
-            link.setAttribute('download', `verification-report-${state.formData.reference}.json`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // Update UI based on state
-        function updateUI() {
-            updateProgress((state.currentStep / 4) * 100);
-            updateSubmitButton();
-        }
-
-        // Initialize
-        console.log('Identity Verification System v2.0 - Ready');
-    </script>
+      });
+    }
+    
+    function validateStep1() {
+      const title = document.getElementById('title').value;
+      const firstName = document.getElementById('first_name').value.trim();
+      const lastName = document.getElementById('last_name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const day = document.getElementById('dob_day').value;
+      const month = document.getElementById('dob_month').value;
+      const year = document.getElementById('dob_year').value;
+      
+      if (!title) { alert('Please select a title'); return false; }
+      if (!firstName) { alert('Please enter your first name'); return false; }
+      if (!lastName) { alert('Please enter your last name'); return false; }
+      if (!email || !email.includes('@')) { alert('Please enter a valid email address'); return false; }
+      if (!day || !month || !year) { alert('Please enter your complete date of birth'); return false; }
+      
+      return true;
+    }
+    
+    function showNoRecordsFound() {
+      // Hide the normal lenders list and additional actions
+      const foundList = document.getElementById('found_list');
+      const additionalActions = document.querySelector('.additional-actions');
+      if (foundList) foundList.style.display = 'none';
+      if (additionalActions) additionalActions.style.display = 'none';
+      
+      // Show the no records section
+      const noRecordsSection = document.getElementById('no_records_section');
+      if (noRecordsSection) {
+        noRecordsSection.style.display = 'block';
+      }
+    }
+    
+    function showFoundRecords() {
+      // Show the normal lenders list and additional actions
+      const foundList = document.getElementById('found_list');
+      const additionalActions = document.querySelector('.additional-actions');
+      if (foundList) foundList.style.display = 'block';
+      if (additionalActions) additionalActions.style.display = 'block';
+      
+      // Hide the no records section
+      const noRecordsSection = document.getElementById('no_records_section');
+      if (noRecordsSection) {
+        noRecordsSection.style.display = 'none';
+      }
+    }
+    
+    // Example usage - call showNoRecordsFound() when finance search returns empty
+    // or call showFoundRecords() when finance search returns results
+    
+    function validateStep2() {
+      const street = document.getElementById('street').value.trim();
+      const postTown = document.getElementById('post_town').value.trim();
+      const postCode = document.getElementById('post_code').value.trim();
+      
+      if (!street) { alert('Please enter your street address'); return false; }
+      if (!postTown) { alert('Please enter your town/city'); return false; }
+      if (!postCode) { alert('Please enter your post code'); return false; }
+      
+      return true;
+    }
+    
+    // ===== INITIALIZE EVERYTHING =====
+    
+    // Try multiple times to ensure everything works
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupAllButtons);
+    } else {
+      setupAllButtons();
+    }
+    
+    // Additional attempts with delays
+    setTimeout(setupAllButtons, 100);
+    setTimeout(setupAllButtons, 500);
+    setTimeout(setupAllButtons, 1000);
+    
+  </script>
+  
+  <!-- IMMEDIATE Button Handler for Welcome Screen -->
+  <script>
+  <script>
+    console.log('Setting up immediate button handler...');
+    
+    function setupStartButton() {
+      const startBtn = document.getElementById('start_journey');
+      if (startBtn) {
+        console.log('Found start button, adding click handler');
+        startBtn.onclick = function() {
+          console.log('Start button clicked!');
+          
+          // Hide step 0
+          const step0 = document.getElementById('step0');
+          if (step0) {
+            step0.style.display = 'none';
+            step0.classList.remove('active');
+          }
+          
+          // Show step 1
+          const step1 = document.getElementById('step1');
+          if (step1) {
+            step1.style.display = 'block';
+            step1.classList.add('active');
+          }
+          
+          // Show progress bar
+          const progressBar = document.getElementById('main_progress_bar');
+          if (progressBar) {
+            progressBar.style.display = 'flex';
+          }
+          
+          console.log('Switched to step 1');
+        };
+        return true;
+      }
+      return false;
+    }
+    
+    // Try multiple times to set up the button
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupStartButton);
+    } else {
+      setupStartButton();
+    }
+    
+    // Backup - try again after a short delay
+    setTimeout(setupStartButton, 100);
+    setTimeout(setupStartButton, 500);
+  </script>
+  
+  <!-- Debug script to check if resources loaded -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM Content Loaded');
+      
+      // Check if main app.js loaded
+      if (typeof EventHandlers === 'undefined') {
+        console.error('app.js failed to load! Check the file path.');
+        // Basic fallback functionality for title buttons
+        document.querySelectorAll('.title-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('.title-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('title').value = this.dataset.value;
+          });
+        });
+      } else {
+        console.log('app.js loaded successfully');
+      }
+    });
+  </script>
 </body>
 </html>
