@@ -7,11 +7,21 @@ from datetime import datetime, timedelta
 from functools import wraps
 import xml.etree.ElementTree as ET
 import csv
+from io import BytesIO
+import tempfile
 
 from flask import Flask, render_template, request, jsonify, send_file, Response, send_from_directory
 import requests
 import boto3
 import botocore
+from flask_sqlalchemy import SQLAlchemy
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from celery import Celery
 
 # ─── Configuration ─────────────────────────────────────────────────────────────
 class Config:
@@ -34,6 +44,14 @@ class Config:
     FLG_LEADGROUP_ID = os.getenv("FLG_LEADGROUP_ID", "57862")
     FLG_UPDATE_URL = os.getenv("FLG_UPDATE_URL")
     
+    # Database
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///leads.db")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Celery
+    CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    
     # App settings
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
@@ -47,6 +65,59 @@ app.config.from_object(Config)
 # Enable debug mode for static files in development
 if Config.DEBUG:
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+# Initialize Database
+db = SQLAlchemy(app)
+
+# Initialize Celery
+celery = Celery(app.name)
+celery.conf.update(
+    broker_url=Config.CELERY_BROKER_URL,
+    result_backend=Config.CELERY_RESULT_BACKEND,
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True
+)
+
+# ─── Database Models ───────────────────────────────────────────────────────────
+class Lead(db.Model):
+    """Track leads and their FLG IDs"""
+    id = db.Column(db.Integer, primary_key=True)
+    valifi_reference = db.Column(db.String(255), unique=True, nullable=False)
+    flg_lead_id = db.Column(db.String(100))
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    dob = db.Column(db.String(50))
+    email = db.Column(db.String(255))
+    mobile = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    batch_processed = db.Column(db.Boolean, default=False)
+    batch_processed_at = db.Column(db.DateTime)
+    submission_pdf_url = db.Column(db.String(500))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'valifi_reference': self.valifi_reference,
+            'flg_lead_id': self.flg_lead_id,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'dob': self.dob,
+            'email': self.email,
+            'mobile': self.mobile,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'batch_processed': self.batch_processed,
+            'batch_processed_at': self.batch_processed_at.isoformat() if self.batch_processed_at else None,
+            'submission_pdf_url': self.submission_pdf_url
+        }
+
+# Create tables
+with app.app_context():
+    db.create_all()
 
 # ─── Logging Setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -67,6 +138,168 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize S3 client: {e}")
     s3_client = None
+
+# ─── PDF Generation Service ────────────────────────────────────────────────────
+class PDFGenerator:
+    """Generate submission PDFs"""
+    
+    @staticmethod
+    def generate_submission_pdf(lead_data, lenders_data, signature_base64):
+        """Generate a PDF with submission details, T&C acceptance, and signature"""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=24,
+            textColor=colors.HexColor('#880A51'),
+            spaceAfter=30
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#880A51'),
+            spaceAfter=12
+        )
+        
+        # Title
+        story.append(Paragraph("Vehicle Finance Claim Submission", title_style))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Submission Date
+        story.append(Paragraph(f"<b>Submission Date:</b> {datetime.now().strftime('%d %B %Y at %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Customer Details
+        story.append(Paragraph("Customer Details", heading_style))
+        customer_data = [
+            ['Name:', f"{lead_data.get('title', '')} {lead_data.get('firstName', '')} {lead_data.get('lastName', '')}"],
+            ['Date of Birth:', lead_data.get('dateOfBirth', '')],
+            ['Email:', lead_data.get('email', '')],
+            ['Mobile:', lead_data.get('mobile', '')],
+            ['Address:', f"{lead_data.get('address', '')}, {lead_data.get('towncity', '')}, {lead_data.get('postcode', '')}"]
+        ]
+        
+        customer_table = Table(customer_data, colWidths=[2*inch, 4*inch])
+        customer_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        story.append(customer_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Finance Agreements
+        story.append(Paragraph("Finance Agreements", heading_style))
+        
+        lender_data = [['Lender', 'Type', 'Source', 'Date']]
+        for lender in lenders_data:
+            lender_data.append([
+                lender.get('lenderName', 'Unknown'),
+                lender.get('accountType', 'HP'),
+                'Found in Credit Report' if lender.get('sourcedFrom') == 'API' else 'Manually Added',
+                lender.get('startDate', 'N/A')[:10] if lender.get('startDate') else 'N/A'
+            ])
+        
+        lender_table = Table(lender_data, colWidths=[2.5*inch, 1*inch, 2*inch, 1.5*inch])
+        lender_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#880A51')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        story.append(lender_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Claims Being Pursued
+        story.append(Paragraph("Claims Being Pursued", heading_style))
+        claims_text = """
+        <b>1. General Commission Non-Disclosure Claims</b><br/>
+        We will pursue claims for all lenders listed above where commission was not properly disclosed at the point of sale.<br/><br/>
+        
+        <b>2. Irresponsible Lending & Affordability Claims</b><br/>
+        Where applicable, we may pursue additional recovery if we can demonstrate the lender failed to properly assess your financial position before lending.
+        """
+        story.append(Paragraph(claims_text, styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Terms & Conditions Acceptance
+        story.append(Paragraph("Terms & Conditions", heading_style))
+        tc_text = """
+        <b>✓ Terms & Conditions Accepted</b><br/>
+        The customer has read and accepted our full Terms & Conditions on {}.
+        """.format(datetime.now().strftime('%d %B %Y at %H:%M'))
+        story.append(Paragraph(tc_text, styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Fee Information
+        fee_text = """
+        <b>Fee Structure:</b> Our fees range from 18% to 36% (including VAT) on successful claims only. 
+        This is a "no win, no fee" service - if your claim is unsuccessful, you pay nothing.
+        """
+        story.append(Paragraph(fee_text, styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Customer Declaration and Signature
+        story.append(Paragraph("Customer Declaration", heading_style))
+        declaration_text = """
+        I confirm that:<br/>
+        • All information provided is true and accurate to the best of my knowledge<br/>
+        • I consent to Belmond Claims Limited pursuing these claims on my behalf<br/>
+        • I understand and accept the fee structure<br/>
+        • I have read and accepted the Terms & Conditions<br/>
+        • I understand I can cancel within 14 days without charge
+        """
+        story.append(Paragraph(declaration_text, styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Signature
+        if signature_base64:
+            story.append(Paragraph("<b>Customer Signature:</b>", styles['Normal']))
+            story.append(Spacer(1, 0.1*inch))
+            
+            # Decode and add signature image
+            try:
+                if ',' in signature_base64:
+                    signature_data = signature_base64.split(',')[1]
+                else:
+                    signature_data = signature_base64
+                    
+                signature_bytes = base64.b64decode(signature_data)
+                signature_img = Image(BytesIO(signature_bytes), width=3*inch, height=1*inch)
+                story.append(signature_img)
+            except Exception as e:
+                logger.error(f"Failed to add signature image: {e}")
+                story.append(Paragraph("[Electronic Signature]", styles['Normal']))
+        
+        story.append(Spacer(1, 0.2*inch))
+        story.append(Paragraph(f"Signed on: {datetime.now().strftime('%d %B %Y at %H:%M')}", styles['Normal']))
+        
+        # Footer
+        story.append(Spacer(1, 0.5*inch))
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey,
+            alignment=TA_CENTER
+        )
+        story.append(Paragraph("This document is a legally binding agreement between the customer and Belmond Claims Limited", footer_style))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
 
 # ─── Error Handling Decorator ─────────────────────────────────────────────────
 def handle_errors(f):
@@ -177,6 +410,38 @@ class ValifiClient:
         )
         resp.raise_for_status()
         return resp.json()
+    
+    def get_batch_timestamps(self, date_from, date_to, client_ref=None):
+        """Get batch timestamps for processed reports"""
+        params = {
+            'dateFrom': date_from,
+            'dateTo': date_to
+        }
+        if client_ref:
+            params['clientRef'] = client_ref
+            
+        resp = requests.get(
+            f"{self.base_url}/bureau/v1/tu/batch-timestamps",
+            params=params,
+            headers=self._get_headers(),
+            timeout=15
+        )
+        resp.raise_for_status()
+        return resp.json()
+    
+    def get_report_by_id(self, report_id, include_summary=True):
+        """Get report by ID with optional summary"""
+        params = {
+            'includeSummaryReport': 'true' if include_summary else 'false'
+        }
+        resp = requests.get(
+            f"{self.base_url}/bureau/v1/tu/report/{report_id}",
+            params=params,
+            headers=self._get_headers(),
+            timeout=30
+        )
+        resp.raise_for_status()
+        return resp.json()
 
 # ─── FLG API Client ───────────────────────────────────────────────────────────
 class FLGClient:
@@ -218,7 +483,7 @@ class FLGClient:
             ET.SubElement(lead_el, pref).text = lead.get(pref, "Unknown")
         
         # Extra data fields
-        extra_fields = ["data1", "data5", "data7", "data25", "data29", "data31", "data32", "data33", "data37"]
+        extra_fields = ["data1", "data5", "data7", "data25", "data29", "data31", "data32", "data33", "data37", "data38"]
         for field in extra_fields:
             if lead.get(field):
                 ET.SubElement(lead_el, field).text = str(lead[field])
@@ -235,6 +500,13 @@ class FLGClient:
             headers={"Content-Type": "application/xml"},
             timeout=30
         )
+    
+    @staticmethod
+    def update_lead(lead_id, data):
+        """Update existing lead in FLG"""
+        data['leadid'] = lead_id
+        xml = FLGClient.build_lead_xml(data)
+        return FLGClient.send_lead(xml)
 
 # ─── Lenders Service ──────────────────────────────────────────────────────────
 class LendersService:
@@ -501,12 +773,15 @@ def query_valifi():
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
     
+    # Generate unique reference
+    valifi_reference = str(uuid.uuid4())
+    
     # Build payload
     payload = {
         "includeJsonReport": True,
         "includePdfReport": True,
         "includeSummaryReport": True,
-        "clientReference": "test",
+        "clientReference": valifi_reference,
         "title": data.get("title", ""),
         "forename": data.get("firstName", ""),
         "middleName": data.get("middleName", ""),
@@ -534,6 +809,18 @@ def query_valifi():
     # Get the report
     result = valifi_client.get_credit_report(payload)
     logger.info("Credit report retrieved successfully")
+    
+    # Store reference in database for batch processing
+    lead = Lead(
+        valifi_reference=valifi_reference,
+        first_name=data.get("firstName", ""),
+        last_name=data.get("lastName", ""),
+        dob=data.get("dateOfBirth", ""),
+        email=data.get("email", ""),
+        mobile=data.get("mobile", "")
+    )
+    db.session.add(lead)
+    db.session.commit()
     
     # Check if we have a PDF to upload
     report_data = result.get("data", {})
@@ -569,19 +856,25 @@ def query_valifi():
         if report_data.get("id"):
             logger.info(f"Report ID: {report_data['id']} - PDF may be available via separate endpoint")
     
+    # Add valifi reference to response
+    result["valifiReference"] = valifi_reference
+    
     # ALWAYS return the result, regardless of PDF status
     return jsonify(result), 200
 
 @app.route("/upload_summary", methods=["POST"])
 @handle_errors
 def upload_summary():
-    """Upload summary data to FLG"""
+    """Enhanced upload summary data to FLG with proper lender tagging"""
     summary = request.json or {}
     
     # Extract PDF URL
     pdf_url = summary.get("pdfUrl") or summary.get("data", {}).get("pdfUrl", "")
     if not pdf_url:
         logger.warning("No pdfUrl provided in upload_summary request")
+    
+    # Extract signature
+    signature_base64 = summary.get("signature", "")
     
     # Parse name
     full_name = (summary.get("name") or "").strip()
@@ -608,28 +901,72 @@ def upload_summary():
         else:
             dob_formatted = dob_raw  # Assume already in correct format
     
-    # Build data32 (account information)
-    accounts = summary.get("accounts", [])
+    # Build data32 (account information) with source tags
+    all_lenders = summary.get("allLenders", [])
     data32_elements = []
+    data37_tags = []  # Track which lenders are manual vs found
     
-    for acc in accounts:
+    for lender in all_lenders:
+        # Tag the source
+        source_tag = "FOUND" if lender.get("sourcedFrom") == "API" else "MANUAL"
+        data37_tags.append(f"{lender.get('lenderName', 'Unknown')}:{source_tag}")
+        
         elements = [
-            acc.get("accountNumber", ""),
-            acc.get("accountType", ""),
-            acc.get("accountTypeName", ""),
-            acc.get("address", ""),
-            acc.get("currentBalance", ""),
-            acc.get("currentStatus", ""),
-            acc.get("defaultBalance", ""),
-            (acc.get("dob", "") or "").split("T")[0],
-            (acc.get("startDate", "") or "").split("T")[0],
-            (acc.get("endDate", "") or "").split("T")[0],
-            acc.get("lenderName", ""),
-            acc.get("monthlyPayment", "")
+            lender.get("accountNumber", ""),
+            lender.get("accountType", ""),
+            lender.get("accountTypeName", ""),
+            lender.get("address", ""),
+            lender.get("currentBalance", ""),
+            lender.get("currentStatus", ""),
+            lender.get("defaultBalance", ""),
+            (lender.get("dob", "") or "").split("T")[0],
+            (lender.get("startDate", "") or "").split("T")[0],
+            (lender.get("endDate", "") or "").split("T")[0],
+            lender.get("lenderName", ""),
+            lender.get("monthlyPayment", ""),
+            source_tag  # Add source tag to data32
         ]
         data32_elements.extend(elements)
     
     data32_str = ",".join(str(elem) if elem is not None else "" for elem in data32_elements)
+    data37_str = "|".join(data37_tags)  # Pipe-separated list of lender:source pairs
+    
+    # Generate submission PDF
+    submission_pdf_url = ""
+    if s3_client and signature_base64:
+        try:
+            # Prepare lead data for PDF
+            lead_data = {
+                "title": title,
+                "firstName": first,
+                "lastName": last,
+                "dateOfBirth": dob_formatted,
+                "email": summary.get("email", ""),
+                "mobile": summary.get("phone1", ""),
+                "address": summary.get("address", ""),
+                "towncity": summary.get("towncity", ""),
+                "postcode": summary.get("postcode", "")
+            }
+            
+            # Generate PDF
+            pdf_buffer = PDFGenerator.generate_submission_pdf(lead_data, all_lenders, signature_base64)
+            
+            # Upload to S3
+            filename = f"submission_{uuid.uuid4().hex}.pdf"
+            key = f"submissions/{filename}"
+            
+            s3_client.put_object(
+                Bucket=Config.AWS_S3_BUCKET,
+                Key=key,
+                Body=pdf_buffer.getvalue(),
+                ContentType="application/pdf"
+            )
+            
+            submission_pdf_url = f"https://{Config.AWS_S3_BUCKET}.s3.{Config.AWS_REGION}.amazonaws.com/{key}"
+            logger.info(f"Submission PDF uploaded successfully to S3: {submission_pdf_url}")
+            
+        except Exception as e:
+            logger.error(f"Failed to generate/upload submission PDF: {e}")
     
     # Build FLG lead data
     lead_data = {
@@ -643,8 +980,10 @@ def upload_summary():
         "address": summary.get("address", ""),
         "towncity": summary.get("towncity", ""),
         "postcode": summary.get("postcode", ""),
-        "data31": pdf_url,
-        "data32": data32_str
+        "data31": pdf_url,  # Credit report PDF
+        "data32": data32_str,  # All lender data
+        "data37": data37_str,  # Lender source tags
+        "data38": submission_pdf_url  # Submission PDF with signature
     }
     
     # Send to FLG
@@ -667,8 +1006,18 @@ def upload_summary():
         logger.error(f"FLG upload failed: {response.text}")
         return jsonify({"error": "FLG upload failed"}), response.status_code or 500
     
+    # Update database with FLG lead ID and submission PDF URL
+    valifi_ref = summary.get("valifiReference")
+    if valifi_ref and record_id:
+        lead = Lead.query.filter_by(valifi_reference=valifi_ref).first()
+        if lead:
+            lead.flg_lead_id = record_id
+            lead.submission_pdf_url = submission_pdf_url
+            db.session.commit()
+            logger.info(f"Updated lead {valifi_ref} with FLG ID {record_id}")
+    
     # Success - but don't return debug info to frontend
-    return jsonify({"success": True}), 200
+    return jsonify({"success": True, "flgLeadId": record_id}), 200
 
 @app.route("/flg/lead", methods=["POST"])
 @handle_errors
@@ -720,6 +1069,137 @@ def delete_flg_lead(lead_id):
     
     return jsonify({"success": True}), 200
 
+# ─── Batch Processing Routes ──────────────────────────────────────────────────
+@app.route("/batch/check", methods=["GET"])
+@handle_errors
+def check_batch_updates():
+    """Check for batch updates from Valifi"""
+    # Get date range (last 7 days by default)
+    date_to = datetime.now().strftime('%Y-%m-%d')
+    date_from = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    
+    try:
+        result = valifi_client.get_batch_timestamps(date_from, date_to)
+        batch_data = result.get('data', [])
+        
+        # Process each batch result
+        updated_count = 0
+        for batch in batch_data:
+            if batch.get('batchReceivedAt'):
+                # Find corresponding lead
+                lead = Lead.query.filter_by(valifi_reference=batch.get('clientRef')).first()
+                if lead and not lead.batch_processed:
+                    # Mark for processing
+                    process_batch_update.delay(lead.id, batch.get('id'))
+                    updated_count += 1
+        
+        return jsonify({
+            "success": True,
+            "batchCount": len(batch_data),
+            "queuedForProcessing": updated_count
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Batch check failed: {e}")
+        return jsonify({"error": "Batch check failed", "details": str(e)}), 500
+
+@app.route("/batch/process/<lead_id>", methods=["POST"])
+@handle_errors
+def process_single_batch(lead_id):
+    """Manually trigger batch processing for a specific lead"""
+    lead = Lead.query.get(lead_id)
+    if not lead:
+        return jsonify({"error": "Lead not found"}), 404
+    
+    # Queue for processing
+    process_batch_update.delay(lead.id)
+    
+    return jsonify({"success": True, "message": "Queued for processing"}), 200
+
+@app.route("/batch/status", methods=["GET"])
+@handle_errors
+def batch_status():
+    """Get batch processing status"""
+    # Get leads pending batch processing
+    pending = Lead.query.filter_by(batch_processed=False).count()
+    processed = Lead.query.filter_by(batch_processed=True).count()
+    
+    return jsonify({
+        "pending": pending,
+        "processed": processed,
+        "total": pending + processed
+    }), 200
+
+# ─── Celery Tasks ─────────────────────────────────────────────────────────────
+@celery.task
+def process_batch_update(lead_id, report_id=None):
+    """Process batch update for a lead"""
+    with app.app_context():
+        lead = Lead.query.get(lead_id)
+        if not lead or not lead.flg_lead_id:
+            logger.error(f"Lead {lead_id} not found or missing FLG ID")
+            return
+        
+        try:
+            # Get updated report with batch data
+            result = valifi_client.get_report_by_id(report_id or lead.valifi_reference, include_summary=True)
+            summary = result.get('data', {}).get('summaryReport', {})
+            
+            # Check if we have new accounts from batch
+            total_in_batch = summary.get('totalInBatch', 0)
+            if total_in_batch > 0:
+                # Extract new accounts
+                all_accounts = summary.get('accounts', [])
+                
+                # Build updated data32 with all accounts
+                data32_elements = []
+                data37_tags = []
+                
+                for acc in all_accounts:
+                    source_tag = "BATCH" if acc.get('sourcedFrom') == 'BATCH' else "FOUND"
+                    data37_tags.append(f"{acc.get('lenderName', 'Unknown')}:{source_tag}")
+                    
+                    elements = [
+                        acc.get("accountNumber", ""),
+                        acc.get("accountType", ""),
+                        acc.get("accountTypeName", ""),
+                        acc.get("address", ""),
+                        acc.get("currentBalance", ""),
+                        acc.get("currentStatus", ""),
+                        acc.get("defaultBalance", ""),
+                        (acc.get("dob", "") or "").split("T")[0],
+                        (acc.get("startDate", "") or "").split("T")[0],
+                        (acc.get("endDate", "") or "").split("T")[0],
+                        acc.get("lenderName", ""),
+                        acc.get("monthlyPayment", ""),
+                        source_tag
+                    ]
+                    data32_elements.extend(elements)
+                
+                data32_str = ",".join(str(elem) if elem is not None else "" for elem in data32_elements)
+                data37_str = "|".join(data37_tags)
+                
+                # Update FLG lead
+                update_data = {
+                    "data32": data32_str,
+                    "data37": data37_str,
+                    "data33": f"Batch updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                }
+                
+                resp = flg_client.update_lead(lead.flg_lead_id, update_data)
+                
+                if resp.status_code == 200:
+                    # Mark as processed
+                    lead.batch_processed = True
+                    lead.batch_processed_at = datetime.utcnow()
+                    db.session.commit()
+                    logger.info(f"Successfully processed batch for lead {lead_id}")
+                else:
+                    logger.error(f"Failed to update FLG for lead {lead_id}: {resp.text}")
+                    
+        except Exception as e:
+            logger.error(f"Batch processing failed for lead {lead_id}: {e}")
+
 # ─── Health Check ─────────────────────────────────────────────────────────────
 @app.route("/health")
 def health_check():
@@ -730,7 +1210,8 @@ def health_check():
         "services": {
             "valifi": "unknown",
             "s3": "healthy" if s3_client else "unavailable",
-            "flg": "unknown"
+            "flg": "unknown",
+            "database": "unknown"
         },
         "config": {
             "min_identity_score": Config.VALIFI_MIN_ID_SCORE
@@ -745,7 +1226,49 @@ def health_check():
         health_status["services"]["valifi"] = f"unhealthy: {str(e)}"
         health_status["status"] = "degraded"
     
+    # Test database connection
+    try:
+        db.session.execute('SELECT 1')
+        health_status["services"]["database"] = "healthy"
+    except Exception as e:
+        health_status["services"]["database"] = f"unhealthy: {str(e)}"
+        health_status["status"] = "degraded"
+    
     return jsonify(health_status), 200 if health_status["status"] == "healthy" else 503
+
+@app.route("/api/leads/recent", methods=["GET"])
+@handle_errors
+def get_recent_leads():
+    """Get recent leads for admin interface"""
+    limit = request.args.get('limit', 50, type=int)
+    
+    leads = Lead.query.order_by(Lead.created_at.desc()).limit(limit).all()
+    
+    return jsonify([lead.to_dict() for lead in leads]), 200
+
+@app.route("/batch_admin")
+def batch_admin():
+    """Render batch processing admin interface"""
+    return render_template("batch_admin.html")
+
+# Add this route to manually trigger batch processing for all pending leads
+@app.route("/batch/process_all", methods=["POST"])
+@handle_errors
+def process_all_pending():
+    """Process all pending batch updates"""
+    # Get all leads that haven't been batch processed
+    pending_leads = Lead.query.filter_by(batch_processed=False).filter(Lead.flg_lead_id.isnot(None)).all()
+    
+    processed_count = 0
+    for lead in pending_leads:
+        # Queue each lead for processing
+        process_batch_update.delay(lead.id)
+        processed_count += 1
+    
+    return jsonify({
+        "success": True,
+        "message": f"Queued {processed_count} leads for batch processing"
+    }), 200
 
 # ─── Error Handlers ───────────────────────────────────────────────────────────
 @app.errorhandler(404)

@@ -15,8 +15,11 @@ const AppState = {
     minimumScore: 40,  // Default, will be updated from server
     changingMobile: false, // Track if we're changing mobile
     signatureSigned: false, // Track if signature is provided
+    signatureData: null, // Store signature data URL
     termsAccepted: false, // Track if terms accepted
-    termsScrolledToBottom: false // Track if user scrolled terms to bottom
+    termsScrolledToBottom: false, // Track if user scrolled terms to bottom
+    valifiReference: null, // Store the valifi reference for batch processing
+    flgLeadId: null // Store the FLG lead ID after submission
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
@@ -186,6 +189,15 @@ const Utils = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    },
+    
+    // Get signature data URL from canvas
+    getSignatureDataURL() {
+        const canvas = document.getElementById('signature_canvas');
+        if (canvas) {
+            return canvas.toDataURL('image/png');
+        }
+        return null;
     }
 };
 
@@ -542,7 +554,14 @@ const API = {
             body: JSON.stringify(data)
         });
         
-        return response.json();
+        const result = await response.json();
+        
+        // Store the valifi reference if returned
+        if (result.valifiReference) {
+            AppState.valifiReference = result.valifiReference;
+        }
+        
+        return result;
     },
 
     async uploadToFLG(data) {
@@ -552,7 +571,14 @@ const API = {
             body: JSON.stringify(data)
         });
         
-        return response.json();
+        const result = await response.json();
+        
+        // Store the FLG lead ID if returned
+        if (result.flgLeadId) {
+            AppState.flgLeadId = result.flgLeadId;
+        }
+        
+        return result;
     },
 
     // NEW: Fetch terms content
@@ -904,8 +930,6 @@ const EventHandlers = {
                         
                         // Build address label with all components - ENHANCED VERSION
                         const parts = [];
-                        
-                        // Handle the various address components based on the JSON structure
                         
                         // 1. Add building number first if available
                         if (addr.number) {
@@ -1311,7 +1335,7 @@ const EventHandlers = {
             const accounts = summaryReport.accounts || [];
             AppState.foundLenders = accounts;
             
-            // Upload to FLG silently in background
+            // Upload to FLG silently in background - but don't include manually added lenders yet
             const mobile = AppState.reportData.mobile;
             const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
             
@@ -1330,15 +1354,11 @@ const EventHandlers = {
                 towncity: AppState.reportData.post_town,
                 postcode: AppState.reportData.post_code,
                 accounts: accounts,
-                pdfUrl: result.data.pdfUrl
+                pdfUrl: result.data.pdfUrl,
+                valifiReference: AppState.valifiReference
             };
             
-            // Silently upload to FLG
-            try {
-                await API.uploadToFLG(flgData);
-            } catch (error) {
-                console.error('FLG upload failed:', error);
-            }
+            // Don't upload to FLG yet - wait for final submission with all lenders
             
             // Display results immediately
             this.displayLenders(AppState.foundLenders);
@@ -1396,8 +1416,51 @@ const EventHandlers = {
             
             Utils.showLoading('Submitting your claim...');
             
-            // Here you would normally submit all the collected data
-            setTimeout(() => {
+            try {
+                // Prepare all lenders data
+                const allLenders = [
+                    ...AppState.foundLenders.map(lender => ({
+                        ...lender,
+                        sourcedFrom: 'API'
+                    })),
+                    ...AppState.additionalLenders.map(lender => ({
+                        lenderName: lender.name,
+                        accountType: 'HP',
+                        accountTypeName: 'Hire Purchase',
+                        sourcedFrom: 'MANUAL',
+                        startDate: '',
+                        endDate: '',
+                        currentStatus: 'Unknown',
+                        monthlyPayment: '',
+                        currentBalance: '',
+                        defaultBalance: '',
+                        accountNumber: '',
+                        address: '',
+                        dob: ''
+                    }))
+                ];
+                
+                // Get signature data
+                const signatureData = AppState.signatureData || Utils.getSignatureDataURL();
+                
+                // Prepare submission data
+                const submissionData = {
+                    name: `${AppState.formData.title || ''} ${AppState.formData.first_name || ''} ${AppState.formData.last_name || ''}`.trim(),
+                    dateOfBirth: `${AppState.formData.dob_year}-${String(AppState.formData.dob_month).padStart(2, '0')}-${String(AppState.formData.dob_day).padStart(2, '0')}`,
+                    phone1: AppState.formData.mobile || '',
+                    email: AppState.formData.email || '',
+                    address: [AppState.formData.building_number, AppState.formData.building_name, AppState.formData.flat, AppState.formData.street].filter(Boolean).join(' '),
+                    towncity: AppState.formData.post_town || '',
+                    postcode: AppState.formData.post_code || '',
+                    pdfUrl: AppState.foundLenders[0]?.pdfUrl || '',
+                    allLenders: allLenders,
+                    signature: signatureData,
+                    valifiReference: AppState.valifiReference
+                };
+                
+                // Submit to FLG
+                await API.uploadToFLG(submissionData);
+                
                 Utils.hideLoading();
                 
                 // Show modern success modal
@@ -1424,7 +1487,10 @@ const EventHandlers = {
                         }
                     });
                 }
-            }, 2000);
+            } catch (error) {
+                Utils.hideLoading();
+                Utils.showErrorModal('Failed to submit claim. Please try again.');
+            }
         });
         
         // Navigation
@@ -1537,6 +1603,7 @@ const EventHandlers = {
             ctx.beginPath();
             ctx.moveTo(x, y);
             AppState.signatureSigned = true;
+            AppState.signatureData = canvas.toDataURL('image/png');
             EventHandlers.checkFinalSubmitReady();
         });
         
@@ -1547,6 +1614,7 @@ const EventHandlers = {
             const y = e.clientY - rect.top;
             ctx.lineTo(x, y);
             ctx.stroke();
+            AppState.signatureData = canvas.toDataURL('image/png');
         });
         
         canvas.addEventListener('mouseup', () => {
@@ -1568,6 +1636,7 @@ const EventHandlers = {
             ctx.beginPath();
             ctx.moveTo(x, y);
             AppState.signatureSigned = true;
+            AppState.signatureData = canvas.toDataURL('image/png');
             EventHandlers.checkFinalSubmitReady();
         }, { passive: false });
         
@@ -1580,6 +1649,7 @@ const EventHandlers = {
             const y = touch.clientY - rect.top;
             ctx.lineTo(x, y);
             ctx.stroke();
+            AppState.signatureData = canvas.toDataURL('image/png');
         }, { passive: false });
         
         canvas.addEventListener('touchend', (e) => {
@@ -1591,6 +1661,7 @@ const EventHandlers = {
         document.getElementById('clear_signature').addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             AppState.signatureSigned = false;
+            AppState.signatureData = null;
             EventHandlers.checkFinalSubmitReady();
         });
         
@@ -1612,6 +1683,7 @@ const EventHandlers = {
             ctx.fillText(fullName, canvas.width / 2, canvas.height / 2);
             
             AppState.signatureSigned = true;
+            AppState.signatureData = canvas.toDataURL('image/png');
             EventHandlers.checkFinalSubmitReady();
         });
     },
