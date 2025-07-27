@@ -333,6 +333,13 @@
       border-top: 1px solid #dee2e6;
     }
     
+    /* Hide any step indicators on step 0 */
+    #step0 .progress-step,
+    #step0 .step-number,
+    #step0 .step-label {
+      display: none !important;
+    }
+    
     @media (max-width: 600px) {
       body {
         font-size: 1.3rem;
@@ -869,7 +876,7 @@
       
       <!-- Page Footer - Only one instance -->
       <div class="page-footer">
-        <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. <br>Full details are shared before you decide to proceed.</p>
+        <p class="footer-disclaimer">We'll explain our fees clearly if we think you may have a claim. Full details are shared before you decide to proceed.</p>
         <img src="/static/icons/trust_secure.png" alt="Trust and Security" class="trust-logo">
       </div>
 

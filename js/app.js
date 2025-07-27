@@ -833,12 +833,16 @@ const EventHandlers = {
         
         // Address lookup
         document.getElementById('address_lookup_btn').addEventListener('click', async () => {
-            const postcode = document.getElementById('lookup_postcode').value.trim();
+            let postcode = document.getElementById('lookup_postcode').value.trim();
             
             if (!postcode) {
                 Utils.showError('address_error', 'Please enter a postcode');
                 return;
             }
+            
+            // Convert postcode to uppercase
+            postcode = postcode.toUpperCase();
+            document.getElementById('lookup_postcode').value = postcode;
             
             Utils.showLoading('Looking up addresses...');
             Utils.clearError('address_error');
@@ -858,13 +862,25 @@ const EventHandlers = {
                         const option = document.createElement('option');
                         option.value = JSON.stringify(addr);
                         
-                        // Build address label with all components
+                        // Build address label with all components - IMPROVED VERSION
                         const parts = [];
+                        
+                        // Add building number first if available
                         if (addr.number) parts.push(addr.number);
+                        
+                        // Add flat if available
+                        if (addr.flat) parts.push(`Flat ${addr.flat}`);
+                        
+                        // Add house name if available
                         if (addr.name) parts.push(addr.name);
-                        if (addr.flat) parts.push(addr.flat);
-                        if (addr.house) parts.push(addr.house);
+                        
+                        // Add house if available and not already included
+                        if (addr.house && !addr.flat) parts.push(addr.house);
+                        
+                        // Add street
                         if (addr.street1) parts.push(addr.street1);
+                        
+                        // Add town
                         if (addr.postTown) parts.push(addr.postTown);
                         
                         option.textContent = parts.join(', ');

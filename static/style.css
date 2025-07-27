@@ -442,6 +442,17 @@ body > * {
     gap: 1.5rem;
 }
 
+/* NEW: Hide step preview on mobile for step 0 */
+.step-preview-mobile {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    #step0 .step-preview-mobile {
+        display: none !important;
+    }
+}
+
 /* Page Footer - Common across all pages */
 .page-footer {
     margin-top: 4rem;
