@@ -80,33 +80,35 @@ if Config.DEBUG:
 # Initialize Database
 db = SQLAlchemy(app)
 
-# Initialize Celery
-def make_celery(app):
-    celery = Celery(
-        app.import_name,
-        backend=app.config['CELERY_RESULT_BACKEND'],
-        broker=app.config['CELERY_BROKER_URL']
-    )
-    celery.conf.update(
-        task_serializer='json',
-        accept_content=['json'],
-        result_serializer='json',
-        timezone='UTC',
-        enable_utc=True,
-        broker_connection_retry_on_startup=True,
-        broker_connection_retry=True,
-        broker_connection_max_retries=10,
-    )
-    
-    class ContextTask(celery.Task):
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-    
-    celery.Task = ContextTask
-    return celery
+# Initialize Celery - Simplified to avoid compatibility issues
+celery = Celery(
+    app.import_name,
+    backend=app.config['CELERY_RESULT_BACKEND'],
+    broker=app.config['CELERY_BROKER_URL']
+)
 
-celery = make_celery(app)
+# Update configuration
+celery.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    broker_connection_retry_on_startup=True,
+    broker_connection_retry=True,
+    broker_connection_max_retries=10,
+)
+
+# Create task decorator that ensures app context
+def celery_task(*args, **kwargs):
+    def decorator(func):
+        @celery.task(*args, **kwargs)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with app.app_context():
+                return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # ─── Database Models ───────────────────────────────────────────────────────────
 class Lead(db.Model):
@@ -1158,74 +1160,73 @@ def batch_status():
     }), 200
 
 # ─── Celery Tasks ─────────────────────────────────────────────────────────────
-@celery.task
+@celery_task()
 def process_batch_update(lead_id, report_id=None):
     """Process batch update for a lead"""
-    with app.app_context():
-        lead = Lead.query.get(lead_id)
-        if not lead or not lead.flg_lead_id:
-            logger.error(f"Lead {lead_id} not found or missing FLG ID")
-            return
+    lead = Lead.query.get(lead_id)
+    if not lead or not lead.flg_lead_id:
+        logger.error(f"Lead {lead_id} not found or missing FLG ID")
+        return
+    
+    try:
+        # Get updated report with batch data
+        result = valifi_client.get_report_by_id(report_id or lead.valifi_reference, include_summary=True)
+        summary = result.get('data', {}).get('summaryReport', {})
         
-        try:
-            # Get updated report with batch data
-            result = valifi_client.get_report_by_id(report_id or lead.valifi_reference, include_summary=True)
-            summary = result.get('data', {}).get('summaryReport', {})
+        # Check if we have new accounts from batch
+        total_in_batch = summary.get('totalInBatch', 0)
+        if total_in_batch > 0:
+            # Extract new accounts
+            all_accounts = summary.get('accounts', [])
             
-            # Check if we have new accounts from batch
-            total_in_batch = summary.get('totalInBatch', 0)
-            if total_in_batch > 0:
-                # Extract new accounts
-                all_accounts = summary.get('accounts', [])
+            # Build updated data32 with all accounts
+            data32_elements = []
+            data37_tags = []
+            
+            for acc in all_accounts:
+                source_tag = "BATCH" if acc.get('sourcedFrom') == 'BATCH' else "FOUND"
+                data37_tags.append(f"{acc.get('lenderName', 'Unknown')}:{source_tag}")
                 
-                # Build updated data32 with all accounts
-                data32_elements = []
-                data37_tags = []
+                elements = [
+                    acc.get("accountNumber", ""),
+                    acc.get("accountType", ""),
+                    acc.get("accountTypeName", ""),
+                    acc.get("address", ""),
+                    acc.get("currentBalance", ""),
+                    acc.get("currentStatus", ""),
+                    acc.get("defaultBalance", ""),
+                    (acc.get("dob", "") or "").split("T")[0],
+                    (acc.get("startDate", "") or "").split("T")[0],
+                    (acc.get("endDate", "") or "").split("T")[0],
+                    acc.get("lenderName", ""),
+                    acc.get("monthlyPayment", ""),
+                    source_tag
+                ]
+                data32_elements.extend(elements)
+            
+            data32_str = ",".join(str(elem) if elem is not None else "" for elem in data32_elements)
+            data37_str = "|".join(data37_tags)
+            
+            # Update FLG lead
+            update_data = {
+                "data32": data32_str,
+                "data37": data37_str,
+                "data33": f"Batch updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            }
+            
+            resp = flg_client.update_lead(lead.flg_lead_id, update_data)
+            
+            if resp.status_code == 200:
+                # Mark as processed
+                lead.batch_processed = True
+                lead.batch_processed_at = datetime.utcnow()
+                db.session.commit()
+                logger.info(f"Successfully processed batch for lead {lead_id}")
+            else:
+                logger.error(f"Failed to update FLG for lead {lead_id}: {resp.text}")
                 
-                for acc in all_accounts:
-                    source_tag = "BATCH" if acc.get('sourcedFrom') == 'BATCH' else "FOUND"
-                    data37_tags.append(f"{acc.get('lenderName', 'Unknown')}:{source_tag}")
-                    
-                    elements = [
-                        acc.get("accountNumber", ""),
-                        acc.get("accountType", ""),
-                        acc.get("accountTypeName", ""),
-                        acc.get("address", ""),
-                        acc.get("currentBalance", ""),
-                        acc.get("currentStatus", ""),
-                        acc.get("defaultBalance", ""),
-                        (acc.get("dob", "") or "").split("T")[0],
-                        (acc.get("startDate", "") or "").split("T")[0],
-                        (acc.get("endDate", "") or "").split("T")[0],
-                        acc.get("lenderName", ""),
-                        acc.get("monthlyPayment", ""),
-                        source_tag
-                    ]
-                    data32_elements.extend(elements)
-                
-                data32_str = ",".join(str(elem) if elem is not None else "" for elem in data32_elements)
-                data37_str = "|".join(data37_tags)
-                
-                # Update FLG lead
-                update_data = {
-                    "data32": data32_str,
-                    "data37": data37_str,
-                    "data33": f"Batch updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                }
-                
-                resp = flg_client.update_lead(lead.flg_lead_id, update_data)
-                
-                if resp.status_code == 200:
-                    # Mark as processed
-                    lead.batch_processed = True
-                    lead.batch_processed_at = datetime.utcnow()
-                    db.session.commit()
-                    logger.info(f"Successfully processed batch for lead {lead_id}")
-                else:
-                    logger.error(f"Failed to update FLG for lead {lead_id}: {resp.text}")
-                    
-        except Exception as e:
-            logger.error(f"Batch processing failed for lead {lead_id}: {e}")
+    except Exception as e:
+        logger.error(f"Batch processing failed for lead {lead_id}: {e}")
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
 @app.route("/health")
@@ -1264,13 +1265,10 @@ def health_check():
     
     # Test Redis connection
     try:
-        from celery import current_app
-        inspect = current_app.control.inspect()
-        stats = inspect.stats()
-        if stats:
-            health_status["services"]["redis"] = "healthy"
-        else:
-            health_status["services"]["redis"] = "unhealthy: no workers"
+        from redis import Redis
+        r = Redis.from_url(REDIS_URL)
+        r.ping()
+        health_status["services"]["redis"] = "healthy"
     except Exception as e:
         health_status["services"]["redis"] = f"unhealthy: {str(e)}"
         health_status["status"] = "degraded"
