@@ -8,6 +8,7 @@ const AppState = {
     foundLenders: [], // Lenders found by Valifi
     additionalLenders: [], // Lenders manually added
     reportData: null, // Stored report data
+    creditReportPdfUrl: null, // ADD THIS - Store the PDF URL from credit report
     identityScore: null,
     otpSent: false,
     otpVerified: false,
@@ -559,6 +560,15 @@ const API = {
         // Store the valifi reference if returned
         if (result.valifiReference) {
             AppState.valifiReference = result.valifiReference;
+        }
+        
+        // Store the PDF URL if returned - FIX: Check multiple possible locations
+        if (result.data && result.data.pdfUrl) {
+            AppState.creditReportPdfUrl = result.data.pdfUrl;
+            console.log('Stored credit report PDF URL:', AppState.creditReportPdfUrl);
+        } else if (result.pdfUrl) {
+            AppState.creditReportPdfUrl = result.pdfUrl;
+            console.log('Stored credit report PDF URL:', AppState.creditReportPdfUrl);
         }
         
         return result;
@@ -1335,31 +1345,6 @@ const EventHandlers = {
             const accounts = summaryReport.accounts || [];
             AppState.foundLenders = accounts;
             
-            // Upload to FLG silently in background - but don't include manually added lenders yet
-            const mobile = AppState.reportData.mobile;
-            const ukMobile = mobile.startsWith('44') ? '0' + mobile.substring(2) : mobile;
-            
-            const flgData = {
-                name: summaryReport.name,
-                dateOfBirth: (() => {
-                    if (accounts.length > 0 && accounts[0].dob) {
-                        const [yyyy, mm, dd] = accounts[0].dob.split('T')[0].split('-');
-                        return `${dd}/${mm}/${yyyy}`;
-                    }
-                    return '';
-                })(),
-                phone1: ukMobile,
-                email: AppState.reportData.email,
-                address: [AppState.reportData.building_number, AppState.reportData.building_name, AppState.reportData.flat, AppState.reportData.street].filter(Boolean).join(' '),
-                towncity: AppState.reportData.post_town,
-                postcode: AppState.reportData.post_code,
-                accounts: accounts,
-                pdfUrl: result.data.pdfUrl,
-                valifiReference: AppState.valifiReference
-            };
-            
-            // Don't upload to FLG yet - wait for final submission with all lenders
-            
             // Display results immediately
             this.displayLenders(AppState.foundLenders);
             
@@ -1443,7 +1428,7 @@ const EventHandlers = {
                 // Get signature data
                 const signatureData = AppState.signatureData || Utils.getSignatureDataURL();
                 
-                // Prepare submission data
+                // Prepare submission data - FIX: Include PDF URL
                 const submissionData = {
                     name: `${AppState.formData.title || ''} ${AppState.formData.first_name || ''} ${AppState.formData.last_name || ''}`.trim(),
                     dateOfBirth: `${AppState.formData.dob_year}-${String(AppState.formData.dob_month).padStart(2, '0')}-${String(AppState.formData.dob_day).padStart(2, '0')}`,
@@ -1452,11 +1437,13 @@ const EventHandlers = {
                     address: [AppState.formData.building_number, AppState.formData.building_name, AppState.formData.flat, AppState.formData.street].filter(Boolean).join(' '),
                     towncity: AppState.formData.post_town || '',
                     postcode: AppState.formData.post_code || '',
-                    pdfUrl: AppState.foundLenders[0]?.pdfUrl || '',
+                    pdfUrl: AppState.creditReportPdfUrl || '', // FIX: Use stored PDF URL
                     allLenders: allLenders,
                     signature: signatureData,
                     valifiReference: AppState.valifiReference
                 };
+                
+                console.log('Submitting data with pdfUrl:', submissionData.pdfUrl);
                 
                 // Submit to FLG
                 await API.uploadToFLG(submissionData);

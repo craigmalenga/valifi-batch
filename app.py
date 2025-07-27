@@ -23,6 +23,24 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from celery import Celery
 
+import os
+from urllib.parse import urlparse
+
+# Get Redis URL from environment with fallback
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+
+# Handle Railway's Redis URL format
+if REDIS_URL.startswith('rediss://'):
+    # Railway uses SSL, but we need to handle it properly
+    REDIS_URL = REDIS_URL.replace('rediss://', 'redis://')
+
+print(f"Using Redis URL: {REDIS_URL}")  # Debug line
+
+# Update your app config
+app.config['CELERY_BROKER_URL'] = REDIS_URL
+app.config['CELERY_RESULT_BACKEND'] = REDIS_URL
+
+
 # ─── Configuration ─────────────────────────────────────────────────────────────
 class Config:
     """Centralized configuration management"""
