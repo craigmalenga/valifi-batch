@@ -33,3 +33,4 @@ tzdata==2023.3
 celery==5.3.4
 redis==5.0.0
 Flask-CORS==4.0.0
+async-timeout==4.0.3

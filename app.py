@@ -23,24 +23,6 @@ from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from celery import Celery
 
-import os
-from urllib.parse import urlparse
-
-# Get Redis URL from environment with fallback
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-
-# Handle Railway's Redis URL format
-if REDIS_URL.startswith('rediss://'):
-    # Railway uses SSL, but we need to handle it properly
-    REDIS_URL = REDIS_URL.replace('rediss://', 'redis://')
-
-print(f"Using Redis URL: {REDIS_URL}")  # Debug line
-
-# Update your app config
-app.config['CELERY_BROKER_URL'] = REDIS_URL
-app.config['CELERY_RESULT_BACKEND'] = REDIS_URL
-
-
 # ─── Configuration ─────────────────────────────────────────────────────────────
 class Config:
     """Centralized configuration management"""
@@ -66,9 +48,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///leads.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Celery
-    CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    # Redis/Celery - Get from environment
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
     # App settings
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -80,6 +61,18 @@ app = Flask(__name__,
             static_url_path='/static')
 app.config.from_object(Config)
 
+# Handle Railway's Redis URL format
+REDIS_URL = Config.REDIS_URL
+if REDIS_URL.startswith('rediss://'):
+    # Railway uses SSL, but we need to handle it properly
+    REDIS_URL = REDIS_URL.replace('rediss://', 'redis://')
+
+print(f"Using Redis URL: {REDIS_URL}")  # Debug line
+
+# NOW we can set the Celery configuration
+app.config['CELERY_BROKER_URL'] = REDIS_URL
+app.config['CELERY_RESULT_BACKEND'] = REDIS_URL
+
 # Enable debug mode for static files in development
 if Config.DEBUG:
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -88,16 +81,32 @@ if Config.DEBUG:
 db = SQLAlchemy(app)
 
 # Initialize Celery
-celery = Celery(app.name)
-celery.conf.update(
-    broker_url=Config.CELERY_BROKER_URL,
-    result_backend=Config.CELERY_RESULT_BACKEND,
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
-    enable_utc=True
-)
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(
+        task_serializer='json',
+        accept_content=['json'],
+        result_serializer='json',
+        timezone='UTC',
+        enable_utc=True,
+        broker_connection_retry_on_startup=True,
+        broker_connection_retry=True,
+        broker_connection_max_retries=10,
+    )
+    
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+    
+    celery.Task = ContextTask
+    return celery
+
+celery = make_celery(app)
 
 # ─── Database Models ───────────────────────────────────────────────────────────
 class Lead(db.Model):
@@ -1229,7 +1238,8 @@ def health_check():
             "valifi": "unknown",
             "s3": "healthy" if s3_client else "unavailable",
             "flg": "unknown",
-            "database": "unknown"
+            "database": "unknown",
+            "redis": "unknown"
         },
         "config": {
             "min_identity_score": Config.VALIFI_MIN_ID_SCORE
@@ -1250,6 +1260,19 @@ def health_check():
         health_status["services"]["database"] = "healthy"
     except Exception as e:
         health_status["services"]["database"] = f"unhealthy: {str(e)}"
+        health_status["status"] = "degraded"
+    
+    # Test Redis connection
+    try:
+        from celery import current_app
+        inspect = current_app.control.inspect()
+        stats = inspect.stats()
+        if stats:
+            health_status["services"]["redis"] = "healthy"
+        else:
+            health_status["services"]["redis"] = "unhealthy: no workers"
+    except Exception as e:
+        health_status["services"]["redis"] = f"unhealthy: {str(e)}"
         health_status["status"] = "degraded"
     
     return jsonify(health_status), 200 if health_status["status"] == "healthy" else 503
