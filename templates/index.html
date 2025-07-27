@@ -818,12 +818,14 @@
             <!-- Terms and Signature -->
             <div class="terms-signature-section">
               <div class="terms-acceptance">
-                <label class="checkbox-container">
-                  <input type="checkbox" id="terms_checkbox" />
-                  <span class="checkbox-label">
-                    I read and agreed to both the <a href="https://belmondclaims.com/wp-content/uploads/2024/09/Pre-disclosure-document-motor-finance-claims-customer.pdf" target="_blank" rel="noopener noreferrer">Pre-Disclosure Agreement</a> and <a href="https://belmondclaims.com/wp-content/uploads/2024/09/Terms-and-conditions-motor-finance.pdf" target="_blank" rel="noopener noreferrer">Terms & Conditions</a>.
-                  </span>
-                </label>
+                <div class="terms-button-container" style="text-align: center; margin-bottom: 1rem;">
+                  <button type="button" class="btn btn-primary" id="view_terms_btn">
+                    <span class="btn-icon">📄</span> View Terms & Conditions
+                  </button>
+                </div>
+                <div id="terms_status" style="text-align: center; margin-bottom: 1rem; display: none;">
+                  <span style="color: #28a745; font-weight: 600;">✓ Terms & Conditions accepted</span>
+                </div>
               </div>
               
               <div class="fee-info">
@@ -893,6 +895,35 @@
         </p>
         <p class="success-note">You can now close this window.</p>
         <button class="btn btn-primary success-close">Close</button>
+      </div>
+    </div>
+    
+    <!-- Terms Modal -->
+    <div id="terms_modal" class="terms-modal" style="display:none;">
+      <div class="terms-modal-content">
+        <div class="terms-header">
+          <h2>Terms & Conditions</h2>
+        </div>
+        <div class="terms-body" id="terms_body">
+          <div class="terms-content" id="terms_content">
+            <!-- Terms content will be loaded here -->
+            <p style="text-align: center; color: #6c757d;">Loading terms...</p>
+          </div>
+          <div class="scroll-indicator" id="scroll_indicator">
+            <div class="scroll-message">↓ Please scroll to read all terms ↓</div>
+          </div>
+        </div>
+        <div class="terms-footer">
+          <div class="terms-accept-container">
+            <div class="terms-checkbox-wrapper disabled" id="terms_checkbox_wrapper">
+              <input type="checkbox" id="terms_modal_checkbox" disabled />
+              <label for="terms_modal_checkbox">I have read and agree to the Terms & Conditions</label>
+            </div>
+            <button type="button" class="btn btn-primary btn-close-terms" id="close_terms_btn" disabled>
+              Accept & Continue
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -297,57 +297,62 @@ body > * {
     color: #28a745;
 }
 
-/* Mobile Progress Bar - 2 rows of 3 with EQUAL HEIGHTS */
+/* Mobile Progress Bar - FIXED CENTERING AND VISIBILITY */
 @media (max-width: 768px) {
     .progress-bar {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(2, auto);
-        gap: 1.5rem 1rem;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        width: 100%;
-        max-width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-rows: repeat(2, auto) !important;
+        gap: 1rem 0.5rem !important;
+        padding: 1rem 0.5rem !important;
+        margin-bottom: 2rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        justify-items: center !important;
+        align-items: center !important;
+        overflow-x: visible !important;
     }
     
     .progress-step {
-        flex: unset;
-        min-width: unset;
-        gap: 0.25rem;
-        justify-self: center;
-        max-width: unset;
+        flex: unset !important;
+        min-width: unset !important;
+        gap: 0.25rem !important;
+        justify-self: center !important;
+        max-width: unset !important;
+        width: 100% !important;
         /* FORCE EQUAL HEIGHTS */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        height: 100px; /* Fixed height for consistency */
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        height: 100px !important; /* Fixed height for consistency */
     }
     
     /* Hide connector lines on mobile */
     .progress-step:not(:last-child)::after {
-        display: none;
+        display: none !important;
     }
     
     .step-number {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-        flex-shrink: 0;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.9rem !important;
+        flex-shrink: 0 !important;
     }
     
     .step-label {
-        font-size: 0.7rem;
-        max-width: 80px;
-        white-space: normal;
-        line-height: 1.1;
-        text-align: center;
+        font-size: 0.65rem !important;
+        max-width: 70px !important;
+        white-space: normal !important;
+        line-height: 1.1 !important;
+        text-align: center !important;
         /* EQUAL HEIGHT AND CENTERING */
-        min-height: 3em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 1;
+        min-height: 3em !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 1 !important;
+        padding: 0 2px !important;
     }
 }
 
@@ -1798,6 +1803,185 @@ h1, h2, h3, h4 {
 .submit-ready-card .check-icon {
     font-size: 4rem;
     margin-bottom: 1rem;
+}
+
+/* ─── Terms Modal ──────────────────────────────────────────────────────────── */
+.terms-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+    backdrop-filter: blur(8px);
+}
+
+.terms-modal-content {
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 800px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.terms-header {
+    padding: 2rem;
+    border-bottom: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.terms-header h2 {
+    margin: 0;
+    color: var(--burgundy-color);
+    font-size: 1.75rem;
+}
+
+.terms-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    position: relative;
+}
+
+.terms-content {
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.terms-content h3 {
+    color: var(--burgundy-color);
+    margin: 2rem 0 1rem;
+    font-size: 1.25rem;
+}
+
+.terms-content p {
+    margin-bottom: 1rem;
+}
+
+.terms-content ul {
+    margin: 1rem 0 1rem 2rem;
+}
+
+.terms-content li {
+    margin-bottom: 0.5rem;
+}
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, white);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--transition-base);
+}
+
+.scroll-indicator.hidden {
+    opacity: 0;
+}
+
+.scroll-message {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    box-shadow: var(--shadow-md);
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.terms-footer {
+    padding: 1.5rem 2rem;
+    border-top: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.terms-accept-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.terms-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.terms-checkbox-wrapper input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+}
+
+.terms-checkbox-wrapper label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.terms-checkbox-wrapper.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.terms-checkbox-wrapper.disabled input,
+.terms-checkbox-wrapper.disabled label {
+    cursor: not-allowed;
+}
+
+.btn-close-terms {
+    background: var(--primary-color);
+}
+
+.btn-close-terms:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .terms-modal-content {
+        width: 95%;
+        height: 95vh;
+    }
+    
+    .terms-header {
+        padding: 1.5rem;
+    }
+    
+    .terms-body {
+        padding: 1.5rem;
+    }
+    
+    .terms-footer {
+        padding: 1rem 1.5rem;
+    }
+    
+    .terms-accept-container {
+        flex-direction: column;
+    }
+    
+    .btn-close-terms {
+        width: 100%;
+    }
 }
 
 /* ─── Utility Classes ──────────────────────────────────────────────────────── */

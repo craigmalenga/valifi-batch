@@ -14,7 +14,9 @@ const AppState = {
     identityVerified: false,
     minimumScore: 40,  // Default, will be updated from server
     changingMobile: false, // Track if we're changing mobile
-    signatureSigned: false // Track if signature is provided
+    signatureSigned: false, // Track if signature is provided
+    termsAccepted: false, // Track if terms accepted
+    termsScrolledToBottom: false // Track if user scrolled terms to bottom
 };
 
 // ─── Utility Functions ─────────────────────────────────────────────────────────
@@ -314,7 +316,12 @@ const Navigation = {
             if (stepId === 'step0') {
                 progressBar.style.display = 'none';
             } else {
-                progressBar.style.display = 'flex';
+                // MOBILE FIX: Force grid display on mobile, flex on desktop
+                if (window.innerWidth <= 768) {
+                    progressBar.style.display = 'grid !important';
+                } else {
+                    progressBar.style.display = 'flex';
+                }
             }
         }
         
@@ -546,6 +553,107 @@ const API = {
         });
         
         return response.json();
+    },
+
+    // NEW: Fetch terms content
+    async fetchTermsContent() {
+        try {
+            // In production, this would fetch from your PDF endpoint
+            // For now, returning sample terms
+            const termsContent = `
+                <h3>Terms & Conditions</h3>
+                <p><strong>Effective Date: January 2025</strong></p>
+                
+                <h3>1. Introduction</h3>
+                <p>These Terms and Conditions ("Terms") govern your use of the vehicle finance claims service ("Service") provided by Belmond Claims Limited ("we", "us", or "our"). By using our Service, you agree to be bound by these Terms.</p>
+                
+                <h3>2. Service Description</h3>
+                <p>We provide a claims management service to assist you in pursuing compensation for potentially mis-sold vehicle finance agreements. Our services include:</p>
+                <ul>
+                    <li>Reviewing your vehicle finance agreements</li>
+                    <li>Assessing the viability of potential claims</li>
+                    <li>Submitting claims to lenders on your behalf</li>
+                    <li>Managing all correspondence with lenders</li>
+                    <li>Negotiating settlements where applicable</li>
+                </ul>
+                
+                <h3>3. No Win, No Fee</h3>
+                <p>Our Service operates on a "no win, no fee" basis, which means:</p>
+                <ul>
+                    <li>If your claim is unsuccessful, you will not be charged any fees</li>
+                    <li>If your claim is successful, our fee will be deducted from the compensation amount</li>
+                    <li>Our fees range from 18% to 36% (including VAT) of the total compensation recovered</li>
+                    <li>The exact fee percentage depends on the complexity and value of your claim</li>
+                </ul>
+                
+                <h3>4. Your Responsibilities</h3>
+                <p>By using our Service, you agree to:</p>
+                <ul>
+                    <li>Provide accurate, complete, and truthful information</li>
+                    <li>Promptly respond to our requests for additional information or documentation</li>
+                    <li>Inform us immediately of any changes to your contact details</li>
+                    <li>Not pursue the same claim through another claims management company</li>
+                    <li>Cooperate fully with us throughout the claims process</li>
+                </ul>
+                
+                <h3>5. Data Protection and Privacy</h3>
+                <p>We take your privacy seriously and process your personal data in accordance with:</p>
+                <ul>
+                    <li>The General Data Protection Regulation (GDPR)</li>
+                    <li>The Data Protection Act 2018</li>
+                    <li>Our comprehensive Privacy Policy</li>
+                </ul>
+                <p>Your personal data will be used solely for the purpose of pursuing your claim and will not be shared with third parties except where necessary for the claims process or where required by law.</p>
+                
+                <h3>6. Cancellation Rights</h3>
+                <p>You have the right to cancel this agreement:</p>
+                <ul>
+                    <li>Within 14 days of signing without any charge</li>
+                    <li>After 14 days, you may still cancel but may be liable for costs incurred up to the point of cancellation</li>
+                    <li>To cancel, you must notify us in writing via email or post</li>
+                </ul>
+                
+                <h3>7. Limitation of Liability</h3>
+                <p>Our liability to you is limited as follows:</p>
+                <ul>
+                    <li>We are not liable for any indirect or consequential losses</li>
+                    <li>Our total liability shall not exceed the fees paid by you</li>
+                    <li>We are not responsible for the decisions made by lenders regarding your claim</li>
+                </ul>
+                
+                <h3>8. Complaints Procedure</h3>
+                <p>If you are dissatisfied with our service:</p>
+                <ul>
+                    <li>First, contact us directly to resolve the issue</li>
+                    <li>If unresolved, you may escalate to our Complaints Manager</li>
+                    <li>You have the right to refer your complaint to the Financial Ombudsman Service</li>
+                </ul>
+                
+                <h3>9. Governing Law</h3>
+                <p>These Terms are governed by the laws of England and Wales. Any disputes arising from these Terms shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
+                
+                <h3>10. Contact Information</h3>
+                <p>For any questions about these Terms or our Service, please contact us:</p>
+                <p>
+                    <strong>Email:</strong> support@belmondclaims.com<br>
+                    <strong>Phone:</strong> 0330 094 8438<br>
+                    <strong>Address:</strong> Belmond Claims Limited, [Your Address]<br>
+                    <strong>Hours:</strong> Monday to Friday, 9am - 6pm
+                </p>
+                
+                <h3>11. Updates to Terms</h3>
+                <p>We reserve the right to update these Terms at any time. Any changes will be communicated to you via email or through our website. Your continued use of our Service after such changes constitutes acceptance of the updated Terms.</p>
+                
+                <p style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #ccc;">
+                    <strong>By clicking "Accept & Continue" below, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</strong>
+                </p>
+            `;
+            
+            return termsContent;
+        } catch (error) {
+            console.error('Failed to fetch terms:', error);
+            throw error;
+        }
     }
 };
 
@@ -582,6 +690,24 @@ const EventHandlers = {
         
         // Error modal handler
         this.initErrorModal();
+        
+        // Mobile responsive handler
+        this.initMobileResponsive();
+    },
+
+    // NEW: Mobile responsive handler
+    initMobileResponsive() {
+        // Fix progress bar on resize
+        window.addEventListener('resize', () => {
+            const progressBar = document.getElementById('main_progress_bar');
+            if (progressBar && AppState.currentStep !== 'step0') {
+                if (window.innerWidth <= 768) {
+                    progressBar.style.cssText = 'display: grid !important;';
+                } else {
+                    progressBar.style.cssText = 'display: flex !important;';
+                }
+            }
+        });
     },
 
     async loadLenders() {
@@ -1130,22 +1256,21 @@ const EventHandlers = {
     },
 
     initStep6() {
-        // Signature canvas is now initialized in showStep when step 6 is shown
-        
-        // Terms checkbox
-        const termsCheckbox = document.getElementById('terms_checkbox');
-        const submitButton = document.getElementById('final_submit_form');
-        
-        termsCheckbox.addEventListener('change', () => {
-            this.checkFinalSubmitReady();
-        });
+        // View Terms button - NEW IMPLEMENTATION
+        const viewTermsBtn = document.getElementById('view_terms_btn');
+        if (viewTermsBtn) {
+            viewTermsBtn.addEventListener('click', () => {
+                this.showTermsModal();
+            });
+        }
         
         // Final submit
+        const submitButton = document.getElementById('final_submit_form');
         submitButton.addEventListener('click', async (e) => {
             e.preventDefault();
             
-            if (!termsCheckbox.checked) {
-                alert('Please accept the terms and conditions to proceed.');
+            if (!AppState.termsAccepted) {
+                alert('Please view and accept the terms and conditions to proceed.');
                 return;
             }
             
@@ -1189,6 +1314,82 @@ const EventHandlers = {
         
         // Navigation
         document.getElementById('back_to_step5').addEventListener('click', () => Navigation.showStep('step5'));
+    },
+
+    // NEW: Show terms modal with scroll requirement
+    async showTermsModal() {
+        const modal = document.getElementById('terms_modal');
+        const termsContent = document.getElementById('terms_content');
+        const termsBody = document.getElementById('terms_body');
+        const scrollIndicator = document.getElementById('scroll_indicator');
+        const termsCheckbox = document.getElementById('terms_modal_checkbox');
+        const checkboxWrapper = document.getElementById('terms_checkbox_wrapper');
+        const closeBtn = document.getElementById('close_terms_btn');
+        
+        // Reset state
+        AppState.termsScrolledToBottom = false;
+        termsCheckbox.checked = false;
+        termsCheckbox.disabled = true;
+        checkboxWrapper.classList.add('disabled');
+        closeBtn.disabled = true;
+        scrollIndicator.classList.remove('hidden');
+        
+        // Load terms content
+        try {
+            Utils.showLoading('Loading terms...');
+            const content = await API.fetchTermsContent();
+            termsContent.innerHTML = content;
+            Utils.hideLoading();
+        } catch (error) {
+            Utils.hideLoading();
+            termsContent.innerHTML = '<p style="color: red;">Failed to load terms. Please try again.</p>';
+            return;
+        }
+        
+        // Show modal
+        modal.style.display = 'flex';
+        termsBody.scrollTop = 0;
+        
+        // Scroll event handler
+        const checkScroll = () => {
+            const scrollPercentage = ((termsBody.scrollTop + termsBody.clientHeight) / termsBody.scrollHeight) * 100;
+            
+            if (scrollPercentage >= 95 && !AppState.termsScrolledToBottom) {
+                AppState.termsScrolledToBottom = true;
+                scrollIndicator.classList.add('hidden');
+                termsCheckbox.disabled = false;
+                checkboxWrapper.classList.remove('disabled');
+            }
+        };
+        
+        termsBody.addEventListener('scroll', checkScroll);
+        
+        // Checkbox handler
+        termsCheckbox.addEventListener('change', () => {
+            closeBtn.disabled = !termsCheckbox.checked;
+        });
+        
+        // Close button handler
+        closeBtn.addEventListener('click', () => {
+            if (termsCheckbox.checked) {
+                AppState.termsAccepted = true;
+                modal.style.display = 'none';
+                
+                // Update UI
+                document.getElementById('terms_status').style.display = 'block';
+                document.getElementById('view_terms_btn').style.display = 'none';
+                
+                // Check if ready to submit
+                this.checkFinalSubmitReady();
+            }
+        });
+        
+        // Prevent closing by clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                e.stopPropagation();
+            }
+        });
     },
 
     initSignatureCanvas() {
@@ -1301,10 +1502,9 @@ const EventHandlers = {
     },
 
     checkFinalSubmitReady() {
-        const termsCheckbox = document.getElementById('terms_checkbox');
         const submitButton = document.getElementById('final_submit_form');
         
-        if (termsCheckbox.checked && AppState.signatureSigned) {
+        if (AppState.termsAccepted && AppState.signatureSigned) {
             submitButton.disabled = false;
         } else {
             submitButton.disabled = true;
