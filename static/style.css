@@ -447,8 +447,12 @@ body > * {
     display: none;
 }
 
+/* Hide any step-related content on mobile for step 0 */
 @media (max-width: 600px) {
-    #step0 .step-preview-mobile {
+    #step0 .step-preview-mobile,
+    #step0 .progress-step,
+    #step0 .step-number,
+    #step0 .step-label {
         display: none !important;
     }
 }

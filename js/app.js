@@ -858,30 +858,98 @@ const EventHandlers = {
                     Utils.showError('address_error', 'No addresses found for this postcode');
                     document.getElementById('address_container').style.display = 'none';
                 } else {
+                    // Sort addresses by building number/name for better UX
+                    const addressSortKey = (addr) => {
+                        // Try to extract building number for sorting
+                        let sortKey = '';
+                        
+                        // First priority: numeric building number
+                        if (addr.number) {
+                            // Check if it's purely numeric
+                            const numMatch = String(addr.number).match(/^(\d+)(.*)$/);
+                            if (numMatch) {
+                                // Pad numbers for proper sorting (so 2 comes before 10)
+                                sortKey = numMatch[1].padStart(4, '0') + (numMatch[2] || '');
+                            } else {
+                                sortKey = String(addr.number);
+                            }
+                        }
+                        
+                        // Add secondary sort by flat/name if they're numbers
+                        if (addr.subBuilding) {
+                            const flatMatch = addr.subBuilding.match(/FLAT\s+(\d+)/i);
+                            if (flatMatch) {
+                                sortKey += '_' + flatMatch[1].padStart(3, '0');
+                            } else {
+                                sortKey += '_' + addr.subBuilding;
+                            }
+                        } else if (addr.name && !isNaN(addr.name)) {
+                            sortKey += '_' + String(addr.name).padStart(3, '0');
+                        } else if (addr.name) {
+                            sortKey += '_' + addr.name;
+                        }
+                        
+                        return sortKey;
+                    };
+                    
+                    addresses.sort((a, b) => {
+                        const keyA = addressSortKey(a);
+                        const keyB = addressSortKey(b);
+                        return keyA.localeCompare(keyB);
+                    });
+                    
                     addresses.forEach(addr => {
                         const option = document.createElement('option');
                         option.value = JSON.stringify(addr);
                         
-                        // Build address label with all components - IMPROVED VERSION
+                        // Build address label with all components - ENHANCED VERSION
                         const parts = [];
                         
-                        // Add building number first if available
-                        if (addr.number) parts.push(addr.number);
+                        // Handle the various address components based on the JSON structure
                         
-                        // Add flat if available
-                        if (addr.flat) parts.push(`Flat ${addr.flat}`);
+                        // 1. Add building number first if available
+                        if (addr.number) {
+                            parts.push(addr.number);
+                        }
                         
-                        // Add house name if available
-                        if (addr.name) parts.push(addr.name);
+                        // 2. Handle 'name' field - could be a flat number, floor name, or building name
+                        if (addr.name) {
+                            // Check if name is a number (likely a flat/apartment number)
+                            if (!isNaN(addr.name)) {
+                                // If we have both number and numeric name, name is likely a flat
+                                if (addr.number) {
+                                    parts.push(`Flat ${addr.name}`);
+                                } else {
+                                    parts.push(addr.name);
+                                }
+                            } else {
+                                // Name is text (like "BASEMENT", "GROUND", "FIRST SECOND", etc.)
+                                parts.push(addr.name);
+                            }
+                        }
                         
-                        // Add house if available and not already included
-                        if (addr.house && !addr.flat) parts.push(addr.house);
+                        // 3. Handle subBuilding (usually contains "FLAT X")
+                        if (addr.subBuilding) {
+                            // Don't duplicate if we already added a flat
+                            if (!addr.name || isNaN(addr.name)) {
+                                parts.push(addr.subBuilding);
+                            }
+                        }
                         
-                        // Add street
-                        if (addr.street1) parts.push(addr.street1);
+                        // 4. Handle flat field if present and not already handled
+                        if (addr.flat && !addr.subBuilding && (!addr.name || isNaN(addr.name))) {
+                            parts.push(`Flat ${addr.flat}`);
+                        }
                         
-                        // Add town
-                        if (addr.postTown) parts.push(addr.postTown);
+                        // 5. Add street
+                        if (addr.street1) {
+                            parts.push(addr.street1);
+                        }
+                        
+                        // 6. Add town
+                        if (addr.postTown) {
+                            parts.push(addr.postTown);
+                        }
                         
                         option.textContent = parts.join(', ');
                         addressSelect.appendChild(option);
@@ -903,10 +971,41 @@ const EventHandlers = {
             
             const addr = JSON.parse(e.target.value);
             
-            // Populate fields intelligently
+            // Populate fields intelligently based on the JSON structure
+            
+            // Building number - straightforward
             document.getElementById('building_number').value = addr.number || '';
-            document.getElementById('building_name').value = addr.name || '';
-            document.getElementById('flat').value = addr.flat || addr.house || '';
+            
+            // Building name - use 'name' if it's not a number
+            if (addr.name && isNaN(addr.name)) {
+                document.getElementById('building_name').value = addr.name;
+            } else {
+                document.getElementById('building_name').value = '';
+            }
+            
+            // Flat/Unit field - combine various sources
+            let flatValue = '';
+            
+            // Priority 1: subBuilding field (e.g., "FLAT 4")
+            if (addr.subBuilding) {
+                flatValue = addr.subBuilding;
+            }
+            // Priority 2: flat field
+            else if (addr.flat) {
+                flatValue = `Flat ${addr.flat}`;
+            }
+            // Priority 3: if 'name' is a number and we have a 'number' field, name is likely the flat
+            else if (addr.name && !isNaN(addr.name) && addr.number) {
+                flatValue = `Flat ${addr.name}`;
+            }
+            // Priority 4: house field
+            else if (addr.house) {
+                flatValue = addr.house;
+            }
+            
+            document.getElementById('flat').value = flatValue;
+            
+            // Street, town, and postcode
             document.getElementById('street').value = addr.street1 || '';
             document.getElementById('post_town').value = addr.postTown || '';
             document.getElementById('post_code').value = addr.postcode || '';
