@@ -1,0 +1,142 @@
+# Valify Batch Processing System - Project Context
+
+## Overview
+This is a batch processing system for the Valify lead validation service. It processes multiple leads in batches and schedules webhook notifications to be sent 24 hours after validation using Celery.
+
+## Key Changes from Main Production
+1. **ID Format**: Changed from numeric Lead ID to `first.last.dob` format (dob in ddmmyyyy)
+2. **Batch Processing**: Handles multiple leads via CSV upload
+3. **Delayed Webhooks**: Uses Celery to schedule webhook posts 24 hours after validation
+4. **Admin Interface**: Special admin page for batch uploads and monitoring
+
+## Architecture
+
+### Core Components
+- **Flask Application**: Web framework for batch upload interface
+- **Celery**: Asynchronous task queue for scheduling delayed webhooks
+- **Redis**: Message broker for Celery tasks
+- **AWS S3**: Storage for batch files and results
+- **PostgreSQL**: Database for tracking batch jobs and webhook status
+
+### Key Features
+1. **CSV Upload**: Admin can upload CSV files with multiple leads
+2. **Batch Validation**: Processes all leads in the batch
+3. **Scheduled Webhooks**: Each validated lead triggers a webhook 24 hours later
+4. **Status Tracking**: Monitor batch progress and webhook delivery status
+5. **Result Downloads**: Download validation results as CSV
+
+## ID Format
+- Format: `first.last.dob`
+- Example: `john.smith.15031990` (for John Smith born March 15, 1990)
+- Used for both internal tracking and webhook payloads
+
+## Webhook Payload Format
+```json
+{
+    "id": "first.last.dob",
+    "first_name": "John",
+    "last_name": "Smith",
+    "dob": "15/03/1990",
+    "validation_status": "valid/invalid",
+    "validation_timestamp": "2024-01-15T10:30:00Z",
+    "batch_id": "batch_123",
+    "webhook_scheduled_for": "2024-01-16T10:30:00Z"
+}
+```
+
+## Celery Tasks
+1. **process_batch**: Processes uploaded CSV file
+2. **validate_lead**: Validates individual lead
+3. **send_webhook**: Sends webhook notification (scheduled 24 hours later)
+4. **retry_failed_webhook**: Retries failed webhook deliveries
+
+## Environment Variables
+- `FLASK_APP`: app.py
+- `FLASK_ENV`: production/development
+- `SECRET_KEY`: Flask secret key
+- `DATABASE_URL`: PostgreSQL connection string
+- `REDIS_URL`: Redis connection string for Celery
+- `AWS_ACCESS_KEY_ID`: AWS credentials
+- `AWS_SECRET_ACCESS_KEY`: AWS credentials
+- `S3_BUCKET`: S3 bucket name for file storage
+- `WEBHOOK_URL`: Target webhook endpoint
+- `CELERY_BROKER_URL`: Redis URL for Celery broker
+- `CELERY_RESULT_BACKEND`: Redis URL for Celery results
+
+## Database Schema
+```sql
+-- Batch jobs table
+CREATE TABLE batch_jobs (
+    id SERIAL PRIMARY KEY,
+    batch_id VARCHAR(50) UNIQUE NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    total_leads INTEGER DEFAULT 0,
+    processed_leads INTEGER DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+-- Lead validations table
+CREATE TABLE lead_validations (
+    id SERIAL PRIMARY KEY,
+    lead_id VARCHAR(100) UNIQUE NOT NULL, -- format: first.last.dob
+    batch_id VARCHAR(50) REFERENCES batch_jobs(batch_id),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    dob VARCHAR(10),
+    validation_status VARCHAR(50),
+    validated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    webhook_scheduled_at TIMESTAMP,
+    webhook_sent_at TIMESTAMP,
+    webhook_status VARCHAR(50) DEFAULT 'pending',
+    webhook_attempts INTEGER DEFAULT 0
+);
+```
+
+## Batch Processing Flow
+1. Admin uploads CSV file via `/batch_admin`
+2. File is uploaded to S3 and batch job created in database
+3. Celery task `process_batch` is triggered
+4. For each lead in CSV:
+   - Generate ID as `first.last.dob`
+   - Validate lead data
+   - Store validation result
+   - Schedule `send_webhook` task for 24 hours later
+5. Admin can monitor progress and download results
+6. After 24 hours, webhooks are automatically sent
+
+## API Endpoints
+- `GET /`: Home page (redirect to batch admin)
+- `GET /batch_admin`: Batch upload interface
+- `POST /upload_batch`: Handle CSV file upload
+- `GET /batch_status/<batch_id>`: Check batch processing status
+- `GET /download_results/<batch_id>`: Download validation results
+- `GET /webhook_status/<batch_id>`: Check webhook delivery status
+
+## Security Considerations
+- Admin authentication required for batch operations
+- Webhook signatures for payload verification
+- Rate limiting on webhook retries
+- Secure storage of sensitive data in S3
+
+## Deployment
+- Deployed on Railway/Heroku with:
+  - Web dyno for Flask app
+  - Worker dyno for Celery tasks
+  - Redis add-on for message broker
+  - PostgreSQL add-on for database
+  - Scheduler add-on for periodic tasks (cleanup, retries)
+
+## Monitoring
+- Celery Flower for task monitoring
+- CloudWatch/Datadog for application metrics
+- Webhook delivery tracking in database
+- Email alerts for failed batches
+
+## Notes
+- Batch size limited to 10,000 leads per file
+- Webhooks retry up to 3 times with exponential backoff
+- CSV must have headers: first_name, last_name, dob
+- Date format in CSV: dd/mm/yyyy
+- All times in UTC
