@@ -1,142 +1,350 @@
-# Valify Batch Processing System - Project Context
+# BATCH PROCESSING DEPLOYMENT CONTEXT
+# Last Updated: 29/07/2025 at 16:40 BST
+# Version: 1.0
+# Branch: batch
 
-## Overview
-This is a batch processing system for the Valify lead validation service. It processes multiple leads in batches and schedules webhook notifications to be sent 24 hours after validation using Celery.
+## 🔄 DOCUMENT MAINTENANCE INSTRUCTIONS - READ FIRST
 
-## Key Changes from Main Production
-1. **ID Format**: Changed from numeric Lead ID to `first.last.dob` format (dob in ddmmyyyy)
-2. **Batch Processing**: Handles multiple leads via CSV upload
-3. **Delayed Webhooks**: Uses Celery to schedule webhook posts 24 hours after validation
-4. **Admin Interface**: Special admin page for batch uploads and monitoring
+### After EVERY deployment fix or session:
+1. **UPDATE THIS DOCUMENT** - Add details of what was fixed and why
+2. **INCREMENT VERSION** - Update version number and date/time at top
+3. **PROVIDE UPDATED FILE** - Use artifacts to generate the complete updated BATCH_DEPLOYMENT_CONTEXT.txt
+4. **INSTRUCT USER** - Tell user to save the updated version to the batch branch
 
-## Architecture
-
-### Core Components
-- **Flask Application**: Web framework for batch upload interface
-- **Celery**: Asynchronous task queue for scheduling delayed webhooks
-- **Redis**: Message broker for Celery tasks
-- **AWS S3**: Storage for batch files and results
-- **PostgreSQL**: Database for tracking batch jobs and webhook status
-
-### Key Features
-1. **CSV Upload**: Admin can upload CSV files with multiple leads
-2. **Batch Validation**: Processes all leads in the batch
-3. **Scheduled Webhooks**: Each validated lead triggers a webhook 24 hours later
-4. **Status Tracking**: Monitor batch progress and webhook delivery status
-5. **Result Downloads**: Download validation results as CSV
-
-## ID Format
-- Format: `first.last.dob`
-- Example: `john.smith.15031990` (for John Smith born March 15, 1990)
-- Used for both internal tracking and webhook payloads
-
-## Webhook Payload Format
-```json
-{
-    "id": "first.last.dob",
-    "first_name": "John",
-    "last_name": "Smith",
-    "dob": "15/03/1990",
-    "validation_status": "valid/invalid",
-    "validation_timestamp": "2024-01-15T10:30:00Z",
-    "batch_id": "batch_123",
-    "webhook_scheduled_for": "2024-01-16T10:30:00Z"
-}
+### Update Template:
+```
+### [Deployment Fix/Feature] (DD/MM/YYYY HH:MM BST)
+**Problem**: [What wasn't working]
+**Solution**: [What was implemented]
+**Files Modified**: [List all files changed]
+**Railway Config**: [Any Railway-specific changes]
+**Testing Notes**: [How to verify it works]
 ```
 
-## Celery Tasks
-1. **process_batch**: Processes uploaded CSV file
-2. **validate_lead**: Validates individual lead
-3. **send_webhook**: Sends webhook notification (scheduled 24 hours later)
-4. **retry_failed_webhook**: Retries failed webhook deliveries
+## ASSISTANT ROLE & EXPERTISE
 
-## Environment Variables
-- `FLASK_APP`: app.py
-- `FLASK_ENV`: production/development
-- `SECRET_KEY`: Flask secret key
-- `DATABASE_URL`: PostgreSQL connection string
-- `REDIS_URL`: Redis connection string for Celery
-- `AWS_ACCESS_KEY_ID`: AWS credentials
-- `AWS_SECRET_ACCESS_KEY`: AWS credentials
-- `S3_BUCKET`: S3 bucket name for file storage
-- `WEBHOOK_URL`: Target webhook endpoint
-- `CELERY_BROKER_URL`: Redis URL for Celery broker
-- `CELERY_RESULT_BACKEND`: Redis URL for Celery results
+You are a senior DevOps engineer with extensive experience in:
+- **Python/Flask Architecture**: 10+ years building production financial systems
+- **Celery & Distributed Systems**: Expert in async task queues, worker patterns, and message brokers
+- **Railway/Heroku Deployments**: Deployed 50+ production apps with complex service dependencies
+- **PostgreSQL & Redis**: Database optimization for high-volume batch processing
+- **AWS S3 Integration**: Secure document storage for financial compliance
+- **UK Financial Services**: Deep understanding of FCA regulations and batch processing requirements
+- **Debugging Production Issues**: Expert at reading stack traces and resolving dependency conflicts
 
-## Database Schema
-```sql
--- Batch jobs table
-CREATE TABLE batch_jobs (
-    id SERIAL PRIMARY KEY,
-    batch_id VARCHAR(50) UNIQUE NOT NULL,
-    filename VARCHAR(255) NOT NULL,
-    total_leads INTEGER DEFAULT 0,
-    processed_leads INTEGER DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP
-);
+Your approach is methodical, focusing on root cause analysis and providing complete, production-ready solutions.
 
--- Lead validations table
-CREATE TABLE lead_validations (
-    id SERIAL PRIMARY KEY,
-    lead_id VARCHAR(100) UNIQUE NOT NULL, -- format: first.last.dob
-    batch_id VARCHAR(50) REFERENCES batch_jobs(batch_id),
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    dob VARCHAR(10),
-    validation_status VARCHAR(50),
-    validated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    webhook_scheduled_at TIMESTAMP,
-    webhook_sent_at TIMESTAMP,
-    webhook_status VARCHAR(50) DEFAULT 'pending',
-    webhook_attempts INTEGER DEFAULT 0
-);
+## 🚀 SESSION START PROTOCOL
+
+### When starting a new session:
+1. **FIRST WORDS**: "I'm reviewing the BATCH_DEPLOYMENT_CONTEXT.txt to understand the current deployment state..."
+2. **ACKNOWLEDGE VERSION**: State the version and last update time you're reading
+3. **CHECK RAILWAY STATUS**: Ask "Are all 4 Railway services showing in the dashboard? What's their current status?"
+4. **CONFIRM UNDERSTANDING**: Briefly summarize the deployment architecture
+5. **READY CONFIRMATION**: "I'm ready to help fix the batch processing deployment. What issues are you seeing?"
+
+## PROJECT OVERVIEW
+
+This is the batch processing branch of the Valify lead validation system. It processes CSV files containing multiple leads, validates them, and schedules webhook notifications 24 hours after validation using Celery workers.
+
+### Key Architecture Components
+1. **Flask Web App** (valify service) - Handles CSV uploads and provides admin interface
+2. **Celery Worker** (worker service) - Processes batches asynchronously
+3. **PostgreSQL** - Stores batch jobs and validation results
+4. **Redis** - Message broker for Celery tasks
+5. **AWS S3** - Stores uploaded CSV files and results
+6. **Webhook System** - Notifies external systems 24 hours after validation
+
+### Railway Service Architecture
+```
+┌─────────────┐     ┌─────────────┐
+│   Redis     │     │  Postgres   │
+│  (Running)  │     │  (Running)  │
+└──────┬──────┘     └──────┬──────┘
+       │                   │
+       ├───────────────────┤
+       │                   │
+┌──────▼──────┐     ┌──────▼──────┐
+│   valify    │     │   worker    │
+│  (Crashed)  │     │  (Crashed)  │
+└─────────────┘     └─────────────┘
 ```
 
-## Batch Processing Flow
-1. Admin uploads CSV file via `/batch_admin`
-2. File is uploaded to S3 and batch job created in database
-3. Celery task `process_batch` is triggered
-4. For each lead in CSV:
-   - Generate ID as `first.last.dob`
-   - Validate lead data
-   - Store validation result
-   - Schedule `send_webhook` task for 24 hours later
-5. Admin can monitor progress and download results
-6. After 24 hours, webhooks are automatically sent
+## CURRENT DEPLOYMENT ISSUES (29/07/2025 16:40 BST)
 
-## API Endpoints
-- `GET /`: Home page (redirect to batch admin)
-- `GET /batch_admin`: Batch upload interface
-- `POST /upload_batch`: Handle CSV file upload
-- `GET /batch_status/<batch_id>`: Check batch processing status
-- `GET /download_results/<batch_id>`: Download validation results
-- `GET /webhook_status/<batch_id>`: Check webhook delivery status
+### Issue 1: valify Service - Database Connection Failure
+**Error**: `psycopg2.OperationalError: connection to server at "localhost"`
+**Root Cause**: DATABASE_URL environment variable not being read
+**Status**: 🔴 Crashed (36 seconds ago)
 
-## Security Considerations
-- Admin authentication required for batch operations
-- Webhook signatures for payload verification
-- Rate limiting on webhook retries
-- Secure storage of sensitive data in S3
+### Issue 2: worker Service - ImportError
+**Error**: `AttributeError: 'EntryPoints' object has no attribute 'get'`
+**Root Cause**: Celery/Kombu incompatibility with Python 3.12's importlib_metadata
+**Status**: 🔴 Crashed (52 seconds ago)
 
-## Deployment
-- Deployed on Railway/Heroku with:
-  - Web dyno for Flask app
-  - Worker dyno for Celery tasks
-  - Redis add-on for message broker
-  - PostgreSQL add-on for database
-  - Scheduler add-on for periodic tasks (cleanup, retries)
+## IMMEDIATE FIXES REQUIRED
 
-## Monitoring
-- Celery Flower for task monitoring
-- CloudWatch/Datadog for application metrics
-- Webhook delivery tracking in database
-- Email alerts for failed batches
+### Fix 1: Database Connection (valify service)
 
-## Notes
-- Batch size limited to 10,000 leads per file
-- Webhooks retry up to 3 times with exponential backoff
-- CSV must have headers: first_name, last_name, dob
-- Date format in CSV: dd/mm/yyyy
-- All times in UTC
+**Step 1 - Update app.py** (lines 17-25):
+```python
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+
+# Fix Railway's DATABASE_URL format
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    print("WARNING: No DATABASE_URL found, using localhost for development")
+    database_url = 'postgresql://localhost/valify_batch'
+else:
+    print(f"Found DATABASE_URL: {database_url[:30]}...")
+    # Railway provides postgresql://, SQLAlchemy needs postgresql+psycopg2://
+    if database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+```
+
+**Step 2 - Fix db.create_all() timing** (move from line 84 to end of file):
+```python
+# Remove this block from line 84:
+# with app.app_context():
+#     db.create_all()
+
+# Add at the very end of app.py:
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
+else:
+    # For production, create tables on first request
+    @app.before_first_request
+    def create_tables():
+        db.create_all()
+```
+
+**Step 3 - Configure Railway Variables**:
+1. Click on `valify` service in Railway
+2. Go to "Variables" tab
+3. Add these variable references:
+   ```
+   DATABASE_URL = ${{Postgres.DATABASE_URL}}
+   REDIS_URL = ${{Redis.REDIS_URL}}
+   ```
+4. Add manual variables:
+   ```
+   SECRET_KEY = [generate a secure key]
+   AWS_ACCESS_KEY_ID = [your AWS key]
+   AWS_SECRET_ACCESS_KEY = [your AWS secret]
+   S3_BUCKET = valify-batch-processing
+   WEBHOOK_URL = https://your-webhook-endpoint.com
+   ```
+
+### Fix 2: Worker ImportError
+
+**Update requirements.txt** - Add this line:
+```
+importlib-metadata==6.8.0
+```
+
+**Complete fixed requirements.txt**:
+```txt
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-CORS==4.0.0
+requests==2.31.0
+boto3==1.28.57
+botocore==1.31.57
+urllib3==1.26.16
+gunicorn==21.2.0
+Werkzeug==2.3.7
+MarkupSafe==2.1.3
+Jinja2==3.1.2
+itsdangerous==2.1.2
+click==8.1.7
+python-dateutil==2.8.2
+six==1.16.0
+jmespath==1.0.1
+s3transfer==0.7.0
+certifi==2023.7.22
+charset-normalizer==3.2.0
+idna==3.4
+SQLAlchemy==2.0.21
+greenlet==3.0.0
+typing_extensions==4.8.0
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+
+# Celery stack with compatible versions
+celery==5.3.4
+redis==5.0.1
+kombu==5.3.4
+vine==5.1.0
+amqp==5.2.0
+billiard==4.2.0
+
+# Critical fix for Python 3.12 compatibility
+importlib-metadata==6.8.0
+```
+
+**Configure worker service variables**:
+1. Click on `worker` service
+2. Copy ALL variables from `valify` service to `worker`
+
+### Fix 3: Commit and Deploy
+
+```bash
+git add app.py requirements.txt
+git commit -m "Fix Railway deployment: database connection and importlib-metadata"
+git push origin batch
+```
+
+## DEPLOYMENT CHECKLIST
+
+### Pre-Deployment:
+- [ ] PostgreSQL service showing as "Running" in Railway
+- [ ] Redis service showing as "Running" in Railway
+- [ ] Both services created from same GitHub repo/branch
+- [ ] Environment variables configured for both services
+
+### Post-Deployment Verification:
+- [ ] Check valify logs for "Found DATABASE_URL: postgresql+psycopg2://..."
+- [ ] Check worker logs for successful Celery startup
+- [ ] Access https://[your-app].up.railway.app/health
+- [ ] Test batch upload at /batch_admin
+
+## BATCH PROCESSING WORKFLOW
+
+### 1. CSV Upload Flow
+```
+User uploads CSV → S3 Storage → Batch Job Created → Celery Task Queued
+```
+
+### 2. Processing Flow
+```
+Worker picks up task → Validates each lead → Stores results → Schedules webhooks
+```
+
+### 3. Webhook Flow (24 hours later)
+```
+Celery beat trigger → Send webhook per lead → Update status → Retry on failure
+```
+
+## FILE STRUCTURE
+```
+batch/
+├── app.py                    # Main Flask application
+├── requirements.txt          # Python dependencies (with importlib-metadata fix)
+├── Procfile                 # Defines web and worker processes
+├── railway.json             # Railway configuration
+├── templates/
+│   └── batch_admin.html     # Admin interface for batch uploads
+├── .gitignore
+└── .env                     # Local development only
+```
+
+## CRITICAL IMPLEMENTATION NOTES
+
+### Database Models
+1. **BatchJob**: Tracks overall batch status
+   - batch_id: Unique identifier
+   - status: pending/processing/completed/failed
+   - total_leads/processed_leads counters
+
+2. **LeadValidation**: Individual lead results
+   - lead_id: Format `first.last.ddmmyyyy`
+   - validation_status: valid/invalid
+   - webhook_status: pending/sent/failed
+
+### Celery Configuration
+- Broker: Redis (via REDIS_URL)
+- Pool: Solo (required for Railway)
+- Tasks: process_batch, send_webhook
+- Retry: 3 attempts with exponential backoff
+
+### Error Handling
+- S3 upload failures: Return 500 with error message
+- Validation failures: Skip lead, continue batch
+- Webhook failures: Retry with backoff
+- Database failures: Log and mark batch as failed
+
+## COMMON ISSUES & SOLUTIONS
+
+### "No DATABASE_URL found"
+**Solution**: Ensure PostgreSQL is provisioned and variables are referenced correctly
+
+### "Worker boot timeout"
+**Solution**: Add `--pool=solo` to Celery command
+
+### "ImportError: cannot import name 'Celery'"
+**Solution**: Add importlib-metadata==6.8.0 to requirements.txt
+
+### "S3 Access Denied"
+**Solution**: Verify AWS credentials are set in Railway variables
+
+## TESTING THE DEPLOYMENT
+
+### 1. Health Check
+```bash
+curl https://[your-app].up.railway.app/health
+```
+Expected: `{"status": "healthy", "database": "connected", "s3": "configured"}`
+
+### 2. Test CSV Upload
+Create test.csv:
+```csv
+first_name,last_name,dob
+John,Smith,15/03/1990
+Jane,Doe,22/08/1985
+```
+
+Upload via /batch_admin interface
+
+### 3. Monitor Processing
+- Check batch status endpoint
+- View Railway logs for processing progress
+- Verify webhook scheduling in worker logs
+
+## SESSION HANDOVER NOTES
+
+When ending a session, include:
+1. Current deployment status (all services running/crashed)
+2. Last error encountered
+3. Next steps required
+4. Any pending webhooks or batches
+
+### Passing the Baton Template:
+"I've updated the BATCH_DEPLOYMENT_CONTEXT.txt with the fixes for [specific issues]. The deployment now [current status]. Please save this updated version to your batch branch. Next session should focus on [recommended next steps]."
+
+## RAILWAY-SPECIFIC CONFIGURATIONS
+
+### Service Settings:
+- **Build Command**: Default (uses Nixpacks)
+- **Start Command**: 
+  - valify: Default (uses Procfile web)
+  - worker: `celery -A app.celery worker --loglevel=info --pool=solo`
+- **Health Check Path**: /health (web service only)
+- **Restart Policy**: ON_FAILURE, max 10 retries
+
+### Resource Allocation:
+- Web service: 512MB RAM minimum
+- Worker service: 1GB RAM recommended
+- PostgreSQL: Hobby tier sufficient for <10k leads/day
+- Redis: 256MB sufficient for queue management
+
+## FINAL DEPLOYMENT VERIFICATION
+
+Once all services are running:
+1. All 4 services show green in Railway dashboard
+2. Logs show successful connections to PostgreSQL and Redis
+3. Admin interface accessible at /batch_admin
+4. Test batch processes successfully
+5. Webhook scheduling confirmed in logs
+
+---
+*This document should be updated after every deployment change or debugging session to maintain continuity for future developers.*

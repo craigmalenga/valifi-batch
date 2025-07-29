@@ -13,14 +13,31 @@ from werkzeug.utils import secure_filename
 import uuid
 from dotenv import load_dotenv
 
+
+
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://localhost/valify_batch')
+
+# Fix Railway's DATABASE_URL format
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    print("WARNING: No DATABASE_URL found, using localhost for development")
+    database_url = 'postgresql://localhost/valify_batch'
+else:
+    print(f"Found DATABASE_URL: {database_url[:30]}...")
+    # Railway provides postgresql://, SQLAlchemy needs postgresql+psycopg2://
+    if database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+
 
 # Initialize database
 db = SQLAlchemy(app)
@@ -79,9 +96,6 @@ class LeadValidation(db.Model):
     webhook_status = db.Column(db.String(50), default='pending')
     webhook_attempts = db.Column(db.Integer, default=0)
 
-# Create tables
-with app.app_context():
-    db.create_all()
 
 # Helper Functions
 def generate_lead_id(first_name, last_name, dob):
@@ -437,3 +451,14 @@ def internal_error(error):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+    # Add at the very end of app.py:
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
+else:
+    # For production, create tables on first request
+    @app.before_first_request
+    def create_tables():
+        db.create_all()
