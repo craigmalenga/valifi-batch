@@ -1,2 +1,2 @@
-web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120
-worker: celery -A app.celery worker --loglevel=info --pool=solo
+web: gunicorn app:app --workers=8 --worker-class=gevent --worker-connections=1000 --timeout=30 --keep-alive=2 --max-requests=1000 --max-requests-jitter=50 --preload
+worker: PYTHONPATH=/app celery -A tasks worker --loglevel=info --concurrency=4 --max-tasks-per-child=100 --time-limit=600 --soft-time-limit=540

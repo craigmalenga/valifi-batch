@@ -1,37 +1,18 @@
-Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
-Flask-CORS==4.0.0
-requests==2.31.0
-boto3==1.28.57
-botocore==1.31.57
-urllib3==1.26.16
-gunicorn==21.2.0
-Werkzeug==2.3.7
-MarkupSafe==2.1.3
-Jinja2==3.1.2
-itsdangerous==2.1.2
-click==8.1.7
-python-dateutil==2.8.2
-six==1.16.0
-jmespath==1.0.1
-s3transfer==0.7.0
-certifi==2023.7.22
-charset-normalizer==3.2.0
-idna==3.4
-SQLAlchemy==2.0.21
-greenlet==3.0.0
-typing_extensions==4.8.0
-psycopg2-binary==2.9.7
-python-dotenv==1.0.0
-
-# Fixed Celery stack with compatible versions
+Flask>=3.0.0
+requests>=2.31.0
+boto3>=1.34.0
+botocore>=1.34.0
+gunicorn>=21.2.0
+SQLAlchemy>=2.0.0
+python-dateutil>=2.8.2
+openpyxl>=3.1.2
+psycopg2-binary>=2.9.9  # PostgreSQL driver (replaces PyMySQL)
+pytz>=2024.1  # Timezone handling for UK time
+user-agents>=2.2.0  # Parse browser user agents
+PyMySQL>=1.1.0
+gevent>=24.2.1
+greenlet==3.0.1
+psycogreen==1.0.2    # Makes psycopg2 work better with gevent
+redis==5.0.1         # For caching
 celery==5.3.4
-redis==5.0.1
-kombu==5.3.4
-vine==5.1.0
-amqp==5.2.0
-billiard==4.2.0
-
-# Add this to fix the importlib_metadata issue
-importlib-metadata==6.8.0
-
+Flask-Limiter==3.5.0

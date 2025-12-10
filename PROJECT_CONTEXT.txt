@@ -1,350 +1,1122 @@
-# BATCH PROCESSING DEPLOYMENT CONTEXT
-# Last Updated: 29/07/2025 at 16:40 BST
-# Version: 1.0
-# Branch: batch
+Vehicle Finance Claims Management System - Consolidated Project Context
+Last Updated: October 21, 2025
 
-## 🔄 DOCUMENT MAINTENANCE INSTRUCTIONS - READ FIRST
+🔴 CRITICAL DEVELOPER REQUIREMENTS - MUST READ FIRST
+IMPORTANT: You, AI, are a 30+ year experienced senior web developer skilled in building full architecture systems from scratch that work first time every time, and you are a main board PE director with key responsibilities and want to deliver high quality material to the PE board.
+CRITICAL CODE UPDATE RULES:
 
-### After EVERY deployment fix or session:
-1. **UPDATE THIS DOCUMENT** - Add details of what was fixed and why
-2. **INCREMENT VERSION** - Update version number and date/time at top
-3. **PROVIDE UPDATED FILE** - Use artifacts to generate the complete updated BATCH_DEPLOYMENT_CONTEXT.txt
-4. **INSTRUCT USER** - Tell user to save the updated version to the batch branch
+For short files: Replace the whole file completely
+For longer files: Update full functions (no partial updates)
+CRITICAL: When adding functionality, always verify line count is greater and no sections of code or functionality are removed accidentally
+NO PLACEHOLDERS: Never use "continue code here" or similar - always provide complete code
+INSERTION GUIDANCE: When inserting new code or functions, always provide unique line(s) in the existing code to pinpoint exact insertion location
 
-### Update Template:
+PRODUCTION CODE REQUIREMENTS:
+
+ALWAYS check existing code for exact function names, decorators, and imports before making changes
+NEVER introduce new patterns or "improvements" without explicitly asking
+VERIFY every function call exists in the codebase before using it
+MATCH the existing code style exactly - no stylistic changes
+When updating functions, preserve ALL existing functionality
+Take extra time to cross-reference - accuracy over speed
+If unsure about something, ASK rather than guess
+Check decorator names: Use @handle_errors NOT @handle_db_errors
+Verify model field names: Check if using signature_provided vs signature_submitted
+Test for function existence: Confirm helpers like calculate_similarity, check_date_eligibility exist
+
+I need production-ready code that works first time. Check your work against my actual codebase. Speed is not important - accuracy is critical.
+
+in this instance, please dont give me full replacement files but rather ideally full replacemnet functions where possible / appropraite (do not change names of the function ever to e.g. new_function1) or if new code to insert or something to be deleted give me unique line(s) of code in existing code to pinpoint insertion location
+
+IMPORTANT - never change variable names or backend function names etc without confirming with me first
+
+## 🔴 CRITICAL CHANGES - LEADID CREATION LOGIC (Oct 8, 2025)
+
+**Category 1 - Proceeding (Green):**
+- In database + in date range (Valifi) OR in database (Manual)
+- DCA LeadID ALWAYS created (reference shows eligible/non-eligible/unknown)
+- IRL LeadID only if `irl_or_not="Yes"`
+- **Includes lenders with eligible_or_not="No"** - they get "FA Non Eligible"
+
+**Category 2 - Outside Date Range (Yellow):**
+- Valifi lenders outside Jan 2007 - Jan 2021
+- NO LeadIDs created
+
+**Category 3 - Not Proceeding (Grey):**
+- **ONLY** lenders NOT in database (Valifi or Manual)
+- NO LeadIDs created
+
+
+1. **Database Check First**: Always check if lender exists in database
+2. **Date Check (Valifi Only)**: Check if within 2007-01-01 to 2021-01-28
+3. **DCA Creation**: ALWAYS create if in database (+ in date range for Valifi)
+4. **IRL Creation**: ONLY create if `irl_or_not="Yes"`
+5. **Reference Assignment**: Based on source and `eligible_or_not` flag
+
+### DCA Reference Values
+
+| Source | eligible_or_not | DCA Reference      |
+|--------|----------------|-------------------|
+| Valifi | "Yes"          | "FA Eligible"     |
+| Valifi | "No"           | "FA Non Eligible" |
+| Manual | "Yes"          | "FA Unknown"      |
+| Manual | "No"           | "FA Non Eligible" |
+
+### IRL Reference Values
+
+
+
+## Executive Summary
+This system helps UK consumers claim compensation for mis-sold vehicle finance agreements through identity verification, credit checks, and automated claim submission to lenders via FLG CRM integration.
+
+## Database Schema
+
+### Lenders Table
+```sql
+CREATE TABLE lenders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    filename VARCHAR(255),
+    eligible_or_not VARCHAR(10) DEFAULT 'Yes',  -- Controls DCA REFERENCE, not creation
+    irl_or_not VARCHAR(10) DEFAULT 'Yes',       -- Controls IRL creation
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
-### [Deployment Fix/Feature] (DD/MM/YYYY HH:MM BST)
-**Problem**: [What wasn't working]
-**Solution**: [What was implemented]
-**Files Modified**: [List all files changed]
-**Railway Config**: [Any Railway-specific changes]
-**Testing Notes**: [How to verify it works]
-```
 
-## ASSISTANT ROLE & EXPERTISE
+**CRITICAL:** `eligible_or_not` flag determines DCA REFERENCE VALUE, NOT whether to create DCA LeadID
 
-You are a senior DevOps engineer with extensive experience in:
-- **Python/Flask Architecture**: 10+ years building production financial systems
-- **Celery & Distributed Systems**: Expert in async task queues, worker patterns, and message brokers
-- **Railway/Heroku Deployments**: Deployed 50+ production apps with complex service dependencies
-- **PostgreSQL & Redis**: Database optimization for high-volume batch processing
-- **AWS S3 Integration**: Secure document storage for financial compliance
-- **UK Financial Services**: Deep understanding of FCA regulations and batch processing requirements
-- **Debugging Production Issues**: Expert at reading stack traces and resolving dependency conflicts
+## Business Process Flow
 
-Your approach is methodical, focusing on root cause analysis and providing complete, production-ready solutions.
+### User Journey
+1. Personal details collection and consent
+2. Mobile phone OTP verification
+3. Identity verification via Valifi (TransUnion)
+4. Credit report retrieval for vehicle finance agreements
+5. Database fuzzy matching of lender names from Valifi/Equifax
+6. **Date eligibility checking** (DATE_START to DATE_END for Valifi only)
+7. Manual lender addition capability
+8. Digital signature collection
+9. **FLG submission with dynamic field population**
+10. Lead IDs webhook transmission
+11. Status updates via webhook receiver
 
-## 🚀 SESSION START PROTOCOL
+### Date Eligibility Logic
+- **Configuration**: Railway environment variables
+  - `DATE_START`: "2007-01-01"
+  - `DATE_END`: "2021-01-28"
+- **Applies to**: Valifi-sourced lenders ONLY
+- **Manual lenders**: Bypass date check (user-provided dates may be approximate)
+- **Check Points**:
+  1. Credit report retrieval (marks accounts)
+  2. Before FLG submission (filters Valifi lenders outside range)
+  3. UI display (shows warnings/grayed out)
 
-### When starting a new session:
-1. **FIRST WORDS**: "I'm reviewing the BATCH_DEPLOYMENT_CONTEXT.txt to understand the current deployment state..."
-2. **ACKNOWLEDGE VERSION**: State the version and last update time you're reading
-3. **CHECK RAILWAY STATUS**: Ask "Are all 4 Railway services showing in the dashboard? What's their current status?"
-4. **CONFIRM UNDERSTANDING**: Briefly summarize the deployment architecture
-5. **READY CONFIRMATION**: "I'm ready to help fix the batch processing deployment. What issues are you seeing?"
+## FLG Lead Creation Logic (UPDATED Oct 8, 2025)
 
-## PROJECT OVERVIEW
+### Core Rules
+1. **Database Check First**: Always check if lender exists in database
+2. **Date Check (Valifi Only)**: Check if Valifi lender within 2007-2021
+3. **DCA Creation Rule**: ALWAYS create DCA if in database (+ in date range for Valifi)
+4. **IRL Creation Rule**: ONLY create IRL if `irl_or_not="Yes"`
+5. **Cost Assignment**: Position-based for ALL DCA leads created
 
-This is the batch processing branch of the Valify lead validation system. It processes CSV files containing multiple leads, validates them, and schedules webhook notifications 24 hours after validation using Celery workers.
-
-### Key Architecture Components
-1. **Flask Web App** (valify service) - Handles CSV uploads and provides admin interface
-2. **Celery Worker** (worker service) - Processes batches asynchronously
-3. **PostgreSQL** - Stores batch jobs and validation results
-4. **Redis** - Message broker for Celery tasks
-5. **AWS S3** - Stores uploaded CSV files and results
-6. **Webhook System** - Notifies external systems 24 hours after validation
-
-### Railway Service Architecture
-```
-┌─────────────┐     ┌─────────────┐
-│   Redis     │     │  Postgres   │
-│  (Running)  │     │  (Running)  │
-└──────┬──────┘     └──────┬──────┘
-       │                   │
-       ├───────────────────┤
-       │                   │
-┌──────▼──────┐     ┌──────▼──────┐
-│   valify    │     │   worker    │
-│  (Crashed)  │     │  (Crashed)  │
-└─────────────┘     └─────────────┘
-```
-
-## CURRENT DEPLOYMENT ISSUES (29/07/2025 16:40 BST)
-
-### Issue 1: valify Service - Database Connection Failure
-**Error**: `psycopg2.OperationalError: connection to server at "localhost"`
-**Root Cause**: DATABASE_URL environment variable not being read
-**Status**: 🔴 Crashed (36 seconds ago)
-
-### Issue 2: worker Service - ImportError
-**Error**: `AttributeError: 'EntryPoints' object has no attribute 'get'`
-**Root Cause**: Celery/Kombu incompatibility with Python 3.12's importlib_metadata
-**Status**: 🔴 Crashed (52 seconds ago)
-
-## IMMEDIATE FIXES REQUIRED
-
-### Fix 1: Database Connection (valify service)
-
-**Step 1 - Update app.py** (lines 17-25):
+### Implementation Pseudo-Code
 ```python
-# Load environment variables
-load_dotenv()
-
-# Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
-
-# Fix Railway's DATABASE_URL format
-database_url = os.environ.get('DATABASE_URL')
-if not database_url:
-    print("WARNING: No DATABASE_URL found, using localhost for development")
-    database_url = 'postgresql://localhost/valify_batch'
-else:
-    print(f"Found DATABASE_URL: {database_url[:30]}...")
-    # Railway provides postgresql://, SQLAlchemy needs postgresql+psycopg2://
-    if database_url.startswith('postgresql://'):
-        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+for account in accounts:
+    is_manual = not account.get('startDate')
+    is_date_eligible = account.get('dateEligible', True)
+    lender_name = account.get('displayName')
+    
+    # Skip if Valifi and outside date range
+    if not is_manual and not is_date_eligible:
+        # Category 2: Outside Date Range
+        continue
+    
+    # Database lookup (fuzzy match)
+    db_lender = lenders_service.get_by_name(lender_name)
+    
+    if not db_lender:
+        # Category 3: Not in database
+        continue
+    
+    # Category 1: In database (and in date range if Valifi)
+    
+    # ALWAYS create DCA if user consented to motor finance
+    if user_consented_motor_finance:
+        # Determine reference value
+        if is_manual:
+            if db_lender.eligible_or_not == 'Yes':
+                dca_reference = "FA Unknown"
+            else:
+                dca_reference = "FA Non Eligible"
+        else:  # Valifi
+            if db_lender.eligible_or_not == 'Yes':
+                dca_reference = "FA Eligible"
+            else:
+                dca_reference = "FA Non Eligible"
+        
+        # Calculate cost based on position
+        eligible_dca_count += 1
+        if eligible_dca_count == 1:
+            cost = DRAWDOWN_ELIGIBLE_1
+        elif eligible_dca_count == 2:
+            cost = DRAWDOWN_ELIGIBLE_2
+        else:
+            cost = DRAWDOWN_ELIGIBLE_3
+        
+        # CREATE DCA LEADID
+        create_dca_lead(
+            reference=dca_reference,
+            cost=cost,
+            lender_name=lender_name,
+            # ... other fields
+        )
+    
+    # ONLY create IRL if flag is Yes
+    if user_consented_irl and db_lender.irl_or_not == 'Yes':
+        # CREATE IRL LEADID
+        create_irl_lead(
+            reference="IRL Suspense",
+            lender_name=lender_name,
+            # ... other fields
+        )
 ```
 
-**Step 2 - Fix db.create_all() timing** (move from line 84 to end of file):
-```python
-# Remove this block from line 84:
-# with app.app_context():
-#     db.create_all()
-
-# Add at the very end of app.py:
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
-else:
-    # For production, create tables on first request
-    @app.before_first_request
-    def create_tables():
-        db.create_all()
-```
-
-**Step 3 - Configure Railway Variables**:
-1. Click on `valify` service in Railway
-2. Go to "Variables" tab
-3. Add these variable references:
-   ```
-   DATABASE_URL = ${{Postgres.DATABASE_URL}}
-   REDIS_URL = ${{Redis.REDIS_URL}}
-   ```
-4. Add manual variables:
-   ```
-   SECRET_KEY = [generate a secure key]
-   AWS_ACCESS_KEY_ID = [your AWS key]
-   AWS_SECRET_ACCESS_KEY = [your AWS secret]
-   S3_BUCKET = valify-batch-processing
-   WEBHOOK_URL = https://your-webhook-endpoint.com
-   ```
-
-### Fix 2: Worker ImportError
-
-**Update requirements.txt** - Add this line:
-```
-importlib-metadata==6.8.0
-```
-
-**Complete fixed requirements.txt**:
-```txt
-Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
-Flask-CORS==4.0.0
-requests==2.31.0
-boto3==1.28.57
-botocore==1.31.57
-urllib3==1.26.16
-gunicorn==21.2.0
-Werkzeug==2.3.7
-MarkupSafe==2.1.3
-Jinja2==3.1.2
-itsdangerous==2.1.2
-click==8.1.7
-python-dateutil==2.8.2
-six==1.16.0
-jmespath==1.0.1
-s3transfer==0.7.0
-certifi==2023.7.22
-charset-normalizer==3.2.0
-idna==3.4
-SQLAlchemy==2.0.21
-greenlet==3.0.0
-typing_extensions==4.8.0
-psycopg2-binary==2.9.7
-python-dotenv==1.0.0
-
-# Celery stack with compatible versions
-celery==5.3.4
-redis==5.0.1
-kombu==5.3.4
-vine==5.1.0
-amqp==5.2.0
-billiard==4.2.0
-
-# Critical fix for Python 3.12 compatibility
-importlib-metadata==6.8.0
-```
-
-**Configure worker service variables**:
-1. Click on `worker` service
-2. Copy ALL variables from `valify` service to `worker`
-
-### Fix 3: Commit and Deploy
+## Environment Variables Required
 
 ```bash
-git add app.py requirements.txt
-git commit -m "Fix Railway deployment: database connection and importlib-metadata"
-git push origin batch
+# Database
+DATABASE_URL=mysql://root:password@yamanote.proxy.rlwy.net:11708/railway
+
+# Date Eligibility (Valifi only)
+DATE_START=2007-01-01
+DATE_END=2021-01-28
+
+# Drawdown Values (for ALL DCA leads created)
+DRAWDOWN_ELIGIBLE_1=100.00
+DRAWDOWN_ELIGIBLE_2=75.00
+DRAWDOWN_ELIGIBLE_3=50.00
+
+# FLG Configuration
+FLG_API_URL=https://cars.flg360.co.uk/api/APILeadCreateUpdate.php
+FLG_API_KEY=
+FLG_LEADGROUP_ID=57862        # DCA Claims
+FLG_IRL_LEADGROUP_ID=59549    # IRL Claims
+
+# Valifi
+VALIFI_API_URL=
+VALIFI_API_USER=
+VALIFI_API_PASS=
+VALIFI_MIN_ID_SCORE=40
+
+# Webhook Security
+WEBHOOK_API_KEY=secure_random_key_here
+FLG_STATUS_UPDATE_ENABLED=true
 ```
 
-## DEPLOYMENT CHECKLIST
+## FLG Field Mapping
 
-### Pre-Deployment:
-- [ ] PostgreSQL service showing as "Running" in Railway
-- [ ] Redis service showing as "Running" in Railway
-- [ ] Both services created from same GitHub repo/branch
-- [ ] Environment variables configured for both services
-
-### Post-Deployment Verification:
-- [ ] Check valify logs for "Found DATABASE_URL: postgresql+psycopg2://..."
-- [ ] Check worker logs for successful Celery startup
-- [ ] Access https://[your-app].up.railway.app/health
-- [ ] Test batch upload at /batch_admin
-
-## BATCH PROCESSING WORKFLOW
-
-### 1. CSV Upload Flow
-```
-User uploads CSV → S3 Storage → Batch Job Created → Celery Task Queued
-```
-
-### 2. Processing Flow
-```
-Worker picks up task → Validates each lead → Stores results → Schedules webhooks
-```
-
-### 3. Webhook Flow (24 hours later)
-```
-Celery beat trigger → Send webhook per lead → Update status → Retry on failure
-```
-
-## FILE STRUCTURE
-```
-batch/
-├── app.py                    # Main Flask application
-├── requirements.txt          # Python dependencies (with importlib-metadata fix)
-├── Procfile                 # Defines web and worker processes
-├── railway.json             # Railway configuration
-├── templates/
-│   └── batch_admin.html     # Admin interface for batch uploads
-├── .gitignore
-└── .env                     # Local development only
+### DCA Lead (LeadGroup 57862)
+```python
+dca_lead_data = {
+    "leadgroup": "57862",
+    "source": "Belmondclaims.com",
+    "reference": dca_reference_value,  # "FA Eligible" | "FA Non Eligible" | "FA Unknown"
+    "cost": cost_value,                 # DRAWDOWN_ELIGIBLE_1/2/3
+    "medium": campaign,
+    "title": title,
+    "firstname": first_name,
+    "lastname": last_name,
+    "dateOfBirth": dob_formatted,
+    "phone1": mobile,
+    "email": email,
+    "address": address,
+    "towncity": town,
+    "postcode": postcode,
+    "data2": lender_name,
+    "data5": outstanding_balance,
+    "data9": account_number,
+    "data12": start_date_formatted,
+    "data14": previous_addresses,
+    "data25": signature_base64,
+    "data28": current_datetime,
+    "data29": client_ip,
+    "data31": pdf_url,
+    "data32": valifi_json
+}
 ```
 
-## CRITICAL IMPLEMENTATION NOTES
+### IRL Lead (LeadGroup 59549)
+```python
+irl_lead_data = {
+    "leadgroup": "59549",
+    "reference": "IRL Suspense",  # ALWAYS this value
+    "medium": campaign,
+    "title": title,
+    "firstname": first_name,
+    "lastname": last_name,
+    "dateOfBirth": dob_formatted,
+    "phone1": mobile,
+    "email": email,
+    "address": address,
+    "towncity": town,
+    "postcode": postcode,
+    "data1": lender_name,
+    "data5": account_number,
+    "data25": signature_base64,
+    "data28": current_datetime,
+    "data29": client_ip,
+    "data33": monthly_payment,
+    "data36": valifi_json,
+    "data37": start_date_formatted,
+    "data38": address_2,
+    "data39": address_3_onwards,
+    "data48": pdf_url  # Note: data31 removed, data48 used instead
+}
+```
 
-### Database Models
-1. **BatchJob**: Tracks overall batch status
-   - batch_id: Unique identifier
-   - status: pending/processing/completed/failed
-   - total_leads/processed_leads counters
+## Testing Checklist (UPDATED)
 
-2. **LeadValidation**: Individual lead results
-   - lead_id: Format `first.last.ddmmyyyy`
-   - validation_status: valid/invalid
-   - webhook_status: pending/sent/failed
+- [ ] Manual lenders NOT in database → Category 3, NO LeadIDs
+- [ ] Manual lenders in database → ALWAYS get DCA LeadID
+- [ ] Manual + eligible_or_not="Yes" → DCA with "FA Unknown"
+- [ ] Manual + eligible_or_not="No" → DCA with "FA Non Eligible"
+- [ ] Manual + irl_or_not="Yes" → IRL LeadID with "IRL Suspense"
+- [ ] Manual + irl_or_not="No" → NO IRL LeadID
+- [ ] Valifi lenders in database + in date range → ALWAYS get DCA LeadID
+- [ ] Valifi + eligible_or_not="Yes" → DCA with "FA Eligible"
+- [ ] Valifi + eligible_or_not="No" → DCA with "FA Non Eligible"
+- [ ] Valifi + irl_or_not="Yes" → IRL LeadID with "IRL Suspense"
+- [ ] Valifi + irl_or_not="No" → NO IRL LeadID
+- [ ] Valifi lenders NOT in database → Category 3, NO LeadIDs
+- [ ] Valifi lenders outside date range → Category 2, NO LeadIDs
+- [ ] Cost field assigned correctly for ALL DCA leads (1st=100, 2nd=75, 3rd+=50)
+- [ ] Lead counter increments for ALL DCA leads (both eligible and non-eligible)
+- [ ] Frontend displays three distinct colored sections correctly
 
-### Celery Configuration
-- Broker: Redis (via REDIS_URL)
-- Pool: Solo (required for Railway)
-- Tasks: process_batch, send_webhook
-- Retry: 3 attempts with exponential backoff
+## Implementation Priority (IMMEDIATE)
 
-### Error Handling
-- S3 upload failures: Return 500 with error message
-- Validation failures: Skip lead, continue batch
-- Webhook failures: Retry with backoff
-- Database failures: Log and mark batch as failed
+### Phase 1: Update LeadID Creation Logic (CRITICAL - DO FIRST)
+1. ✅ Update `/upload_summary` route in `app.py`
+2. ✅ Change DCA creation logic: ALWAYS create for in-database lenders
+3. ✅ Change reference assignment: Use eligible_or_not flag for REFERENCE VALUE
+4. ✅ Keep IRL logic: ONLY create when irl_or_not="Yes"
+5. ✅ Update cost counter: Increment for ALL DCA leads created
 
-## COMMON ISSUES & SOLUTIONS
+### Phase 2: Update Frontend Display
+1. ✅ Update `app.js` final summary display
+2. ✅ Show three categories correctly
+3. ✅ Display reference values in UI
+4. ✅ Add CSS for category styling
 
-### "No DATABASE_URL found"
-**Solution**: Ensure PostgreSQL is provisioned and variables are referenced correctly
+### Phase 3: Testing
+1. ✅ Test all scenarios from testing checklist
+2. ✅ Verify Category 1 includes non-eligible lenders
+3. ✅ Verify Category 3 only has not-in-database lenders
+4. ✅ Verify all reference values assigned correctly
 
-### "Worker boot timeout"
-**Solution**: Add `--pool=solo` to Celery command
+## Common Pitfalls to Avoid
 
-### "ImportError: cannot import name 'Celery'"
-**Solution**: Add importlib-metadata==6.8.0 to requirements.txt
+1. ❌ **DO NOT** check `eligible_or_not` to decide whether to create DCA LeadID
+2. ❌ **DO NOT** put lenders with eligible_or_not="No" in Category 3
+3. ❌ **DO NOT** skip DCA creation when both flags are "No"
+4. ✅ **DO** always create DCA for in-database lenders (if in date range for Valifi)
+5. ✅ **DO** use eligible_or_not flag ONLY for reference value
+6. ✅ **DO** increment cost counter for ALL DCA leads created
 
-### "S3 Access Denied"
-**Solution**: Verify AWS credentials are set in Railway variables
+## Quick Reference Commands
 
-## TESTING THE DEPLOYMENT
+### Check Lender Database Status
+```python
+from app import db_session, Lender
+session = db_session()
+lender = session.query(Lender).filter_by(name="Santander Consumer (UK) plc").first()
+print(f"eligible_or_not: {lender.eligible_or_not}")
+print(f"irl_or_not: {lender.irl_or_not}")
+```
 
-### 1. Health Check
+### Update Lender Flags
+```sql
+-- Make lender non-eligible for DCA (but still creates DCA with "FA Non Eligible")
+UPDATE lenders SET eligible_or_not = 'No' WHERE name = 'Lender Name';
+
+-- Disable IRL for lender (no IRL LeadID created)
+UPDATE lenders SET irl_or_not = 'No' WHERE name = 'Lender Name';
+```
+
+### View Claims by Category
+```sql
+-- Category 1: All claims with LeadIDs created
+SELECT * FROM claims_tracking WHERE leads_created_count > 0;
+
+-- Category 2: Valifi lenders outside date range
+SELECT * FROM claims_tracking WHERE ineligible_reason LIKE '%outside date range%';
+
+-- Category 3: Lenders not in database
+SELECT * FROM claims_tracking WHERE ineligible_reason LIKE '%not in database%';
+```
+
+## Support & Debugging
+
+### Common Issues
+
+1. **"Why is a non-eligible lender getting a DCA LeadID?"**
+   - This is CORRECT behavior. Non-eligible lenders in database still get DCA LeadIDs with "FA Non Eligible" reference
+
+2. **"Category 3 is empty"**
+   - This is expected if all lenders from Valifi are in your database
+
+3. **"Cost counter not incrementing correctly"**
+   - Ensure counter increments for EVERY DCA lead created, not just eligible ones
+
+4. **"Wrong reference value"**
+   - Check source (Valifi vs Manual) and eligible_or_not flag
+   - Verify reference assignment logic matches the decision matrix
+
+### Debug Logging
+```python
+logger.info(f"Lender: {lender_name}")
+logger.info(f"Source: {'Manual' if is_manual else 'Valifi'}")
+logger.info(f"In database: {db_lender is not None}")
+if db_lender:
+    logger.info(f"eligible_or_not: {db_lender.get('eligible_or_not')}")
+    logger.info(f"irl_or_not: {db_lender.get('irl_or_not')}")
+logger.info(f"Creating DCA: {can_create_dca}")
+logger.info(f"DCA Reference: {dca_reference}")
+logger.info(f"Creating IRL: {can_create_irl}")
+```
+
+## Version History
+- **v4.0** (Oct 8, 2025): CRITICAL - DCA always created for in-database lenders, eligible_or_not controls reference value only
+- **v3.0** (Jan 8, 2025): Database migration, eligibility tracking, webhook receiver
+- **v2.5** (Jan 7, 2025): Date eligibility implementation
+- **v2.0** (Jan 5, 2025): SQLAlchemy integration
+- **v1.0** (Dec 2024): Initial Excel-based system
+
+
+--
+
+LAST integration
+
+# Vehicle Finance Claims Management System - Consolidated Project Context
+*Last Updated: Oct 7, 2025*
+
+## Executive Summary
+This system helps UK consumers claim compensation for mis-sold vehicle finance agreements through a comprehensive workflow of identity verification, credit checks, and automated claim submission to lenders via FLG CRM integration.
+
+## Key Evolution: Excel to Database Migration
+
+### Previous System (Excel-Based)
+- **Lender Data**: Stored in `lenders new version.xlsm` Excel file
+- **Icons**: Referenced from CSV files (`lenders.csv`)
+- **Fuzzy Matching**: Manual lookup against CSV data
+- **Eligibility**: Hard-coded logic without database persistence
+- **Tracking**: No centralized claim tracking or audit trail
+
+### Current System (Database-Driven)
+- **Database**: Railway MySQL instance (yamanote.proxy.rlwy.net:11708)
+- **Lender Storage**: 70 lenders in `lenders` table with:
+  - Exact names including suffixes ("Limited", "plc")
+  - Icon filenames for logo display
+  - `eligible_or_not` flag (Yes/No for standard claims)
+  - `irl_or_not` flag (Yes/No for irresponsible lending claims)
+- **Fuzzy Matching**: Database-backed with edit distance algorithm
+- **Icon Serving**: Database `filename` field → `/static/icons/{filename}`
+- **Claim Tracking**: Comprehensive `claims_tracking` table with JSON fields
+- **Caching**: 5-minute cache for performance optimization
+
+## Business Process Flow
+
+### 1. User Journey
+1. Personal details collection and consent
+2. Mobile phone OTP verification
+3. Identity verification via Valifi (TransUnion)
+4. Credit report retrieval for vehicle finance agreements
+5. **Database fuzzy matching** of lender names from Valifi/Equifax
+6. **Date eligibility checking** (DATE_START to DATE_END)
+7. Manual lender addition capability
+8. Digital signature collection
+9. **FLG submission with dynamic field population**
+10. Lead IDs webhook transmission
+11. **Status updates via webhook receiver**
+
+### 2. Date Eligibility Logic
+- **Configuration**: Railway environment variables
+  - `DATE_START`: "2007-01-01"
+  - `DATE_END`: "2021-01-28"
+- **Check Points**:
+  1. Credit report retrieval (marks accounts)
+  2. Before FLG submission (filters out ineligible)
+  3. UI display (shows warnings/grayed out)
+- **Manual Lenders**: Assumed eligible (no date to check)
+- **Tracking**: Ineligibility reasons stored in `claims_tracking.notes`
+
+## New Requirements for Lead Group 57862
+
+### Introducer Field Population
+The `Introducer` field in FLG must be populated based on:
+
+| Condition | Introducer Value |
+|-----------|-----------------|
+| Valid date range + eligible_or_not="Yes" + API-found | "FA Eligible" |
+| Valid date range + eligible_or_not="No" + API-found | "FA Non Eligible" |
+| Valid date range + any eligibility + user-selected | "FA Unknown" |
+
+### Cost Field Population
+The `Cost` field must be populated with drawdown values:
+
+| Lead Position | Environment Variable | Cost Value |
+|--------------|---------------------|------------|
+| 1st eligible lead | DRAWDOWN_ELIGIBLE_1 | Variable value |
+| 2nd eligible lead | DRAWDOWN_ELIGIBLE_2 | Variable value |
+| 3rd+ eligible leads | DRAWDOWN_ELIGIBLE_3 | Variable value |
+
+### Webhook Status Update Receiver
+
+#### Webhook Configuration
+- **Endpoint**: `/webhook/flg-status-update`
+- **Method**: POST
+- **Format**: JSON payload
+- **Security**: API key authentication
+
+#### Expected Payload Structure
+```json
+{
+  "LeadID": "123456",
+  "LeadGroup": "57862",
+  "Status": "DCA",
+  "Introducer": "FA Eligible",
+  "data35": "additional_value",
+  "api_key": "your_webhook_api_key"
+}
+```
+
+#### Status Mapping Database Table
+```sql
+CREATE TABLE flg_status_mappings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lead_group VARCHAR(10),
+    status_received VARCHAR(100),
+    introducer_received VARCHAR(100),
+    data35_received VARCHAR(100),
+    action VARCHAR(50) NOT NULL,
+    new_status VARCHAR(100),
+    new_introducer VARCHAR(100),
+    priority INT DEFAULT 0,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_lookup (lead_group, status_received, introducer_received, data35_received)
+);
+```
+
+#### Status Update Actions
+Based on the combination of received values, the system will:
+1. Look up the appropriate action in `flg_status_mappings`
+2. Update the lead in FLG via API
+3. Update local `claims_tracking` record
+4. Log the transaction
+
+## Technical Architecture
+
+### Database Schema
+
+#### Lenders Table
+```sql
+CREATE TABLE lenders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    filename VARCHAR(255),
+    eligible_or_not VARCHAR(10) DEFAULT 'Yes',
+    irl_or_not VARCHAR(10) DEFAULT 'Yes',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### Claims Tracking Table
+```sql
+CREATE TABLE claims_tracking (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    lead_ids TEXT,  -- JSON array of FLG lead IDs
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(255),
+    mobile VARCHAR(20),
+    date_of_birth DATE,
+    
+    -- Address Information
+    current_address TEXT,  -- JSON
+    previous_addresses TEXT,  -- JSON
+    
+    -- Identity Verification
+    identity_score INT,
+    identity_verified BOOLEAN DEFAULT FALSE,
+    valifi_response_stored BOOLEAN DEFAULT FALSE,
+    
+    -- Lenders Information
+    lenders_found INT DEFAULT 0,
+    lenders_found_list TEXT,  -- JSON
+    lenders_manual INT DEFAULT 0,
+    lenders_manual_list TEXT,  -- JSON
+    lenders_eligible INT DEFAULT 0,
+    lenders_ineligible INT DEFAULT 0,
+    
+    -- Eligibility
+    all_within_date_range BOOLEAN DEFAULT FALSE,
+    date_range_start DATE,
+    date_range_end DATE,
+    ineligible_reason TEXT,  -- JSON
+    
+    -- Claim Details
+    motor_finance_consent BOOLEAN DEFAULT FALSE,
+    irresponsible_lending_consent BOOLEAN DEFAULT FALSE,
+    campaign VARCHAR(100),
+    client_ip VARCHAR(45),
+    
+    -- Status
+    claim_submitted BOOLEAN DEFAULT FALSE,
+    submission_datetime TIMESTAMP,
+    leads_created_count INT DEFAULT 0,
+    pdf_url TEXT,
+    signature_provided BOOLEAN DEFAULT FALSE,
+    
+    -- FLG Fields
+    introducer VARCHAR(50),  -- FA Eligible/FA Non Eligible/FA Unknown
+    cost DECIMAL(10,2),  -- Drawdown amount
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### Claim Lender Matches Table
+```sql
+CREATE TABLE claim_lender_matches (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    claim_id INT,
+    lender_id INT,
+    is_manual BOOLEAN DEFAULT FALSE,
+    is_eligible BOOLEAN DEFAULT TRUE,
+    match_confidence DECIMAL(3,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (claim_id) REFERENCES claims_tracking(id),
+    FOREIGN KEY (lender_id) REFERENCES lenders(id)
+);
+```
+
+### Environment Variables Required
+
 ```bash
-curl https://[your-app].up.railway.app/health
+# Database
+DATABASE_URL=mysql://root:password@yamanote.proxy.rlwy.net:11708/railway
+
+# Date Eligibility
+DATE_START=2007-01-01
+DATE_END=2021-01-28
+
+# Drawdown Values (New)
+DRAWDOWN_ELIGIBLE_1=100.00
+DRAWDOWN_ELIGIBLE_2=75.00
+DRAWDOWN_ELIGIBLE_3=50.00
+
+# Webhook Security (New)
+WEBHOOK_API_KEY=secure_random_key_here
+FLG_STATUS_UPDATE_ENABLED=true
+
+# Existing Variables
+VALIFI_API_URL=
+VALIFI_API_USER=
+VALIFI_API_PASS=
+VALIFI_MIN_ID_SCORE=40
+FLG_API_URL=https://cars.flg360.co.uk/api/APILeadCreateUpdate.php
+FLG_API_KEY=
+FLG_LEADGROUP_ID=57862
+FLG_IRL_LEADGROUP_ID=59549
+webhook_update_form=
+motor-finance-processing_secret=
 ```
-Expected: `{"status": "healthy", "database": "connected", "s3": "configured"}`
 
-### 2. Test CSV Upload
-Create test.csv:
-```csv
-first_name,last_name,dob
-John,Smith,15/03/1990
-Jane,Doe,22/08/1985
+## Security Recommendations
+
+### Webhook Security
+1. **API Key Authentication**: Required in every request
+2. **IP Whitelisting**: Optional - restrict to FLG IP ranges
+3. **Rate Limiting**: Max 100 requests per minute per IP
+4. **Request Signing**: Optional HMAC-SHA256 signature
+5. **HTTPS Only**: Enforce SSL/TLS encryption
+6. **Request Logging**: Full audit trail of all webhook calls
+
+### Example Webhook Security Implementation
+```python
+# Headers validation
+X-API-Key: your_webhook_api_key
+X-Request-Signature: HMAC-SHA256(payload + timestamp + api_key)
+X-Request-Timestamp: 1704816000
 ```
 
-Upload via /batch_admin interface
+## Implementation Priority
 
-### 3. Monitor Processing
-- Check batch status endpoint
-- View Railway logs for processing progress
-- Verify webhook scheduling in worker logs
+### Phase 1: Core Requirements (Immediate)
+1. Add `introducer` and `cost` fields to claims_tracking table
+2. Implement logic for populating `Introducer` field based on eligibility
+3. Implement counter for tracking lead position and `Cost` assignment
+4. Add DRAWDOWN_ELIGIBLE_* environment variables
 
-## SESSION HANDOVER NOTES
+### Phase 2: Webhook Receiver (Next)
+1. Create `/webhook/flg-status-update` endpoint
+2. Implement API key authentication
+3. Create `flg_status_mappings` table
+4. Build status update logic
 
-When ending a session, include:
-1. Current deployment status (all services running/crashed)
-2. Last error encountered
-3. Next steps required
-4. Any pending webhooks or batches
+### Phase 3: Enhanced Security (Follow-up)
+1. Add request signing verification
+2. Implement IP whitelisting
+3. Add rate limiting
+4. Create webhook monitoring dashboard
 
-### Passing the Baton Template:
-"I've updated the BATCH_DEPLOYMENT_CONTEXT.txt with the fixes for [specific issues]. The deployment now [current status]. Please save this updated version to your batch branch. Next session should focus on [recommended next steps]."
+## Testing Checklist
 
-## RAILWAY-SPECIFIC CONFIGURATIONS
+- [ ] Verify database fuzzy matching returns correct lenders
+- [ ] Confirm date eligibility checking works correctly
+- [ ] Test Introducer field population for all scenarios
+- [ ] Verify Cost field increments correctly (1st, 2nd, 3rd+)
+- [ ] Test webhook authentication and security
+- [ ] Confirm status updates apply correct mappings
+- [ ] Validate all fields populate correctly in FLG
+- [ ] Test manual vs API-found lender differentiation
+- [ ] Verify caching doesn't interfere with real-time updates
+- [ ] Confirm audit trail captures all transactions
 
-### Service Settings:
-- **Build Command**: Default (uses Nixpacks)
-- **Start Command**: 
-  - valify: Default (uses Procfile web)
-  - worker: `celery -A app.celery worker --loglevel=info --pool=solo`
-- **Health Check Path**: /health (web service only)
-- **Restart Policy**: ON_FAILURE, max 10 retries
+## Common Modification Scenarios
 
-### Resource Allocation:
-- Web service: 512MB RAM minimum
-- Worker service: 1GB RAM recommended
-- PostgreSQL: Hobby tier sufficient for <10k leads/day
-- Redis: 256MB sufficient for queue management
+### Adding New Lenders
+```sql
+INSERT INTO lenders (name, filename, eligible_or_not, irl_or_not) 
+VALUES ('New Lender Ltd', 'new_lender.png', 'No', 'No');
+```
 
-## FINAL DEPLOYMENT VERIFICATION
+### Updating Status Mappings
+```sql
+INSERT INTO flg_status_mappings 
+(lead_group, status_received, introducer_received, action, new_status) 
+VALUES ('57862', 'DCA', 'FA Eligible', 'change_introducer', 'FA Portfolio');
+```
 
-Once all services are running:
-1. All 4 services show green in Railway dashboard
-2. Logs show successful connections to PostgreSQL and Redis
-3. Admin interface accessible at /batch_admin
-4. Test batch processes successfully
-5. Webhook scheduling confirmed in logs
+### Changing Date Range
+Update Railway environment variables:
+- DATE_START=2008-01-01
+- DATE_END=2022-12-31
 
----
-*This document should be updated after every deployment change or debugging session to maintain continuity for future developers.*
+## Monitoring & Maintenance
+
+### Key Metrics
+- Claims submitted per day
+- Eligible vs ineligible ratio
+- Webhook success rate
+- Average processing time
+- Error rate by component
+
+### Database Maintenance
+- Daily backups of all tables
+- Weekly optimization of indexes
+- Monthly archival of old claims
+- Quarterly review of status mappings
+
+## Support Information
+
+### Common Issues
+1. **Fuzzy matching failures**: Check lender names in database
+2. **Date eligibility errors**: Verify DATE_START/DATE_END format
+3. **Webhook failures**: Check API key and network connectivity
+4. **Cost field errors**: Verify DRAWDOWN_ELIGIBLE_* variables set
+
+### Debug Endpoints
+- `/health` - System health check
+- `/admin/lenders` - View all lenders
+- `/admin/export-claims` - Export claims data
+- `/admin/webhook-logs` - View webhook activity
+
+## Version History
+- **v3.0** (Jan 8, 2025): Database migration, eligibility tracking, webhook receiver
+- **v2.5** (Jan 7, 2025): Date eligibility implementation
+- **v2.0** (Jan 5, 2025): SQLAlchemy integration
+- **v1.0** (Dec 2024): Initial Excel-based system
+
+-----------------------
+
+# FLG Status Update Webhook - Security & Implementation Guide
+
+## Webhook Endpoint Configuration
+
+### Endpoint Details
+- **URL**: `https://yourdomain.com/webhook/flg-status-update`
+- **Method**: POST
+- **Content-Type**: application/json
+- **Authentication**: API Key (required)
+
+## Recommended Webhook Format
+
+### Request Headers
+```http
+POST /webhook/flg-status-update HTTP/1.1
+Host: yourdomain.com
+Content-Type: application/json
+X-API-Key: your_webhook_api_key_here
+X-Request-Timestamp: 1704816000
+X-Request-Signature: sha256_hmac_signature_here (optional)
+```
+
+### Request Body Format
+```json
+{
+  "LeadID": "123456",
+  "LeadGroup": "57862",
+  "Status": "Awaiting claim acknowledgement",
+  "Introducer": "FA Eligible",
+  "data35": "DCA",
+  "timestamp": "2025-01-08T14:30:00Z"
+}
+```
+
+## Security Implementation
+
+### 1. API Key Authentication (Required)
+```python
+# In your Railway environment variables:
+WEBHOOK_API_KEY=generate_secure_random_key_here
+
+# Generate a secure key:
+import secrets
+api_key = secrets.token_urlsafe(32)
+print(f"WEBHOOK_API_KEY={api_key}")
+```
+
+### 2. HMAC Signature Verification (Recommended)
+```python
+# FLG should sign requests like this:
+import hmac
+import hashlib
+import time
+
+def sign_webhook_request(payload, api_key):
+    timestamp = str(int(time.time()))
+    message = f"{json.dumps(payload)}{timestamp}{api_key}"
+    signature = hmac.new(
+        api_key.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    return {
+        'X-API-Key': api_key,
+        'X-Request-Timestamp': timestamp,
+        'X-Request-Signature': signature
+    }
+```
+
+### 3. IP Whitelisting (Optional)
+```bash
+# In Railway environment variables:
+WEBHOOK_IP_WHITELIST=203.0.113.0,203.0.113.1,203.0.113.2
+
+# Or use CIDR notation in code:
+from ipaddress import ip_network, ip_address
+
+ALLOWED_NETWORKS = [
+    ip_network('203.0.113.0/24'),  # FLG IP range
+]
+
+def is_ip_allowed(client_ip):
+    client = ip_address(client_ip)
+    return any(client in network for network in ALLOWED_NETWORKS)
+```
+
+### 4. Rate Limiting (Recommended)
+```python
+# Using Flask-Limiter
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["1000 per hour"]
+)
+
+@app.route("/webhook/flg-status-update", methods=["POST"])
+@limiter.limit("100 per minute")
+def receive_flg_status_update():
+    # ... webhook handler
+```
+
+## Security Levels
+
+### Basic Security (Minimum Required)
+- ✅ HTTPS/TLS encryption
+- ✅ API key in header or body
+- ✅ Request logging
+
+### Standard Security (Recommended)
+- ✅ Everything from Basic
+- ✅ HMAC signature verification
+- ✅ Timestamp validation (±5 minutes)
+- ✅ Rate limiting
+
+### Enhanced Security (Optional)
+- ✅ Everything from Standard
+- ✅ IP whitelisting
+- ✅ Request replay prevention
+- ✅ Encrypted payload body
+- ✅ Certificate pinning
+
+## Testing the Webhook
+
+### 1. Test with cURL
+```bash
+# Basic test
+curl -X POST https://yourdomain.com/webhook/flg-status-update \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_webhook_api_key_here" \
+  -d '{
+    "LeadID": "TEST123",
+    "LeadGroup": "57862",
+    "Status": "Awaiting claim acknowledgement",
+    "Introducer": "FA Eligible",
+    "data35": "DCA"
+  }'
+
+# Test with signature
+TIMESTAMP=$(date +%s)
+PAYLOAD='{"LeadID":"TEST123","LeadGroup":"57862","Status":"Awaiting claim acknowledgement","Introducer":"FA Eligible","data35":"DCA"}'
+SIGNATURE=$(echo -n "${PAYLOAD}${TIMESTAMP}your_webhook_api_key_here" | sha256sum | cut -d' ' -f1)
+
+curl -X POST https://yourdomain.com/webhook/flg-status-update \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_webhook_api_key_here" \
+  -H "X-Request-Timestamp: ${TIMESTAMP}" \
+  -H "X-Request-Signature: ${SIGNATURE}" \
+  -d "${PAYLOAD}"
+```
+
+### 2. Python Test Script
+```python
+import requests
+import json
+import hmac
+import hashlib
+import time
+
+def test_webhook():
+    url = "https://yourdomain.com/webhook/flg-status-update"
+    api_key = "your_webhook_api_key_here"
+    
+    payload = {
+        "LeadID": "TEST123",
+        "LeadGroup": "57862",
+        "Status": "Awaiting claim acknowledgement",
+        "Introducer": "FA Eligible",
+        "data35": "DCA"
+    }
+    
+    # Create signature
+    timestamp = str(int(time.time()))
+    message = f"{json.dumps(payload)}{timestamp}{api_key}"
+    signature = hmac.new(
+        api_key.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Request-Timestamp": timestamp,
+        "X-Request-Signature": signature
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    print(f"Status: {response.status_code}")
+    print(f"Response: {response.json()}")
+
+if __name__ == "__main__":
+    test_webhook()
+```
+
+## Error Responses
+
+### Authentication Failures
+```json
+{
+  "error": "Invalid API key",
+  "code": 401
+}
+```
+
+### Rate Limit Exceeded
+```json
+{
+  "error": "Rate limit exceeded",
+  "code": 429,
+  "retry_after": 60
+}
+```
+
+### Invalid Request
+```json
+{
+  "error": "Missing required field: LeadID",
+  "code": 400
+}
+```
+
+### No Mapping Found
+```json
+{
+  "error": "No mapping found for this combination",
+  "code": 404,
+  "details": {
+    "lead_group": "57862",
+    "status": "Unknown Status",
+    "introducer": "FA Eligible",
+    "data35": "DCA"
+  }
+}
+```
+
+## Monitoring & Alerts
+
+### Key Metrics to Monitor
+1. **Webhook Success Rate**: Track successful vs failed webhook calls
+2. **Response Time**: Monitor average processing time
+3. **Error Rate by Type**: Track authentication failures, mapping misses, etc.
+4. **Volume Trends**: Monitor webhook call volume over time
+
+### Alert Thresholds
+- Success rate < 95% over 5 minutes
+- Response time > 2 seconds (p95)
+- Authentication failures > 10 per minute
+- No mapping found > 20% of requests
+
+### Logging Best Practices
+```python
+# Structured logging for webhook events
+import structlog
+
+logger = structlog.get_logger()
+
+logger.info("webhook_received",
+    lead_id=lead_id,
+    lead_group=lead_group,
+    status=status,
+    introducer=introducer,
+    data35=data35,
+    ip_address=client_ip,
+    success=True,
+    action_taken="change_introducer",
+    duration_ms=processing_time
+)
+```
+
+## Railway Deployment Notes
+
+### Environment Variables to Set
+```bash
+# Required
+WEBHOOK_API_KEY=<generate secure 32+ character key>
+FLG_STATUS_UPDATE_ENABLED=true
+
+# Recommended
+WEBHOOK_IP_WHITELIST=<comma-separated FLG IPs>
+
+# For monitoring
+WEBHOOK_LOG_LEVEL=INFO
+WEBHOOK_ALERT_EMAIL=admin@yourdomain.com
+```
+
+### Health Check Endpoint
+```python
+@app.route("/webhook/health", methods=["GET"])
+def webhook_health():
+    """Check webhook system health"""
+    session = db_session()
+    
+    # Check database connectivity
+    try:
+        mapping_count = session.query(FLGStatusMapping).count()
+        recent_logs = session.query(WebhookLog).filter(
+            WebhookLog.created_at >= datetime.utcnow() - timedelta(minutes=5)
+        ).count()
+        
+        return jsonify({
+            "status": "healthy",
+            "mappings_configured": mapping_count,
+            "recent_webhooks": recent_logs,
+            "webhook_enabled": Config.FLG_STATUS_UPDATE_ENABLED
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e)
+        }), 503
+    finally:
+        session.close()
+```
+
+## FLG Integration Requirements
+
+Please provide FLG with:
+
+1. **Webhook URL**: `https://yourdomain.com/webhook/flg-status-update`
+2. **API Key**: The value you set for `WEBHOOK_API_KEY`
+3. **Expected Format**: JSON POST request as specified above
+4. **Required Fields**: LeadID, LeadGroup, Status, Introducer, data35
+5. **Response Format**: JSON with success/error status
+6. **Rate Limits**: 100 requests per minute per IP
+7. **Timeout**: 30 seconds maximum response time
+
+## Support & Troubleshooting
+
+### Common Issues
+
+1. **401 Unauthorized**
+   - Verify API key is correct
+   - Check header name is exactly `X-API-Key`
+   - Ensure no extra whitespace in key
+
+2. **403 Forbidden**
+   - Check IP whitelist if configured
+   - Verify SSL certificate is valid
+
+3. **404 No Mapping**
+   - Review status mappings in database
+   - Add missing combination via admin interface
+
+4. **500 Internal Error**
+   - Check application logs
+   - Verify database connectivity
+   - Check FLG API credentials
+
+### Debug Mode
+```python
+# Enable detailed logging in development
+if Config.DEBUG:
+    @app.before_request
+    def log_webhook_request():
+        if request.path == "/webhook/flg-status-update":
+            logger.debug("Webhook request",
+                headers=dict(request.headers),
+                body=request.get_json(),
+                ip=get_client_ip()
+            )
+```
+
+## Contact Information
+
+For webhook integration support:
+- **Technical Contact**: [Your technical contact]
+- **Email**: [Support email]
+- **Documentation**: [Link to this guide]
+- **Status Page**: [System status URL]
