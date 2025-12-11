@@ -625,6 +625,20 @@
                 const uploadResult = await uploadResp.json();
                 const claimId = uploadResult.claim_id || "?";
                 const leadIds = uploadResult.lead_ids || [];
+                const valifiJsonReference = uploadResult.valifi_json_reference || "";
+                
+                // Parse valifi reference to extract S3 URL and CMC info
+                let creditReportS3Url = "";
+                let cmcSearchFound = "";
+                try {
+                    if (valifiJsonReference) {
+                        const parsed = JSON.parse(valifiJsonReference);
+                        creditReportS3Url = parsed.s3_url || "";
+                        cmcSearchFound = parsed.cmc_search_found || false;
+                    }
+                } catch (e) {
+                    // If not valid JSON, leave empty
+                }
                 
                 log(`[${idxLabel}] ✓ Success! Claim ID: ${claimId}, Leads: ${leadIds.length}`, "success");
                 
@@ -689,6 +703,8 @@
                         submission_datetime: formatDateTimeDDMMYYYY(batchTimestamp),
                         leads_created_count: leadIds.length,
                         pdf_url: pdfUrl,
+                        credit_report_s3_url: creditReportS3Url,
+                        cmc_in_credit_report: cmcSearchFound ? "Yes" : "No",
                         signature_provided: false,
                         created_at: formatDateTimeDDMMYYYY(batchTimestamp),
                         claim_status: "pending",
@@ -755,7 +771,7 @@
                         flg_data9_account_number: isDCA ? lead.account_number : "",
                         flg_data12_start_date: isDCA ? formatDateDDMMYYYY(lead.start_date) : "",
                         flg_data14_prev_addresses: isDCA ? prevAddressesFormatted : "",
-                        flg_data32_valifi_json_url: isDCA ? "[S3 URL]" : "",
+                        flg_data32_valifi_json_url: isDCA ? valifiJsonReference : "",
                         flg_data34_account_json: isDCA ? (lead.lender_data_json || "") : "",
                         flg_data47_cmc_info: "",
                         
@@ -763,7 +779,7 @@
                         flg_data1_lender_name: !isDCA ? lead.lender_name : "",
                         flg_data5_account_number_irl: !isDCA ? lead.account_number : "",
                         flg_data33_monthly_payment: !isDCA ? lead.monthly_payment : "",
-                        flg_data36_valifi_json_url: !isDCA ? "[S3 URL]" : "",
+                        flg_data36_valifi_json_url: !isDCA ? valifiJsonReference : "",
                         flg_data37_start_date: !isDCA ? formatDateDDMMYYYY(lead.start_date) : "",
                         flg_data38_address2: !isDCA ? "[address 2]" : "",
                         flg_data39_address3_onwards: !isDCA ? "[address 3+]" : "",
