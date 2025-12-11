@@ -1827,9 +1827,8 @@ lenders_service = LendersService()
 # === SECTION SEPARATOR ===
 
 def process_flg_leads_background(claim_id, summary, accounts, found_lenders, additional_lenders):
-
     """
-    Backgroprocess_flgund function to process FLG lead creation.
+    Background function to process FLG lead creation.
     Called by either Celery worker or directly in upload_summary.
     
     Args:
@@ -1842,7 +1841,7 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
     Returns:
         dict: Results with lead_ids list, successful_leads count, failed_leads count
     """
-    logger.info(f"[BG-{claim_id}] ▶ Starting background FLG processing")
+    logger.info(f"[BG-{claim_id}] Starting background FLG processing")
     session_db = None
     
     try:
@@ -1856,7 +1855,12 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                 valifi_response = claim.valifi_response
             session_db.close()
             session_db = None
-        
+
+        # Check if FLG submission should be skipped (for batch imports)
+        skip_flg = summary.get("skipFLG", False) or summary.get("skip_flg", False)
+        if skip_flg:
+            logger.info(f"[BG-{claim_id}] skipFLG=true - Will generate fake Lead IDs without FLG API calls")
+
         # ===================================================================
         # PREPARE SHARED DATA FOR FLG
         # ===================================================================
@@ -1867,7 +1871,6 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
         client_ip = summary.get("clientIp", "")
         current_datetime = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-        
         # DOB formatting
         dob_raw = summary.get("dateOfBirth", "")
         dob_formatted = ""
@@ -1896,14 +1899,13 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
         
         # Valifi JSON for data32
         valifi_json = ""
+        cmc_detected = False
         full_credit_report = summary.get("valifiResponse", {})
         if full_credit_report:
             valifi_json, cmc_detected = store_valifi_json_to_s3(full_credit_report, claim_id, None)
         
         # Base lead data
         # Construct combined address for FLG from individual address components
-        # Frontend sends: building_number, building_name, flat, street
-        # FLG expects: "address" field like "11 SKERRITT WAY"
         address_parts = []
         if summary.get("building_number"):
             address_parts.append(summary.get("building_number"))
@@ -1961,7 +1963,6 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
         logger.info(f"[BG-{claim_id}] Pre-sorting {len(accounts)} accounts by DCA cost priority...")
         
         # Look up each lender and add their dca_cost_order
-
         for account in accounts:
             lender_name = account.get("displayName") or account.get("lenderName", "Unknown Lender")
             
@@ -2064,7 +2065,6 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                     start_date_formatted = start_date.split("T")[0]
                 else:
                     start_date_formatted = start_date
-            
 
             # Find lender in DB using fuzzy matching with configurable threshold
             matched_lender = lenders_service.get_by_name(lender_name, threshold=Config.LENDER_FUZZY_MATCH_THRESHOLD / 100.0)
@@ -2076,14 +2076,14 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                 fuzzy_match_score = int(matched_lender.get('score', 0) * 100)  # Convert to percentage
                 db_lender = session_db.query(Lender).filter_by(id=matched_lender['id']).first()
                 match_method = "fuzzy"
-                logger.info(f"[BG-{claim_id}] 🎯 Fuzzy match: '{lender_name}' → '{db_lender.name}' (score: {fuzzy_match_score}%)")
+                logger.info(f"[BG-{claim_id}] Fuzzy match: '{lender_name}' -> '{db_lender.name}' (score: {fuzzy_match_score}%)")
             else:
                 # Try exact match as fallback
                 db_lender = session_db.query(Lender).filter_by(name=lender_name).first()
                 if db_lender:
                     fuzzy_match_score = 100
                     match_method = "exact"
-                    logger.info(f"[BG-{claim_id}] 🎯 Exact match: '{lender_name}' → '{db_lender.name}' (score: 100%)")
+                    logger.info(f"[BG-{claim_id}] Exact match: '{lender_name}' -> '{db_lender.name}' (score: 100%)")
             
             # Get the FLG lender name to send to FLG
             flg_lender_name = lender_name  # Default to original name
@@ -2094,16 +2094,16 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                 flg_lender_name = db_lender.flg_lender_name or db_lender.name or lender_name
                 lender_eligible_flag = db_lender.eligible_or_not or "Yes"
                 lender_irl_flag = db_lender.irl_or_not or "Yes"
-                logger.info(f"[BG-{claim_id}] ✅ Using DB lender '{db_lender.name}' (ID: {db_lender.id}, Eligible: {lender_eligible_flag}, IRL: {lender_irl_flag})")
+                logger.info(f"[BG-{claim_id}] Using DB lender '{db_lender.name}' (ID: {db_lender.id}, Eligible: {lender_eligible_flag}, IRL: {lender_irl_flag})")
             else:
                 # No match - still process but with conservative settings
                 fuzzy_match_score = 0
                 match_method = "none"
                 lender_eligible_flag = "Unknown"  # Will trigger "FA Unknown" reference
                 lender_irl_flag = "No"  # Will skip IRL lead creation
-                logger.warning(f"[BG-{claim_id}] ⚠️  No match for '{lender_name}' (score < {Config.LENDER_FUZZY_MATCH_THRESHOLD}%) - Processing as UNKNOWN lender")
-                logger.info(f"[BG-{claim_id}]    → DCA Reference will be: FA Unknown")
-                logger.info(f"[BG-{claim_id}]    → IRL Lead: Will NOT be created")
+                logger.warning(f"[BG-{claim_id}] No match for '{lender_name}' (score < {Config.LENDER_FUZZY_MATCH_THRESHOLD}%) - Processing as UNKNOWN lender")
+                logger.info(f"[BG-{claim_id}]    -> DCA Reference will be: FA Unknown")
+                logger.info(f"[BG-{claim_id}]    -> IRL Lead: Will NOT be created")
                 
                 # Track in Category 3 for reporting but DON'T skip processing
                 category_3_accounts.append({
@@ -2139,7 +2139,6 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                 logger.error(f"[BG-{claim_id}] Failed to read existing_rep_consent from DB: {e}")
                 existing_rep_consent = summary.get("existingRepresentationConsent")
                 logger.info(f"[BG-{claim_id}] Fallback to summary dict: {existing_rep_consent}")
-
 
             # Check if date is in special range
             special_date_range = False
@@ -2188,15 +2187,14 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
             if special_date_range:
                 irl_reference_value = "IRL Suspense"
             elif lender_irl_flag == "Yes" and lender_eligible_flag == "Yes":
-                # IRL=Yes AND DCA=Yes → Verified IRL Portfolio
+                # IRL=Yes AND DCA=Yes -> Verified IRL Portfolio
                 irl_reference_value = "Verified IRL Portfolio"
             elif lender_irl_flag == "Yes" and lender_eligible_flag != "Yes":
-                # IRL=Yes AND DCA=No → IRL Suspense
+                # IRL=Yes AND DCA=No -> IRL Suspense
                 irl_reference_value = "IRL Suspense"
             else:
-                # IRL=No → IRL Suspense (but won't create lead anyway)
+                # IRL=No -> IRL Suspense (but won't create lead anyway)
                 irl_reference_value = "IRL Suspense"
-                        
 
             # === DCA LEAD CREATION ===
             if (summary.get("motorFinanceConsent") or summary.get("motor_finance_consent")) and not tlw_selected:
@@ -2269,76 +2267,112 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                     except Exception as e:
                         logger.warning(f"[BG-{claim_id}] Could not extract account JSON for {account_number}: {e}")
                 
-                # Normal FLG API call (UNINDENTED - same level as try-except above)
-                dca_lead_data = {
-                    **base_lead_data,
-                    "leadgroup": Config.FLG_LEADGROUP_ID,
-                    "source": "Belmondclaims.com",
-                    "reference": dca_reference_value,
-                    "cost": str(cost_value) if cost_value is not None else "",
-                    "data2": flg_lender_name,
-                    "data5": outstanding_balance,
-                    "data9": account_number,
-                    "data12": start_date_formatted,
-                    "data14": addresses_for_data14,
-                    "data32": valifi_json,
-                    "data34": account_json_data if account_json_data else "",  # NEW: Add account JSON
-                    "data47": data47_content
-                }
-                
-                try:
-                    xml_payload = flg_client.build_lead_xml(dca_lead_data)
-                    response = flg_client.send_lead(xml_payload)
+                # Check if we should skip FLG API call (for batch imports)
+                if skip_flg:
+                    # Generate fake lead ID for batch processing
+                    lead_id = f"{claim_id}_DCA_{total_dca_count}"
+                    logger.info(f"[BG-{claim_id}] skipFLG=true - Generated fake Lead ID: {lead_id} (no FLG API call)")
                     
-                    if response.status_code == 200:
-                        root = ET.fromstring(response.text)
-                        status = root.findtext("status")
-                        if status == "0":
-                            lead_id = flg_client.parse_lead_id(response.text)
-                            if lead_id:
-                                all_lead_ids.append({
-                                    "lead_id": lead_id,
-                                    "lead_group": Config.FLG_LEADGROUP_ID,
-                                    "lead_type": "DCA",
-                                    "reference": dca_reference_value,
-                                    "cost": str(cost_value),
-                                    "lender_name": flg_sent_name,
-                                    "account_number": account_number,
-                                    "start_date": start_date_formatted,
-                                    "outstanding_balance": outstanding_balance,
-                                    "monthly_payment": monthly_payment,
-                                    "lender_data": account,
-                                    "is_eligible": is_date_eligible,
-                                    "ineligible_reason": eligibility_reason if not is_date_eligible else None,
-                                    "is_manual": is_manual,
-                                    "within_date_range": is_date_eligible if start_date else True,
-                                    "lender_data_json": account_json_data,
-                                    # Enhanced tracking fields
-                                    "valifi_original_name": valifi_original_name,
-                                    "match_info": {
-                                        "lender_id": matched_db_lender_id,
-                                        "lender_name": matched_db_lender_name,
-                                        "fortress_name": fortress_name_value,
-                                        "flg_lender_name": flg_sent_name,
-                                        "fuzzy_score": fuzzy_score_value,
-                                        "match_type": match_type_value,
-                                        "matched_via": matched_via_value,
-                                        "matching_column_value": matched_via_value
-                                    }
-                                })
-                                successful_leads += 1
-                                logger.info(f"[BG-{claim_id}] ✓ DCA Lead created: {lead_id}")
+                    all_lead_ids.append({
+                        "lead_id": lead_id,
+                        "lead_group": Config.FLG_LEADGROUP_ID,
+                        "lead_type": "DCA",
+                        "reference": dca_reference_value,
+                        "cost": str(cost_value),
+                        "lender_name": flg_sent_name,
+                        "account_number": account_number,
+                        "start_date": start_date_formatted,
+                        "outstanding_balance": outstanding_balance,
+                        "monthly_payment": monthly_payment,
+                        "lender_data": account,
+                        "is_eligible": is_date_eligible,
+                        "ineligible_reason": eligibility_reason if not is_date_eligible else None,
+                        "is_manual": is_manual,
+                        "within_date_range": is_date_eligible if start_date else True,
+                        "lender_data_json": account_json_data,
+                        "valifi_original_name": valifi_original_name,
+                        "match_info": {
+                            "lender_id": matched_db_lender_id,
+                            "lender_name": matched_db_lender_name,
+                            "fortress_name": fortress_name_value,
+                            "flg_lender_name": flg_sent_name,
+                            "fuzzy_score": fuzzy_score_value,
+                            "match_type": match_type_value,
+                            "matched_via": matched_via_value,
+                            "matching_column_value": matched_via_value
+                        }
+                    })
+                    successful_leads += 1
+                else:
+                    # Normal FLG API call
+                    dca_lead_data = {
+                        **base_lead_data,
+                        "leadgroup": Config.FLG_LEADGROUP_ID,
+                        "source": "Belmondclaims.com",
+                        "reference": dca_reference_value,
+                        "cost": str(cost_value) if cost_value is not None else "",
+                        "data2": flg_lender_name,
+                        "data5": outstanding_balance,
+                        "data9": account_number,
+                        "data12": start_date_formatted,
+                        "data14": addresses_for_data14,
+                        "data32": valifi_json,
+                        "data34": account_json_data if account_json_data else "",
+                        "data47": data47_content
+                    }
+                    
+                    try:
+                        xml_payload = flg_client.build_lead_xml(dca_lead_data)
+                        response = flg_client.send_lead(xml_payload)
+                        
+                        if response.status_code == 200:
+                            root = ET.fromstring(response.text)
+                            status = root.findtext("status")
+                            if status == "0":
+                                lead_id = flg_client.parse_lead_id(response.text)
+                                if lead_id:
+                                    all_lead_ids.append({
+                                        "lead_id": lead_id,
+                                        "lead_group": Config.FLG_LEADGROUP_ID,
+                                        "lead_type": "DCA",
+                                        "reference": dca_reference_value,
+                                        "cost": str(cost_value),
+                                        "lender_name": flg_sent_name,
+                                        "account_number": account_number,
+                                        "start_date": start_date_formatted,
+                                        "outstanding_balance": outstanding_balance,
+                                        "monthly_payment": monthly_payment,
+                                        "lender_data": account,
+                                        "is_eligible": is_date_eligible,
+                                        "ineligible_reason": eligibility_reason if not is_date_eligible else None,
+                                        "is_manual": is_manual,
+                                        "within_date_range": is_date_eligible if start_date else True,
+                                        "lender_data_json": account_json_data,
+                                        "valifi_original_name": valifi_original_name,
+                                        "match_info": {
+                                            "lender_id": matched_db_lender_id,
+                                            "lender_name": matched_db_lender_name,
+                                            "fortress_name": fortress_name_value,
+                                            "flg_lender_name": flg_sent_name,
+                                            "fuzzy_score": fuzzy_score_value,
+                                            "match_type": match_type_value,
+                                            "matched_via": matched_via_value,
+                                            "matching_column_value": matched_via_value
+                                        }
+                                    })
+                                    successful_leads += 1
+                                    logger.info(f"[BG-{claim_id}] DCA Lead created: {lead_id}")
+                            else:
+                                error_msg = root.findtext("message", "Unknown error")
+                                logger.error(f"[BG-{claim_id}] DCA Lead creation failed: {error_msg}")
+                                failed_leads += 1
                         else:
-                            error_msg = root.findtext("message", "Unknown error")
-                            logger.error(f"[BG-{claim_id}] ✗ DCA Lead creation failed: {error_msg}")
+                            logger.error(f"[BG-{claim_id}] DCA Lead HTTP error: {response.status_code}")
                             failed_leads += 1
-                    else:
-                        logger.error(f"[BG-{claim_id}] ✗ DCA Lead HTTP error: {response.status_code}")
-                        failed_leads += 1
 
-                except Exception as e:
-                    logger.error(f"[BG-{claim_id}] ✗ Failed to create DCA lead for {lender_name}: {e}")
-                    failed_leads += 1
+                    except Exception as e:
+                        logger.error(f"[BG-{claim_id}] Failed to create DCA lead for {lender_name}: {e}")
+                        failed_leads += 1
 
             # === IRL LEAD CREATION ===
             if (summary.get("irresponsibleLendingConsent") or summary.get("irresponsible_lending_consent")) and lender_irl_flag == "Yes":
@@ -2358,79 +2392,115 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                     except Exception as e:
                         logger.warning(f"[BG-{claim_id}] Could not extract account JSON for {account_number}: {e}")
                 
-                # Normal FLG API call (UNINDENTED - same level as try-except above)
-                irl_lead_data = {
-                    **base_lead_data,
-                    "leadgroup": Config.FLG_IRL_LEADGROUP_ID,
-                    "reference": irl_reference_value,
-                    "data1": flg_lender_name,
-                    "data5": account_number,
-                    "data36": valifi_json,
-                    "data33": monthly_payment,
-                    "data37": start_date_formatted,
-                    "data38": address_2_for_data38,
-                    "data39": address_3_onwards_for_data39,
-                    "data48": account_json_data if account_json_data else pdf_url  # UPDATED: Account JSON or PDF URL
-                }
-                
-                # Remove data31 (PDF) as we use data48 for IRL
-                if "data31" in irl_lead_data:
-                    del irl_lead_data["data31"]
-                
-                try:
-                    xml_payload = flg_client.build_lead_xml(irl_lead_data)
-                    response = flg_client.send_lead(xml_payload)
+                # Check if we should skip FLG API call (for batch imports)
+                if skip_flg:
+                    # Count IRL leads for numbering
+                    irl_lead_count = len([lid for lid in all_lead_ids if lid["lead_type"] == "IRL"]) + 1
+                    lead_id = f"{claim_id}_IRL_{irl_lead_count}"
+                    logger.info(f"[BG-{claim_id}] skipFLG=true - Generated fake Lead ID: {lead_id} (no FLG API call)")
                     
-
-                    if response.status_code == 200:
-                        root = ET.fromstring(response.text)
-                        status = root.findtext("status")
-                        if status == "0":
-                            lead_id = flg_client.parse_lead_id(response.text)
-                            if lead_id:
-                                all_lead_ids.append({
-                                    "lead_id": lead_id,
-                                    "lead_group": Config.FLG_IRL_LEADGROUP_ID,
-                                    "lead_type": "IRL",
-                                    "reference": irl_reference_value,
-                                    "cost": "",
-                                    "lender_name": flg_sent_name,
-                                    "account_number": account_number,
-                                    "start_date": start_date_formatted,
-                                    "outstanding_balance": outstanding_balance,
-                                    "monthly_payment": monthly_payment,
-                                    "lender_data": account,
-                                    "is_eligible": is_date_eligible,
-                                    "ineligible_reason": eligibility_reason if not is_date_eligible else None,
-                                    "is_manual": is_manual,
-                                    "within_date_range": is_date_eligible if start_date else True,
-                                    "lender_data_json": account_json_data,
-                                    # Enhanced tracking fields
-                                    "valifi_original_name": valifi_original_name,
-                                    "match_info": {
-                                        "lender_id": matched_db_lender_id,
-                                        "lender_name": matched_db_lender_name,
-                                        "fortress_name": fortress_name_value,
-                                        "flg_lender_name": flg_sent_name,
-                                        "fuzzy_score": fuzzy_score_value,
-                                        "match_type": match_type_value,
-                                        "matched_via": matched_via_value,
-                                        "matching_column_value": matched_via_value
-                                    }
-                                })
-                                successful_leads += 1
-                                logger.info(f"[BG-{claim_id}] ✓ IRL Lead created: {lead_id}")
+                    all_lead_ids.append({
+                        "lead_id": lead_id,
+                        "lead_group": Config.FLG_IRL_LEADGROUP_ID,
+                        "lead_type": "IRL",
+                        "reference": irl_reference_value,
+                        "cost": "",
+                        "lender_name": flg_sent_name,
+                        "account_number": account_number,
+                        "start_date": start_date_formatted,
+                        "outstanding_balance": outstanding_balance,
+                        "monthly_payment": monthly_payment,
+                        "lender_data": account,
+                        "is_eligible": is_date_eligible,
+                        "ineligible_reason": eligibility_reason if not is_date_eligible else None,
+                        "is_manual": is_manual,
+                        "within_date_range": is_date_eligible if start_date else True,
+                        "lender_data_json": account_json_data,
+                        "valifi_original_name": valifi_original_name,
+                        "match_info": {
+                            "lender_id": matched_db_lender_id,
+                            "lender_name": matched_db_lender_name,
+                            "fortress_name": fortress_name_value,
+                            "flg_lender_name": flg_sent_name,
+                            "fuzzy_score": fuzzy_score_value,
+                            "match_type": match_type_value,
+                            "matched_via": matched_via_value,
+                            "matching_column_value": matched_via_value
+                        }
+                    })
+                    successful_leads += 1
+                else:
+                    # Normal FLG API call
+                    irl_lead_data = {
+                        **base_lead_data,
+                        "leadgroup": Config.FLG_IRL_LEADGROUP_ID,
+                        "reference": irl_reference_value,
+                        "data1": flg_lender_name,
+                        "data5": account_number,
+                        "data36": valifi_json,
+                        "data33": monthly_payment,
+                        "data37": start_date_formatted,
+                        "data38": address_2_for_data38,
+                        "data39": address_3_onwards_for_data39,
+                        "data48": account_json_data if account_json_data else pdf_url
+                    }
+                    
+                    # Remove data31 (PDF) as we use data48 for IRL
+                    if "data31" in irl_lead_data:
+                        del irl_lead_data["data31"]
+                    
+                    try:
+                        xml_payload = flg_client.build_lead_xml(irl_lead_data)
+                        response = flg_client.send_lead(xml_payload)
+                        
+                        if response.status_code == 200:
+                            root = ET.fromstring(response.text)
+                            status = root.findtext("status")
+                            if status == "0":
+                                lead_id = flg_client.parse_lead_id(response.text)
+                                if lead_id:
+                                    all_lead_ids.append({
+                                        "lead_id": lead_id,
+                                        "lead_group": Config.FLG_IRL_LEADGROUP_ID,
+                                        "lead_type": "IRL",
+                                        "reference": irl_reference_value,
+                                        "cost": "",
+                                        "lender_name": flg_sent_name,
+                                        "account_number": account_number,
+                                        "start_date": start_date_formatted,
+                                        "outstanding_balance": outstanding_balance,
+                                        "monthly_payment": monthly_payment,
+                                        "lender_data": account,
+                                        "is_eligible": is_date_eligible,
+                                        "ineligible_reason": eligibility_reason if not is_date_eligible else None,
+                                        "is_manual": is_manual,
+                                        "within_date_range": is_date_eligible if start_date else True,
+                                        "lender_data_json": account_json_data,
+                                        "valifi_original_name": valifi_original_name,
+                                        "match_info": {
+                                            "lender_id": matched_db_lender_id,
+                                            "lender_name": matched_db_lender_name,
+                                            "fortress_name": fortress_name_value,
+                                            "flg_lender_name": flg_sent_name,
+                                            "fuzzy_score": fuzzy_score_value,
+                                            "match_type": match_type_value,
+                                            "matched_via": matched_via_value,
+                                            "matching_column_value": matched_via_value
+                                        }
+                                    })
+                                    successful_leads += 1
+                                    logger.info(f"[BG-{claim_id}] IRL Lead created: {lead_id}")
+                            else:
+                                error_msg = root.findtext("message", "Unknown error")
+                                logger.error(f"[BG-{claim_id}] IRL Lead creation failed: {error_msg}")
+                                failed_leads += 1
                         else:
-                            error_msg = root.findtext("message", "Unknown error")
-                            logger.error(f"[BG-{claim_id}] ✗ IRL Lead creation failed: {error_msg}")
+                            logger.error(f"[BG-{claim_id}] IRL Lead HTTP error: {response.status_code}")
                             failed_leads += 1
-                    else:
-                        logger.error(f"[BG-{claim_id}] ✗ IRL Lead HTTP error: {response.status_code}")
-                        failed_leads += 1
 
-                except Exception as e:
-                    logger.error(f"[BG-{claim_id}] ✗ Failed to create IRL lead for {lender_name}: {e}")
-                    failed_leads += 1
+                    except Exception as e:
+                        logger.error(f"[BG-{claim_id}] Failed to create IRL lead for {lender_name}: {e}")
+                        failed_leads += 1
 
             # Track Category 1 account
             category_1_accounts.append({
@@ -2447,12 +2517,14 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
         # Log summary
         logger.info(f"[BG-{claim_id}] Lead creation complete: {successful_leads} successful, {failed_leads} failed")
         
-        # Send webhook
-        if all_lead_ids:
+        # Send webhook (skip if using fake lead IDs)
+        if all_lead_ids and not skip_flg:
             try:
                 send_lead_ids_to_webhook(all_lead_ids)
             except Exception as e:
                 logger.warning(f"[BG-{claim_id}] Webhook send failed: {e}")
+        elif skip_flg:
+            logger.info(f"[BG-{claim_id}] skipFLG=true - Skipping webhook (fake lead IDs)")
         
         # Update claim with results
         session_db = db_session()
@@ -2468,7 +2540,7 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
                 populate_lead_ids_tracking(claim_id, all_lead_ids)
             
             session_db.commit()
-            logger.info(f"[BG-{claim_id}] ✓ Claim updated with lead results")
+            logger.info(f"[BG-{claim_id}] Claim updated with lead results")
         
         session_db.close()
         
@@ -2485,7 +2557,7 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
         }
         
     except Exception as e:
-        logger.error(f"[BG-{claim_id}] ✗ Background FLG processing failed: {e}")
+        logger.error(f"[BG-{claim_id}] Background FLG processing failed: {e}")
         import traceback
         logger.error(traceback.format_exc())
         if session_db:
@@ -2503,7 +2575,7 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
             "failed_leads": 0,
             "error": str(e)
         }
-
+    
 # === SECTION SEPARATOR ===
 # Database Sequence Health Check
 # === SECTION SEPARATOR ===
