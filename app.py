@@ -233,12 +233,16 @@ def add_security_headers(response):
     
     # CORS handling for approved origins
     origin = request.headers.get('Origin')
-    if origin in CORS_ALLOWED_ORIGINS:
+    if '*' in CORS_ALLOWED_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-API-Key, X-Request-Timestamp, X-Request-Signature'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    elif origin in CORS_ALLOWED_ORIGINS:
         response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-API-Key, X-Request-Timestamp, X-Request-Signature'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
-    
+
     # More restrictive CSP with necessary exceptions for analytics and fonts
     csp_directives = [
         "default-src 'self'",
