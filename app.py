@@ -3887,22 +3887,36 @@ def upload_summary():
                 # Fallback: process directly if Celery fails
                 logger.warning(f"Falling back to direct processing for claim {claim_id}")
                 process_flg_leads_background(claim_id, summary, accounts, found_lenders, additional_lenders)
+
+
+
         else:
             # Process directly (synchronous - will block for ~30 seconds)
             logger.info(f"Celery disabled - processing claim {claim_id} synchronously")
-            process_flg_leads_background(claim_id, summary, accounts, found_lenders, additional_lenders)
+            flg_result = process_flg_leads_background(claim_id, summary, accounts, found_lenders, additional_lenders)
         
         # Return success immediately (FLG processing happens in background)
-        logger.info(f"✓ Claim {claim_id} submitted successfully. User will see thank you page.")
+        logger.info(f"Claim {claim_id} submitted successfully. User will see thank you page.")
         
-        return jsonify({
+        # Build response
+        response_data = {
             "success": True,
             "claim_id": claim_id,
             "message": "Claim submitted successfully",
             "lenders_found": len(found_lenders),
             "lenders_manual": len(additional_lenders),
             "processing_mode": "async" if USE_CELERY else "sync"
-        }), 200
+        }
+        
+        # Include lead_ids if processed synchronously (for batch processing)
+        if not USE_CELERY and flg_result:
+            response_data["lead_ids"] = flg_result.get("all_lead_ids", [])
+            response_data["successful_leads"] = flg_result.get("successful_leads", 0)
+            response_data["failed_leads"] = flg_result.get("failed_leads", 0)
+        
+        return jsonify(response_data), 200
+    
+    
 
     except Exception as e:
         logger.error(f"Error in upload_summary: {e}")
