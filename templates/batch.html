@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Valifi Batch Runner (Mirror)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PapaParse for CSV parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -47,15 +47,8 @@
             background: #fafbff;
         }
         .card h2 { font-size: 16px; margin: 0 0 12px; }
-        label {
-            display: block;
-            font-size: 12px;
-            margin-bottom: 4px;
-            color: #444;
-        }
-        input[type="text"],
-        input[type="password"],
-        input[type="number"] {
+        label { display: block; font-size: 12px; margin-bottom: 4px; color: #444; }
+        input[type="text"], input[type="number"] {
             width: 100%;
             padding: 8px 10px;
             border-radius: 8px;
@@ -63,17 +56,13 @@
             font-size: 13px;
             outline: none;
         }
-        input:focus {
-            border-color: #4c6fff;
-            box-shadow: 0 0 0 1px rgba(76,111,255,0.12);
-        }
+        input:focus { border-color: #4c6fff; }
         .field { margin-bottom: 10px; }
         .field-inline { display: flex; gap: 8px; }
         .field-inline > div { flex: 1; }
         .file-label {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             padding: 8px 14px;
             background: #4c6fff;
             color: #fff;
@@ -81,7 +70,6 @@
             cursor: pointer;
             font-size: 13px;
             font-weight: 500;
-            border: none;
             margin-bottom: 8px;
         }
         #csvFile { display: none; }
@@ -97,8 +85,8 @@
             margin-bottom: 8px;
         }
         button.primary { background: #1ea672; color: #fff; }
-        button.secondary { background: #e4e7f5; color: #222; }
         button.danger { background: #dc2626; color: #fff; }
+        button.excel { background: #217346; color: #fff; }
         button.action:disabled { opacity: 0.4; cursor: default; }
         #log {
             background: #050816;
@@ -112,25 +100,14 @@
             margin-top: 6px;
             white-space: pre-wrap;
         }
-        #previewTable, #resultsTable {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-        #previewTable th, #previewTable td,
-        #resultsTable th, #resultsTable td {
+        #previewTable, #resultsTable { width: 100%; border-collapse: collapse; font-size: 11px; }
+        #previewTable th, #previewTable td, #resultsTable th, #resultsTable td {
             border: 1px solid #e2e4f0;
             padding: 4px 6px;
             text-align: left;
         }
-        #previewTable th, #resultsTable th {
-            background: #f4f6ff;
-            font-weight: 600;
-        }
-        .preview-container {
-            max-height: 250px;
-            overflow: auto;
-        }
+        #previewTable th, #resultsTable th { background: #f4f6ff; font-weight: 600; }
+        .preview-container { max-height: 250px; overflow: auto; }
         .small { font-size: 11px; color: #666; }
         .badge {
             display: inline-block;
@@ -143,82 +120,66 @@
         .badge-ok { border-color: #16a34a; color: #166534; background: #dcfce7; }
         .badge-error { border-color: #dc2626; color: #7f1d1d; background: #fee2e2; }
         .badge-skip { border-color: #ca8a04; color: #854d0e; background: #fef9c3; }
-        code {
-            background: #f1f5f9;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
+        code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔒 Valifi Batch Runner (Mirror)</h1>
+        <h1>Valifi Batch Runner (Mirror)</h1>
         <p class="subtitle">
-            Private CSV → <code>/query</code> → <code>/upload_summary</code> tool for your mirror app.<br>
+            Private CSV to <code>/query</code> to <code>/upload_summary</code> tool.<br>
             Uses <code>skipFLG: true</code> to generate fake Lead IDs without hitting FLG API.
         </p>
         
         <div class="warning-box">
-            <strong>⚠️ Mirror Mode:</strong> This tool creates ClaimTracking records with fake Lead IDs. 
-            No actual FLG API calls will be made. Data will be stored in your database for later processing.
+            <strong>Mirror Mode:</strong> Creates ClaimTracking records with fake Lead IDs. 
+            No actual FLG API calls. Data stored in database for later processing.
         </div>
 
         <div class="grid">
-            <!-- Left: Config + Upload -->
             <div class="card">
                 <h2>1. Configuration</h2>
                 <div class="field">
-                    <label for="baseUrl">Backend Base URL (mirror app)</label>
-                    <input id="baseUrl" type="text" value="https://valifi-batch.up.railway.app" placeholder="https://your-mirror-app.railway.app">
+                    <label for="baseUrl">Backend Base URL</label>
+                    <input id="baseUrl" type="text" value="https://valifi-batch.up.railway.app">
                 </div>
                 <div class="field-inline">
                     <div>
-                        <label for="delayMs">Delay between records (ms)</label>
+                        <label for="delayMs">Delay (ms)</label>
                         <input id="delayMs" type="number" value="1500" min="500">
                     </div>
                     <div>
-                        <label for="maxRecords">Max records (0 = all)</label>
+                        <label for="maxRecords">Max records (0=all)</label>
                         <input id="maxRecords" type="number" value="0" min="0">
                     </div>
                 </div>
-                
                 <hr style="margin: 14px 0; border: none; border-top: 1px solid #e1e4f0;">
-                
                 <h2>2. CSV Upload</h2>
-                <label class="file-label" for="csvFile">📄 Choose CSV File</label>
+                <label class="file-label" for="csvFile">Choose CSV File</label>
                 <input id="csvFile" type="file" accept=".csv">
                 <div class="file-info" id="fileInfo">No file chosen.</div>
-                
-                <button id="runBatchBtn" class="action primary" disabled>▶ Run Batch</button>
-                <button id="stopBtn" class="action danger" disabled>⏹ Stop</button>
-                
+                <button id="runBatchBtn" class="action primary" disabled>Run Batch</button>
+                <button id="stopBtn" class="action danger" disabled>Stop</button>
+                <button id="exportBtn" class="action excel" disabled>Export Excel</button>
                 <p class="small" style="margin-top: 12px;">
-                    <strong>Required CSV columns:</strong><br>
-                    <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>mobile</code>,
+                    <strong>Required:</strong> <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>mobile</code>,
                     <code>dob_day</code>, <code>dob_month</code>, <code>dob_year</code>,
-                    <code>street</code>, <code>post_town</code>, <code>post_code</code><br><br>
-                    <strong>Optional:</strong><br>
-                    <code>title</code>, <code>middle_name</code>, <code>flat</code>, <code>building_name</code>, 
-                    <code>building_number</code>, <code>district</code>, <code>county</code>,
-                    <code>prev1_*</code>, <code>prev2_*</code> (previous addresses)
+                    <code>street</code>, <code>post_town</code>, <code>post_code</code><br>
+                    <strong>Optional:</strong> <code>title</code>, <code>middle_name</code>, <code>flat</code>, <code>building_name</code>, 
+                    <code>building_number</code>, <code>district</code>, <code>county</code>, <code>prev1_*</code>, <code>prev2_*</code>
                 </p>
             </div>
-
-            <!-- Right: Preview -->
             <div class="card">
                 <h2>3. CSV Preview</h2>
                 <div id="previewContainer" class="preview-container small">No data loaded.</div>
             </div>
         </div>
-
         <div class="grid">
             <div class="card" style="grid-column: span 2;">
                 <h2>4. Log</h2>
                 <div id="log"></div>
             </div>
         </div>
-
         <div class="card" style="margin-top: 20px;">
             <h2>5. Results</h2>
             <div id="resultsContainer" class="small">No results yet.</div>
@@ -226,38 +187,31 @@
     </div>
 
     <script>
-    // ===== State =====
     let records = [];
     let stopRequested = false;
     let isRunning = false;
+    let exportData = [];
 
-    // ===== Utilities =====
     function log(msg, level = "info") {
         const el = document.getElementById("log");
         const ts = new Date().toISOString().split("T")[1].slice(0, 8);
-        const prefix = level === "error" ? "❌" : level === "warn" ? "⚠️" : level === "success" ? "✅" : "ℹ️";
+        const prefix = level === "error" ? "X" : level === "warn" ? "!" : level === "success" ? "OK" : ">";
         el.textContent += `[${ts}] ${prefix} ${msg}\n`;
         el.scrollTop = el.scrollHeight;
     }
 
-    function clearLog() {
-        document.getElementById("log").textContent = "";
-    }
+    function clearLog() { document.getElementById("log").textContent = ""; }
 
     function formatDateYYYYMMDD(record) {
         const y = (record.dob_year || "").toString().trim();
         const m = (record.dob_month || "").toString().trim().padStart(2, "0");
         const d = (record.dob_day || "").toString().trim().padStart(2, "0");
-        if (y && m && d && y.length === 4) {
-            return `${y}-${m}-${d}`;
-        }
-        return "";
+        return (y && m && d && y.length === 4) ? `${y}-${m}-${d}` : "";
     }
 
     function buildPreviousAddress(record, prefix) {
         const postCode = (record[`${prefix}_post_code`] || "").trim();
         if (!postCode) return null;
-        
         return {
             flat: (record[`${prefix}_flat`] || "").trim(),
             building_name: (record[`${prefix}_building_name`] || "").trim(),
@@ -271,30 +225,34 @@
     }
 
     function extractAccounts(valifiResponse) {
-        // Try multiple paths where accounts might be
-        if (valifiResponse?.data?.summaryReportV2?.accounts) {
-            return valifiResponse.data.summaryReportV2.accounts;
-        }
-        if (valifiResponse?.data?.accounts) {
-            return valifiResponse.data.accounts;
-        }
-        if (valifiResponse?.data?.summaryReport?.accounts) {
-            return valifiResponse.data.summaryReport.accounts;
-        }
+        if (valifiResponse?.data?.summaryReportV2?.accounts) return valifiResponse.data.summaryReportV2.accounts;
+        if (valifiResponse?.data?.accounts) return valifiResponse.data.accounts;
+        if (valifiResponse?.data?.summaryReport?.accounts) return valifiResponse.data.summaryReport.accounts;
         return [];
     }
 
-    function extractPdfUrl(valifiResponse) {
-        return valifiResponse?.data?.pdfUrl || "";
+    function extractPdfUrl(valifiResponse) { return valifiResponse?.data?.pdfUrl || ""; }
+
+    function buildCombinedAddress(r) {
+        const parts = [];
+        if (r.building_number) parts.push(r.building_number);
+        if (r.building_name) parts.push(r.building_name);
+        if (r.flat) parts.push("Flat " + r.flat);
+        if (r.street) parts.push(r.street);
+        return parts.join(" ");
     }
 
-    // ===== CSV Handling =====
+    function formatPreviousAddresses(prev1, prev2) {
+        const addrs = [];
+        if (prev1) addrs.push([prev1.building_number, prev1.building_name, prev1.flat ? "Flat " + prev1.flat : "", prev1.street, prev1.post_town, prev1.post_code].filter(Boolean).join(", "));
+        if (prev2) addrs.push([prev2.building_number, prev2.building_name, prev2.flat ? "Flat " + prev2.flat : "", prev2.street, prev2.post_town, prev2.post_code].filter(Boolean).join(", "));
+        return addrs.join(" | ");
+    }
+
     document.getElementById("csvFile").addEventListener("change", function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        
         document.getElementById("fileInfo").textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -304,47 +262,31 @@
                 renderPreview(records);
                 document.getElementById("runBatchBtn").disabled = records.length === 0;
             },
-            error: function(err) {
-                log(`CSV parse error: ${err.message}`, "error");
-            }
+            error: function(err) { log(`CSV parse error: ${err.message}`, "error"); }
         });
     });
 
     function renderPreview(data) {
         const container = document.getElementById("previewContainer");
-        if (!data.length) {
-            container.textContent = "No valid records found.";
-            return;
-        }
-        
+        if (!data.length) { container.textContent = "No valid records found."; return; }
         const cols = ["first_name", "last_name", "email", "mobile", "dob_day", "dob_month", "dob_year", "post_code"];
         let html = `<table id="previewTable"><thead><tr><th>#</th>`;
         cols.forEach(c => html += `<th>${c}</th>`);
         html += `</tr></thead><tbody>`;
-        
         data.slice(0, 50).forEach((row, idx) => {
             html += `<tr><td>${idx + 1}</td>`;
             cols.forEach(c => html += `<td>${row[c] || ""}</td>`);
             html += `</tr>`;
         });
-        
         html += `</tbody></table>`;
-        if (data.length > 50) {
-            html += `<p class="small">Showing first 50 of ${data.length} records.</p>`;
-        }
+        if (data.length > 50) html += `<p class="small">Showing first 50 of ${data.length} records.</p>`;
         container.innerHTML = html;
     }
 
-    // ===== Batch Processing =====
     async function runBatch() {
         if (isRunning) return;
-        
         const baseUrl = document.getElementById("baseUrl").value.trim().replace(/\/$/, "");
-        if (!baseUrl) {
-            alert("Please enter the backend base URL");
-            return;
-        }
-        
+        if (!baseUrl) { alert("Please enter the backend base URL"); return; }
         const delayMs = parseInt(document.getElementById("delayMs").value) || 1500;
         const maxRecords = parseInt(document.getElementById("maxRecords").value) || 0;
         const limit = maxRecords > 0 ? Math.min(maxRecords, records.length) : records.length;
@@ -353,44 +295,32 @@
         stopRequested = false;
         document.getElementById("runBatchBtn").disabled = true;
         document.getElementById("stopBtn").disabled = false;
+        document.getElementById("exportBtn").disabled = true;
+        exportData = [];
         
         clearLog();
-        log(`Starting batch processing: ${limit} records`);
-        log(`Base URL: ${baseUrl}`);
-        log(`Delay: ${delayMs}ms between records`);
-        log(`skipFLG: true (no FLG API calls)`);
-        log("─".repeat(50));
+        log(`Starting batch: ${limit} records, URL: ${baseUrl}`);
+        log("----------------------------------------");
         
         const results = [];
         const campaign = `batch_import_${new Date().toISOString().split("T")[0]}`;
+        const batchTimestamp = new Date().toISOString();
         
         for (let i = 0; i < limit; i++) {
-            if (stopRequested) {
-                log("Batch stopped by user", "warn");
-                break;
-            }
-            
+            if (stopRequested) { log("Batch stopped by user", "warn"); break; }
             const record = records[i];
             const idxLabel = i + 1;
             const dateOfBirth = formatDateYYYYMMDD(record);
             
-            log(`[${idxLabel}/${limit}] Processing: ${record.first_name} ${record.last_name}`);
+            log(`[${idxLabel}/${limit}] ${record.first_name} ${record.last_name}`);
             
-            // Validate required fields
             if (!record.first_name || !record.last_name || !dateOfBirth || !record.post_code) {
-                log(`[${idxLabel}] ⏭️ Skipping - missing required fields`, "warn");
-                results.push({
-                    index: idxLabel,
-                    first_name: record.first_name || "",
-                    last_name: record.last_name || "",
-                    status: "SKIPPED",
-                    error: "Missing required fields"
-                });
+                log(`[${idxLabel}] Skipping - missing required fields`, "warn");
+                results.push({ index: idxLabel, first_name: record.first_name || "", last_name: record.last_name || "", status: "SKIPPED", error: "Missing required fields" });
                 continue;
             }
             
             try {
-                // ===== Step 1: Call /query =====
                 const queryPayload = {
                     firstName: (record.first_name || "").trim(),
                     lastName: (record.last_name || "").trim(),
@@ -409,44 +339,35 @@
                     previousPreviousAddress: buildPreviousAddress(record, "prev2")
                 };
                 
-                log(`[${idxLabel}] → Calling /query...`);
-                
                 const queryResp = await fetch(`${baseUrl}/query`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(queryPayload)
                 });
                 
-                if (!queryResp.ok) {
-                    const errText = await queryResp.text();
-                    throw new Error(`/query failed: ${queryResp.status} - ${errText}`);
-                }
+                if (!queryResp.ok) throw new Error(`/query failed: ${queryResp.status}`);
                 
-                // IMPORTANT: /query returns RAW Valifi response (not wrapped)
                 const valifiResponse = await queryResp.json();
                 const accounts = extractAccounts(valifiResponse);
                 const pdfUrl = extractPdfUrl(valifiResponse);
                 
-                log(`[${idxLabel}] ← Found ${accounts.length} accounts, PDF: ${pdfUrl ? "Yes" : "No"}`);
+                log(`[${idxLabel}] Found ${accounts.length} accounts`);
                 
-                // ===== Step 2: Build summary for /upload_summary =====
                 const mobile = (record.mobile || "").trim();
                 const ukMobile = mobile.startsWith("44") ? "0" + mobile.substring(2) : mobile;
+                const combinedAddress = buildCombinedAddress(queryPayload);
+                const currentDatetime = new Date().toLocaleString("en-GB");
+                const prevAddressesFormatted = formatPreviousAddresses(queryPayload.previousAddress, queryPayload.previousPreviousAddress);
                 
                 const summary = {
-                    // Identity
                     firstName: queryPayload.firstName,
                     lastName: queryPayload.lastName,
                     middleName: queryPayload.middleName,
                     title: queryPayload.title,
                     dateOfBirth: dateOfBirth,
-                    
-                    // Contact
                     email: (record.email || "").trim(),
                     mobile: ukMobile,
                     phone1: ukMobile,
-                    
-                    // Address (multiple key formats for compatibility)
                     flat: queryPayload.flat,
                     building_name: queryPayload.building_name,
                     building_number: queryPayload.building_number,
@@ -458,22 +379,14 @@
                     post_code: queryPayload.post_code,
                     postcode: queryPayload.post_code,
                     postCode: queryPayload.post_code,
-                    
-                    // Previous addresses
                     previousAddress: queryPayload.previousAddress,
                     previousPreviousAddress: queryPayload.previousPreviousAddress,
-                    
-                    // Valifi data - CRITICAL: Pass the entire response
                     valifiResponse: valifiResponse,
-                    identityScore: 0,  // /query doesn't return this
-                    identityVerified: true,  // Assume verified for batch
-                    
-                    // Lenders
+                    identityScore: 0,
+                    identityVerified: true,
                     accounts: accounts,
                     foundLenders: accounts,
                     additionalLenders: [],
-                    
-                    // Consents (standard batch defaults)
                     belmondChoiceConsent: true,
                     choiceReason: "Comprehensive",
                     otherReasonText: "",
@@ -484,17 +397,11 @@
                     irresponsibleLendingConsent: true,
                     disengagementReason: "",
                     disengagementOtherText: "",
-                    
-                    // Signature & PDF
                     signatureBase64: "",
                     pdfUrl: pdfUrl,
-                    
-                    // Batch flags - CRITICAL
                     skipFLG: true,
                     skip_flg: true,
                     tlwSolicitorsSelected: false,
-                    
-                    // Tracking
                     campaign: campaign,
                     clientIp: "127.0.0.1",
                     session_id: `batch_${Date.now()}_${idxLabel}`,
@@ -502,111 +409,188 @@
                     medium: "csv"
                 };
                 
-                // ===== Step 3: Call /upload_summary =====
-                log(`[${idxLabel}] → Calling /upload_summary...`);
-                
                 const uploadResp = await fetch(`${baseUrl}/upload_summary`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(summary)
                 });
                 
-                if (!uploadResp.ok) {
-                    const errText = await uploadResp.text();
-                    throw new Error(`/upload_summary failed: ${uploadResp.status} - ${errText}`);
-                }
+                if (!uploadResp.ok) throw new Error(`/upload_summary failed: ${uploadResp.status}`);
                 
                 const uploadResult = await uploadResp.json();
                 const claimId = uploadResult.claim_id || "?";
+                const leadIds = uploadResult.lead_ids || [];
                 
-                log(`[${idxLabel}] ✓ Success! Claim ID: ${claimId}, Lenders: ${accounts.length}`, "success");
+                log(`[${idxLabel}] Claim ID: ${claimId}, Leads: ${leadIds.length}`, "success");
                 
-                results.push({
-                    index: idxLabel,
-                    first_name: record.first_name,
-                    last_name: record.last_name,
-                    status: "OK",
-                    claim_id: claimId,
-                    lenders: accounts.length
-                });
+                // Build export rows - ONE ROW PER LEAD ID
+                for (const lead of leadIds) {
+                    const isDCA = lead.lead_type === "DCA";
+                    exportData.push({
+                        // ===== CLAIMANT LEVEL =====
+                        claim_id: claimId,
+                        first_name: summary.firstName,
+                        last_name: summary.lastName,
+                        middle_name: summary.middleName,
+                        title: summary.title,
+                        email: summary.email,
+                        mobile: summary.mobile,
+                        date_of_birth: dateOfBirth,
+                        flat: summary.flat,
+                        building_number: summary.building_number,
+                        building_name: summary.building_name,
+                        street: summary.street,
+                        district: summary.district,
+                        post_town: summary.post_town,
+                        county: summary.county,
+                        post_code: summary.post_code,
+                        current_address_combined: combinedAddress,
+                        previous_addresses: prevAddressesFormatted,
+                        identity_score: summary.identityScore,
+                        identity_verified: summary.identityVerified,
+                        lenders_found_count: accounts.length,
+                        lenders_found_list: accounts.map(a => a.displayName || a.lenderName || "Unknown").join(", "),
+                        motor_finance_consent: summary.motorFinanceConsent,
+                        irresponsible_lending_consent: summary.irresponsibleLendingConsent,
+                        belmond_choice_consent: summary.belmondChoiceConsent,
+                        choice_reason: summary.choiceReason,
+                        existing_representation_consent: summary.existingRepresentationConsent,
+                        mammoth_promotions_consent: summary.mammothPromotionsConsent,
+                        campaign: campaign,
+                        client_ip: summary.clientIp,
+                        claim_submitted: true,
+                        submission_datetime: batchTimestamp,
+                        leads_created_count: leadIds.length,
+                        pdf_url: pdfUrl,
+                        signature_provided: false,
+                        created_at: batchTimestamp,
+                        
+                        // ===== LEAD ID LEVEL =====
+                        lead_id: lead.lead_id,
+                        lead_group: lead.lead_group,
+                        lead_type: lead.lead_type,
+                        lender_name: lead.lender_name,
+                        reference: lead.reference,
+                        cost: lead.cost,
+                        account_number: lead.account_number,
+                        start_date: lead.start_date,
+                        outstanding_balance: lead.outstanding_balance,
+                        monthly_payment: lead.monthly_payment,
+                        lender_data_json: lead.lender_data_json || "",
+                        is_eligible: lead.is_eligible,
+                        ineligible_reason: lead.ineligible_reason || "",
+                        is_manual: lead.is_manual,
+                        within_date_range: lead.within_date_range,
+                        valifi_original_name: lead.valifi_original_name || "",
+                        matched_lender_id: lead.match_info?.lender_id || "",
+                        matched_lender_name: lead.match_info?.lender_name || "",
+                        fortress_name: lead.match_info?.fortress_name || "",
+                        fuzzy_score: lead.match_info?.fuzzy_score || "",
+                        match_type: lead.match_info?.match_type || "",
+                        matched_via: lead.match_info?.matched_via || "",
+                        
+                        // ===== FLG FIELDS =====
+                        flg_medium: campaign,
+                        flg_title: summary.title,
+                        flg_firstname: summary.firstName,
+                        flg_lastname: summary.lastName,
+                        flg_dateOfBirth: dateOfBirth,
+                        flg_phone1: summary.mobile,
+                        flg_email: summary.email,
+                        flg_address: combinedAddress,
+                        flg_towncity: summary.post_town,
+                        flg_postcode: summary.post_code,
+                        flg_introducer: "61445",
+                        flg_applicant_id: claimId,
+                        flg_data25_signature: "[base64]",
+                        flg_data28_datetime: currentDatetime,
+                        flg_data29_client_ip: summary.clientIp,
+                        flg_data31_pdf_url: isDCA ? pdfUrl : "",
+                        flg_leadgroup: lead.lead_group,
+                        flg_source: isDCA ? "Belmondclaims.com" : "",
+                        flg_reference: lead.reference,
+                        flg_cost: lead.cost,
+                        // DCA fields
+                        flg_data2_lender_name: isDCA ? lead.lender_name : "",
+                        flg_data5_outstanding_balance: isDCA ? lead.outstanding_balance : "",
+                        flg_data9_account_number: isDCA ? lead.account_number : "",
+                        flg_data12_start_date: isDCA ? lead.start_date : "",
+                        flg_data14_prev_addresses: isDCA ? prevAddressesFormatted : "",
+                        flg_data32_valifi_json_url: isDCA ? "[S3 URL]" : "",
+                        flg_data34_account_json: isDCA ? (lead.lender_data_json || "") : "",
+                        flg_data47_cmc_info: "",
+                        // IRL fields
+                        flg_data1_lender_name: !isDCA ? lead.lender_name : "",
+                        flg_data5_account_number_irl: !isDCA ? lead.account_number : "",
+                        flg_data33_monthly_payment: !isDCA ? lead.monthly_payment : "",
+                        flg_data36_valifi_json_url: !isDCA ? "[S3 URL]" : "",
+                        flg_data37_start_date: !isDCA ? lead.start_date : "",
+                        flg_data38_address2: !isDCA ? "[address 2]" : "",
+                        flg_data39_address3_onwards: !isDCA ? "[address 3+]" : "",
+                        flg_data48_account_json_or_pdf: !isDCA ? (lead.lender_data_json || pdfUrl) : ""
+                    });
+                }
+                
+                results.push({ index: idxLabel, first_name: record.first_name, last_name: record.last_name, status: "OK", claim_id: claimId, lenders: accounts.length, leads: leadIds.length });
                 
             } catch (err) {
                 log(`[${idxLabel}] Error: ${err.message}`, "error");
-                results.push({
-                    index: idxLabel,
-                    first_name: record.first_name || "",
-                    last_name: record.last_name || "",
-                    status: "ERROR",
-                    error: err.message
-                });
+                results.push({ index: idxLabel, first_name: record.first_name || "", last_name: record.last_name || "", status: "ERROR", error: err.message });
             }
             
-            // Delay between records
-            if (i < limit - 1 && !stopRequested) {
-                await new Promise(res => setTimeout(res, delayMs));
-            }
+            if (i < limit - 1 && !stopRequested) await new Promise(res => setTimeout(res, delayMs));
         }
         
-        // Complete
-        log("─".repeat(50));
+        log("----------------------------------------");
         const okCount = results.filter(r => r.status === "OK").length;
         const errCount = results.filter(r => r.status === "ERROR").length;
         const skipCount = results.filter(r => r.status === "SKIPPED").length;
-        log(`Batch complete: ${okCount} OK, ${errCount} errors, ${skipCount} skipped`);
+        log(`Complete: ${okCount} OK, ${errCount} errors, ${skipCount} skipped`);
+        log(`Export rows: ${exportData.length}`);
         
         renderResults(results);
-        
         isRunning = false;
         document.getElementById("runBatchBtn").disabled = false;
         document.getElementById("stopBtn").disabled = true;
+        document.getElementById("exportBtn").disabled = exportData.length === 0;
     }
 
     function renderResults(results) {
         const container = document.getElementById("resultsContainer");
-        if (!results.length) {
-            container.textContent = "No results yet.";
-            return;
-        }
-        
+        if (!results.length) { container.textContent = "No results yet."; return; }
         const okCount = results.filter(r => r.status === "OK").length;
         const errCount = results.filter(r => r.status === "ERROR").length;
         const skipCount = results.filter(r => r.status === "SKIPPED").length;
-        
         let html = `<div style="margin-bottom: 10px;">
             <span class="badge badge-ok">${okCount} OK</span>
             <span class="badge badge-error">${errCount} Errors</span>
             <span class="badge badge-skip">${skipCount} Skipped</span>
         </div>`;
-        
         html += `<div style="max-height: 300px; overflow: auto;">`;
-        html += `<table id="resultsTable"><thead><tr>
-            <th>#</th><th>First</th><th>Last</th><th>Status</th><th>Claim ID</th><th>Lenders</th><th>Error</th>
-        </tr></thead><tbody>`;
-        
+        html += `<table id="resultsTable"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Status</th><th>Claim ID</th><th>Lenders</th><th>Leads</th><th>Error</th></tr></thead><tbody>`;
         results.forEach(r => {
             const statusClass = r.status === "OK" ? "badge-ok" : r.status === "SKIPPED" ? "badge-skip" : "badge-error";
-            html += `<tr>
-                <td>${r.index}</td>
-                <td>${r.first_name}</td>
-                <td>${r.last_name}</td>
-                <td><span class="badge ${statusClass}">${r.status}</span></td>
-                <td>${r.claim_id || ""}</td>
-                <td>${r.lenders || ""}</td>
-                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${r.error || ""}</td>
-            </tr>`;
+            html += `<tr><td>${r.index}</td><td>${r.first_name}</td><td>${r.last_name}</td><td><span class="badge ${statusClass}">${r.status}</span></td><td>${r.claim_id || ""}</td><td>${r.lenders || ""}</td><td>${r.leads || ""}</td><td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${r.error || ""}</td></tr>`;
         });
-        
         html += `</tbody></table></div>`;
         container.innerHTML = html;
     }
 
-    // ===== Event Listeners =====
+    function exportToExcel() {
+        if (exportData.length === 0) { alert("No data to export. Run a batch first."); return; }
+        log("Generating Excel...");
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        XLSX.utils.book_append_sheet(wb, ws, "Batch Results");
+        const timestamp = new Date().toISOString().split("T")[0];
+        const filename = `batch_export_${timestamp}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        log(`Downloaded: ${filename} (${exportData.length} rows)`, "success");
+    }
+
     document.getElementById("runBatchBtn").addEventListener("click", runBatch);
-    
-    document.getElementById("stopBtn").addEventListener("click", function() {
-        stopRequested = true;
-        log("Stop requested - will halt after current record...", "warn");
-    });
+    document.getElementById("stopBtn").addEventListener("click", function() { stopRequested = true; log("Stopping...", "warn"); });
+    document.getElementById("exportBtn").addEventListener("click", exportToExcel);
     </script>
 </body>
 </html>
