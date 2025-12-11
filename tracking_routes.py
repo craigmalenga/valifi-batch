@@ -55,7 +55,8 @@ def validate_tracking_request(request):
         'www.belmondpcp.co.uk',
         'belmondpcp.com',
         'www.belmondpcp.com',
-        'testing-bemondpcp.up.railway.app'
+        'testing-bemondpcp.up.railway.app',
+        'valifi-batch.up.railway.app'  # Your mirror site
     ]
 
     # Check if request is from allowed domain

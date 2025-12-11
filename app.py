@@ -219,11 +219,7 @@ app.register_blueprint(tracking_bp, url_prefix='/tracking')
 
 # Security headers - add after app.register_blueprint(tracking_bp)
 # CORS approved origins for cross-domain API access
-CORS_ALLOWED_ORIGINS = [
-    'https://belmond2.kinocreative.uk',
-    'https://belmondclaims.com',
-    'https://belmondpcp.com'
-]
+CORS_ALLOWED_ORIGINS = ['*']
 
 @app.after_request
 def add_security_headers(response):
