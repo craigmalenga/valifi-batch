@@ -2564,7 +2564,8 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
             "eligible_dca_count": eligible_dca_count,
             "category_1_count": len(category_1_accounts),
             "category_2_count": len(category_2_accounts),
-            "category_3_count": len(category_3_accounts)
+            "category_3_count": len(category_3_accounts),
+            "valifi_json": valifi_json
         }
         
     except Exception as e:
@@ -2584,7 +2585,8 @@ def process_flg_leads_background(claim_id, summary, accounts, found_lenders, add
             "all_lead_ids": [],
             "successful_leads": 0,
             "failed_leads": 0,
-            "error": str(e)
+            "error": str(e),
+            "valifi_json": ""
         }
     
 # === SECTION SEPARATOR ===
@@ -3924,7 +3926,8 @@ def upload_summary():
             response_data["lead_ids"] = flg_result.get("all_lead_ids", [])
             response_data["successful_leads"] = flg_result.get("successful_leads", 0)
             response_data["failed_leads"] = flg_result.get("failed_leads", 0)
-        
+            response_data["valifi_json_reference"] = flg_result.get("valifi_json", "")
+
         return jsonify(response_data), 200
     
     
