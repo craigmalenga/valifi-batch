@@ -295,6 +295,60 @@
         return valifiResponse?.data?.pdfUrl || "";
     }
 
+    // Format any date to dd/mm/yyyy
+    function formatDateDDMMYYYY(dateInput) {
+        if (!dateInput) return "";
+        
+        let date;
+        
+        // Handle different input formats
+        if (dateInput instanceof Date) {
+            date = dateInput;
+        } else if (typeof dateInput === "string") {
+            // Try parsing ISO format (2024-12-11T12:22:13.000Z) or YYYY-MM-DD
+            if (dateInput.includes("T")) {
+                date = new Date(dateInput);
+            } else if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // YYYY-MM-DD format
+                const parts = dateInput.split("-");
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            } else if (dateInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                // Already dd/mm/yyyy
+                return dateInput;
+            } else {
+                // Try generic parse
+                date = new Date(dateInput);
+            }
+        } else {
+            return String(dateInput);
+        }
+        
+        if (isNaN(date.getTime())) return String(dateInput);
+        
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
+    }
+    
+    // Format datetime to dd/mm/yyyy hh:mm:ss
+    function formatDateTimeDDMMYYYY(dateInput) {
+        if (!dateInput) return "";
+        
+        const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return String(dateInput);
+        
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, "0");
+        const mins = String(date.getMinutes()).padStart(2, "0");
+        const secs = String(date.getSeconds()).padStart(2, "0");
+        
+        return `${day}/${month}/${year} ${hours}:${mins}:${secs}`;
+    }
+
     // Build combined address string from address parts
     function buildCombinedAddress(addressObj) {
         const parts = [];
@@ -484,7 +538,6 @@
                 const ukMobile = mobile.startsWith("44") ? "0" + mobile.substring(2) : mobile;
                 const combinedAddress = buildCombinedAddress(queryPayload);
                 const prevAddressesFormatted = formatPreviousAddresses(queryPayload.previousAddress, queryPayload.previousPreviousAddress);
-                const currentDatetime = new Date().toLocaleString("en-GB");
                 
                 const summary = {
                     // Identity
@@ -590,7 +643,7 @@
                         title: summary.title,
                         email: summary.email,
                         mobile: summary.mobile,
-                        date_of_birth: dateOfBirth,
+                        date_of_birth: formatDateDDMMYYYY(dateOfBirth),
                         
                         // Current Address
                         flat: summary.flat,
@@ -633,11 +686,11 @@
                         
                         // Status
                         claim_submitted: true,
-                        submission_datetime: batchTimestamp,
+                        submission_datetime: formatDateTimeDDMMYYYY(batchTimestamp),
                         leads_created_count: leadIds.length,
                         pdf_url: pdfUrl,
                         signature_provided: false,
-                        created_at: batchTimestamp,
+                        created_at: formatDateTimeDDMMYYYY(batchTimestamp),
                         claim_status: "pending",
                         lead_source: "batch_import",
                         
@@ -651,7 +704,7 @@
                         
                         // Lender Details
                         account_number: lead.account_number,
-                        start_date: lead.start_date,
+                        start_date: formatDateDDMMYYYY(lead.start_date),
                         outstanding_balance: lead.outstanding_balance,
                         monthly_payment: lead.monthly_payment,
                         lender_data_json: lead.lender_data_json || "",
@@ -677,7 +730,7 @@
                         flg_title: summary.title,
                         flg_firstname: summary.firstName,
                         flg_lastname: summary.lastName,
-                        flg_dateOfBirth: dateOfBirth,
+                        flg_dateOfBirth: formatDateDDMMYYYY(dateOfBirth),
                         flg_phone1: summary.mobile,
                         flg_email: summary.email,
                         flg_address: combinedAddress,
@@ -686,7 +739,7 @@
                         flg_introducer: "61445",
                         flg_applicant_id: claimId,
                         flg_data25_signature: "[base64 signature]",
-                        flg_data28_datetime: currentDatetime,
+                        flg_data28_datetime: formatDateTimeDDMMYYYY(new Date()),
                         flg_data29_client_ip: summary.clientIp,
                         flg_data31_pdf_url: isDCA ? pdfUrl : "",
                         
@@ -700,7 +753,7 @@
                         flg_data2_lender_name: isDCA ? lead.lender_name : "",
                         flg_data5_outstanding_balance: isDCA ? lead.outstanding_balance : "",
                         flg_data9_account_number: isDCA ? lead.account_number : "",
-                        flg_data12_start_date: isDCA ? lead.start_date : "",
+                        flg_data12_start_date: isDCA ? formatDateDDMMYYYY(lead.start_date) : "",
                         flg_data14_prev_addresses: isDCA ? prevAddressesFormatted : "",
                         flg_data32_valifi_json_url: isDCA ? "[S3 URL]" : "",
                         flg_data34_account_json: isDCA ? (lead.lender_data_json || "") : "",
@@ -711,7 +764,7 @@
                         flg_data5_account_number_irl: !isDCA ? lead.account_number : "",
                         flg_data33_monthly_payment: !isDCA ? lead.monthly_payment : "",
                         flg_data36_valifi_json_url: !isDCA ? "[S3 URL]" : "",
-                        flg_data37_start_date: !isDCA ? lead.start_date : "",
+                        flg_data37_start_date: !isDCA ? formatDateDDMMYYYY(lead.start_date) : "",
                         flg_data38_address2: !isDCA ? "[address 2]" : "",
                         flg_data39_address3_onwards: !isDCA ? "[address 3+]" : "",
                         flg_data48_account_json_or_pdf: !isDCA ? (lead.lender_data_json || pdfUrl) : ""
