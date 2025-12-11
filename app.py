@@ -1206,14 +1206,25 @@ def store_valifi_json_to_s3(valifi_response, claim_id, session_db=None):
         else:
             full_json = json.dumps(valifi_response)
         
-        # CRITICAL FIX: Case-insensitive search for Valifi/CMC
-        # Check for "valifi" in the JSON (case-insensitive)
-        valifi_found = "valifi" in full_json.lower()
+        # Case-insensitive search for CMC indicators
+        json_lower = full_json.lower()
+        valifi_found = "valifi" in json_lower  # This still drives CMC workflow
+        valid8_found = "valid8" in json_lower
+        checkboard_found = "checkboard" in json_lower
         
+        # Build comma-separated list of what was found (for recording only)
+        cmc_sources_found = []
         if valifi_found:
-            logger.info(f"Checking for 'valifi' in {len(full_json)} chars of JSON: Found=True")
-        else:
-            logger.info(f"Checking for 'valifi' in {len(full_json)} chars of JSON: Found=False")
+            cmc_sources_found.append("valifi")
+        if valid8_found:
+            cmc_sources_found.append("valid8")
+        if checkboard_found:
+            cmc_sources_found.append("checkboard")
+        
+        cmc_search_result = ", ".join(cmc_sources_found) if cmc_sources_found else False
+        
+        logger.info(f"CMC search in {len(full_json)} chars: valifi={valifi_found}, valid8={valid8_found}, checkboard={checkboard_found}")
+
 
         # Extract searchable lender names
         searchable_lenders = []
@@ -1295,7 +1306,7 @@ def store_valifi_json_to_s3(valifi_response, claim_id, session_db=None):
             "type": "credit_report_reference",
             "claim_id": claim_id,
             "s3_url": s3_url if s3_url else "S3_STORAGE_FAILED",
-            "cmc_search_found": "valifi" if valifi_found else False,  # "valifi" or False
+            "cmc_search_found": cmc_search_result,  # e.g. "valifi, valid8, checkboard" or False
             "lenders_found": searchable_lenders,
             "lender_count": len(searchable_lenders)
         }
