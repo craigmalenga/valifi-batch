@@ -152,6 +152,68 @@
             border-radius: 3px;
             font-size: 11px;
         }
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e3e6f0;
+            padding-bottom: 0;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            color: #4c6fff;
+        }
+        .tab-btn.active {
+            color: #4c6fff;
+            border-bottom-color: #4c6fff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Webhook Tab Styles */
+        .webhook-input {
+            width: 100%;
+            height: 200px;
+            font-family: Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #d0d4e0;
+            border-radius: 8px;
+            resize: vertical;
+        }
+        .webhook-url-input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #d0d4e0;
+            font-size: 12px;
+            font-family: Menlo, Monaco, Consolas, monospace;
+        }
+        .lead-count {
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: #f0f4ff;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .lead-count strong {
+            color: #4c6fff;
+        }
     </style>
 </head>
 <body>
@@ -161,6 +223,15 @@
             Private CSV → <code>/query</code> → <code>/upload_summary</code> tool for your mirror app.<br>
             Uses <code>skipFLG: true</code> to generate fake Lead IDs without hitting FLG API.
         </p>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="batch">📋 Batch Processing</button>
+            <button class="tab-btn" data-tab="webhook">🔗 Send to Webhook</button>
+        </div>
+        
+        <!-- Tab 1: Batch Processing -->
+        <div id="tab-batch" class="tab-content active">
         
         <div class="warning-box">
             <strong>⚠️ Mirror Mode:</strong> This tool creates ClaimTracking records with fake Lead IDs. 
@@ -227,6 +298,58 @@
             <h2>5. Results</h2>
             <div id="resultsContainer" class="small">No results yet.</div>
         </div>
+        
+        </div><!-- End Tab 1: Batch Processing -->
+        
+        <!-- Tab 2: Webhook -->
+        <div id="tab-webhook" class="tab-content">
+            <div class="card">
+                <h2>Send Lead IDs to Webhook</h2>
+                <p class="small" style="margin-bottom: 16px;">
+                    Paste lead IDs from Excel (one per line or separated by tabs/commas). 
+                    These will be sent to your WordPress webhook for processing.
+                </p>
+                
+                <div class="field">
+                    <label for="webhookUrl">Webhook URL</label>
+                    <input id="webhookUrl" type="text" class="webhook-url-input" 
+                           value="https://belmondclaims.com/wp-json/belmond-api/motor-finance-processing?secret=tYOCYpdskZBbxjSO87K" 
+                           placeholder="https://your-site.com/webhook-endpoint">
+                </div>
+                
+                <div class="field" style="margin-top: 12px;">
+                    <label for="leadIdsInput">Lead IDs (paste from Excel)</label>
+                    <textarea id="leadIdsInput" class="webhook-input" placeholder="Paste lead IDs here, one per line or separated by tabs/commas...
+
+Example:
+12345678
+12345679
+12345680
+
+Or from Excel column:
+12345678	12345679	12345680"></textarea>
+                </div>
+                
+                <div class="lead-count" id="leadCountDisplay">
+                    Lead IDs detected: <strong>0</strong>
+                </div>
+                
+                <button id="parseLeadsBtn" class="action secondary">🔍 Parse & Preview</button>
+                <button id="sendWebhookBtn" class="action primary" disabled>📤 Send to Webhook</button>
+                <button id="clearLeadsBtn" class="action danger">🗑️ Clear</button>
+                
+                <div id="webhookLog" style="margin-top: 16px; display: none;">
+                    <h3 style="font-size: 14px; margin-bottom: 8px;">Webhook Log</h3>
+                    <div id="webhookLogContent" style="background: #050816; color: #e5e7eb; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;"></div>
+                </div>
+                
+                <div id="parsedLeadsPreview" style="margin-top: 16px; display: none;">
+                    <h3 style="font-size: 14px; margin-bottom: 8px;">Parsed Lead IDs Preview</h3>
+                    <div id="parsedLeadsList" style="background: #f8fafc; border: 1px solid #e2e4f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px;"></div>
+                </div>
+            </div>
+        </div><!-- End Tab 2: Webhook -->
+        
     </div>
 
     <script>
@@ -910,6 +1033,156 @@
     });
     
     document.getElementById("exportBtn").addEventListener("click", exportToExcel);
+    
+    // ===== Tab Navigation =====
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            // Remove active from all tabs and content
+            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            
+            // Add active to clicked tab
+            this.classList.add("active");
+            
+            // Show corresponding content
+            const tabId = this.getAttribute("data-tab");
+            document.getElementById("tab-" + tabId).classList.add("active");
+        });
+    });
+    
+    // ===== Webhook Functionality =====
+    let parsedLeadIds = [];
+    
+    function webhookLog(msg, level = "info") {
+        const el = document.getElementById("webhookLogContent");
+        const container = document.getElementById("webhookLog");
+        container.style.display = "block";
+        
+        const ts = new Date().toISOString().split("T")[1].slice(0, 8);
+        const prefix = level === "error" ? "❌" : level === "warn" ? "⚠️" : level === "success" ? "✅" : "ℹ️";
+        el.textContent += `[${ts}] ${prefix} ${msg}\n`;
+        el.scrollTop = el.scrollHeight;
+    }
+    
+    function clearWebhookLog() {
+        document.getElementById("webhookLogContent").textContent = "";
+        document.getElementById("webhookLog").style.display = "none";
+    }
+    
+    function parseLeadIds() {
+        const input = document.getElementById("leadIdsInput").value;
+        
+        // Split by newlines, tabs, commas, spaces
+        const rawIds = input.split(/[\n\t,\s]+/).map(s => s.trim()).filter(s => s.length > 0);
+        
+        // Filter to only valid-looking lead IDs (numbers, or alphanumeric with underscores for fake IDs)
+        parsedLeadIds = rawIds.filter(id => /^[\w\d_-]+$/.test(id));
+        
+        // Update count display
+        document.getElementById("leadCountDisplay").innerHTML = 
+            `Lead IDs detected: <strong>${parsedLeadIds.length}</strong>`;
+        
+        // Update preview
+        const previewContainer = document.getElementById("parsedLeadsPreview");
+        const previewList = document.getElementById("parsedLeadsList");
+        
+        if (parsedLeadIds.length > 0) {
+            previewContainer.style.display = "block";
+            previewList.innerHTML = parsedLeadIds.map((id, idx) => 
+                `<span style="display: inline-block; background: #e0e7ff; padding: 2px 8px; margin: 2px; border-radius: 4px;">${idx + 1}. ${id}</span>`
+            ).join("");
+            
+            document.getElementById("sendWebhookBtn").disabled = false;
+        } else {
+            previewContainer.style.display = "none";
+            document.getElementById("sendWebhookBtn").disabled = true;
+        }
+        
+        return parsedLeadIds;
+    }
+    
+    // Auto-parse on input change
+    document.getElementById("leadIdsInput").addEventListener("input", function() {
+        const input = this.value;
+        const rawIds = input.split(/[\n\t,\s]+/).map(s => s.trim()).filter(s => s.length > 0);
+        const count = rawIds.filter(id => /^[\w\d_-]+$/.test(id)).length;
+        document.getElementById("leadCountDisplay").innerHTML = 
+            `Lead IDs detected: <strong>${count}</strong>`;
+    });
+    
+    document.getElementById("parseLeadsBtn").addEventListener("click", function() {
+        clearWebhookLog();
+        const ids = parseLeadIds();
+        if (ids.length > 0) {
+            webhookLog(`Parsed ${ids.length} lead IDs`);
+        } else {
+            webhookLog("No valid lead IDs found in input", "warn");
+        }
+    });
+    
+    document.getElementById("clearLeadsBtn").addEventListener("click", function() {
+        document.getElementById("leadIdsInput").value = "";
+        parsedLeadIds = [];
+        document.getElementById("leadCountDisplay").innerHTML = `Lead IDs detected: <strong>0</strong>`;
+        document.getElementById("parsedLeadsPreview").style.display = "none";
+        document.getElementById("sendWebhookBtn").disabled = true;
+        clearWebhookLog();
+    });
+    
+    document.getElementById("sendWebhookBtn").addEventListener("click", async function() {
+        if (parsedLeadIds.length === 0) {
+            parseLeadIds();
+        }
+        
+        if (parsedLeadIds.length === 0) {
+            alert("No lead IDs to send. Please paste some lead IDs first.");
+            return;
+        }
+        
+        const webhookUrl = document.getElementById("webhookUrl").value.trim();
+        if (!webhookUrl) {
+            alert("Please enter a webhook URL");
+            return;
+        }
+        
+        clearWebhookLog();
+        webhookLog(`Sending ${parsedLeadIds.length} lead IDs to webhook...`);
+        webhookLog(`URL: ${webhookUrl}`);
+        
+        const payload = {
+            leads: parsedLeadIds
+        };
+        
+        webhookLog(`Payload: ${JSON.stringify(payload)}`);
+        
+        try {
+            this.disabled = true;
+            this.textContent = "⏳ Sending...";
+            
+            const response = await fetch(webhookUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const responseText = await response.text();
+            
+            if (response.ok) {
+                webhookLog(`✓ Webhook responded with status ${response.status}`, "success");
+                webhookLog(`Response: ${responseText}`, "success");
+            } else {
+                webhookLog(`✗ Webhook failed with status ${response.status}`, "error");
+                webhookLog(`Response: ${responseText}`, "error");
+            }
+        } catch (err) {
+            webhookLog(`✗ Failed to send webhook: ${err.message}`, "error");
+        } finally {
+            this.disabled = false;
+            this.textContent = "📤 Send to Webhook";
+        }
+    });
     </script>
 </body>
 </html>
