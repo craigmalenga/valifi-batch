@@ -1126,9 +1126,15 @@ class ValifiClient:
                 self._token_expiry = None
             raise
     
-    @retry_with_backoff(max_retries=3, initial_delay=2)
+    @retry_with_backoff(max_retries=1, initial_delay=2)
     def get_credit_report(self, data):
-        """Get credit report with enhanced logging and session support"""
+        """Get credit report — single attempt per case.
+
+        We deliberately do NOT retry the credit pull: a 403 'Kount check failed'
+        is deterministic, and repeated identical lookups from our server IP feed
+        Valifi/Equifax's Kount velocity scoring (making borderline applicants
+        more likely to fail). One call per case, then the caller moves on.
+        """
         # Use session to maintain cookies like Postman
         session = requests.Session()
         
