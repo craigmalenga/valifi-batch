@@ -729,20 +729,93 @@ def check_date_eligibility(date_str):
         return False, f"Error parsing date: {str(e)}"
 
 # === SECTION SEPARATOR ===
+def sanitize_for_valifi(value):
+    """Remove chars Valifi/Equifax reject in address text — letters + spaces only.
+
+    Valifi rejects punctuation/digits in address text fields (e.g. it 403s on
+    "Purley-on-Thames"). House number and postcode are handled separately and
+    are NOT passed through this.
+    """
+    if not value:
+        return None
+    return re.sub(r'[^A-Za-z ]', ' ', value).strip() or None
+
+
+def sanitize_name(name):
+    """Tidy spaced-out names ('C R A I G' -> 'CRAIG') and trim whitespace."""
+    if not name:
+        return ""
+    parts = name.strip().split()
+    if len(parts) > 2 and all(len(p) <= 2 for p in parts):
+        name = ''.join(parts)
+    else:
+        name = ' '.join(parts)
+    return name.strip()
+
+
+def split_forename(first_name, middle_name=""):
+    """Equifax wants forename + middleName separated.
+
+    'Jirde daar deria' with no middle name -> ('Jirde', 'daar deria').
+    If a middle name is already supplied, leave the first name untouched.
+    """
+    first_name = (first_name or "").strip()
+    middle_name = (middle_name or "").strip()
+    if middle_name:
+        return first_name, middle_name
+    parts = first_name.split()
+    if len(parts) > 1:
+        return parts[0], " ".join(parts[1:])
+    return first_name, ""
+
+
+def normalise_incoming(d):
+    """Accept either the snake/camel frontend shape OR an already-Valifi-shaped
+    dict and return a single canonical frontend-style dict. Idempotent.
+
+    This protects the credit-check endpoints from silently sending blank
+    forename/surname to Valifi when a caller posts Valifi-shaped keys
+    (forename/surname/houseNumber/postTown/postCode) instead of the expected
+    frontend keys (firstName/lastName/building_number/post_town/post_code).
+    """
+    d = d or {}
+    current = d.get("currentAddress") or {}
+    return {
+        "firstName":   d.get("firstName")   or d.get("forename") or "",
+        "lastName":    d.get("lastName")    or d.get("surname") or "",
+        "middleName":  d.get("middleName", "") or "",
+        "title":       d.get("title", "") or "",
+        "dateOfBirth": d.get("dateOfBirth") or "",
+        "email":       d.get("email", "") or "",
+        "mobile":      d.get("mobile", "") or "",
+        "flat":            d.get("flat")            or current.get("flat", ""),
+        "building_name":   d.get("building_name")   or current.get("houseName", ""),
+        "building_number": d.get("building_number") or current.get("houseNumber", ""),
+        "street":          d.get("street")          or current.get("street", ""),
+        "district":        d.get("district")        or current.get("district", ""),
+        "county":          d.get("county")          or current.get("county", ""),
+        "post_town":       d.get("post_town")       or current.get("postTown", ""),
+        "post_code":       d.get("post_code")       or current.get("postCode", ""),
+        "previousAddress":         d.get("previousAddress"),
+        "previousPreviousAddress": d.get("previousPreviousAddress"),
+    }
+
+
+# === SECTION SEPARATOR ===
 def format_address_for_valifi(address_data):
     """Format an address dictionary into Valifi's expected structure"""
     if not address_data or not address_data.get('post_code'):
         return None
-        
+
     return {
-        "flat": address_data.get("flat", "") or None,
-        "houseName": address_data.get("building_name", "") or None,
+        "flat": sanitize_for_valifi(address_data.get("flat", "")),
+        "houseName": sanitize_for_valifi(address_data.get("building_name", "")),
         "houseNumber": address_data.get("building_number", "") or None,
-        "street": address_data.get("street", "") or None,
+        "street": sanitize_for_valifi(address_data.get("street", "")),
         "street2": None,
-        "district": address_data.get("district", "") or None,
-        "postTown": address_data.get("post_town", "") or None,
-        "county": address_data.get("county", "") or None,
+        "district": sanitize_for_valifi(address_data.get("district", "")),
+        "postTown": sanitize_for_valifi(address_data.get("post_town", "")),
+        "county": sanitize_for_valifi(address_data.get("county", "")),
         "postCode": address_data.get("post_code", "") or None
     }
 
@@ -1019,8 +1092,10 @@ class ValifiClient:
     def validate_identity(self, data):
         """Validate identity with retry logic"""
         try:
-            logger.info(f"Validating identity for: {data.get('firstName')} {data.get('lastName')}")
-            
+            # NOTE: payloads reaching this method use Valifi keys (forename/surname),
+            # NOT the frontend keys (firstName/lastName). Log the keys that actually exist.
+            logger.info(f"Validating identity for: {data.get('forename') or data.get('firstName')} {data.get('surname') or data.get('lastName')}")
+
             # Add default client reference if not provided
             if 'clientReference' not in data:
                 data['clientReference'] = 'validation'
@@ -1065,8 +1140,14 @@ class ValifiClient:
         session.headers.update(headers)
         
         try:
-            logger.info(f"Getting credit report for: {data.get('firstName')} {data.get('lastName')}")
-            
+            # NOTE: by the time a payload reaches here it uses Valifi keys
+            # (forename/surname). Reading firstName/lastName here always logged
+            # "None None" even on successful calls — a logging artifact, NOT proof
+            # of blank names. Log the real keys, plus the full outgoing payload so
+            # any future Kount/4xx failure is diagnosable in one log line.
+            logger.info(f"Getting credit report for: {data.get('forename') or data.get('firstName')} {data.get('surname') or data.get('lastName')}")
+            logger.info(f"FULL VALIFI REQUEST PAYLOAD: {json.dumps(data)}")
+
             resp = session.post(
                 f"{self.base_url}/bureau/v1/equifax/cz",
                 json=data,
@@ -3218,25 +3299,29 @@ def validate_identity():
     Uses the tu/validate endpoint which returns identity score
     """
     data = request.json or {}
-    
-    # CRITICAL: Trim all name fields to remove leading/trailing spaces
-    first_name = (data.get("firstName", "") or "").strip()
-    middle_name = (data.get("middleName", "") or "").strip()
-    last_name = (data.get("lastName", "") or "").strip()
-    
+
+    # Accept either frontend-shaped or Valifi-shaped keys (see /query).
+    data = normalise_incoming(data)
+
+    # CRITICAL: Trim + tidy name fields and split forename/middleName.
+    first_name_raw = sanitize_name((data.get("firstName", "") or "").strip())
+    middle_name_raw = (data.get("middleName", "") or "").strip()
+    last_name = sanitize_name((data.get("lastName", "") or "").strip())
+    first_name, middle_name = split_forename(first_name_raw, middle_name_raw)
+
     # Build client reference from trimmed names
     client_ref = f"{first_name}_{last_name}" if first_name and last_name else "identityCheck"
-    
-    # Build current address
+
+    # Build current address — sanitize text fields (letters + spaces only).
     current_address = {
-        "flat": data.get("flat", "") or None,
-        "houseName": data.get("building_name", "") or None,
+        "flat": sanitize_for_valifi(data.get("flat", "")),
+        "houseName": sanitize_for_valifi(data.get("building_name", "")),
         "houseNumber": data.get("building_number", "") or None,
-        "street": data.get("street", "") or None,
+        "street": sanitize_for_valifi(data.get("street", "")),
         "street2": None,
-        "district": data.get("district", "") or None,
-        "postTown": data.get("post_town", "") or None,
-        "county": data.get("county", "") or None,
+        "district": sanitize_for_valifi(data.get("district", "")),
+        "postTown": sanitize_for_valifi(data.get("post_town", "")),
+        "county": sanitize_for_valifi(data.get("county", "")),
         "postCode": data.get("post_code", "") or None,
         "addressID": None
     }
@@ -3334,31 +3419,40 @@ def query_valifi():
     
     data = request.json or {}
 
+    # Accept either frontend-shaped keys (firstName/post_town/...) OR
+    # already-Valifi-shaped keys (forename/postTown/...). Without this, a caller
+    # posting Valifi-shaped keys would yield blank forename/surname and trip
+    # Valifi's Kount pre-check ("Kount check failed" 403).
+    data = normalise_incoming(data)
+
     # Required fields as you already enforce
     required_fields = ["firstName", "lastName", "dateOfBirth", "street", "post_town", "post_code"]
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
 
-    # CRITICAL: Trim all name fields to remove leading/trailing spaces
-    first_name = (data.get("firstName", "") or "").strip()
-    middle_name = (data.get("middleName", "") or "").strip()
-    last_name = (data.get("lastName", "") or "").strip()
+    # CRITICAL: Trim + tidy name fields, and split forename/middleName the way
+    # Equifax expects ('Jirde daar' -> forename 'Jirde', middleName 'daar').
+    first_name_raw = sanitize_name((data.get("firstName", "") or "").strip())
+    middle_name_raw = (data.get("middleName", "") or "").strip()
+    last_name = sanitize_name((data.get("lastName", "") or "").strip())
+    first_name, middle_name = split_forename(first_name_raw, middle_name_raw)
     dob = data.get("dateOfBirth", "") or ""  # "YYYY-MM-DD"
-    
-    # Deterministic client reference helps support/debug
+
+    # Deterministic client reference helps support/debug; must NOT be empty.
     client_reference = f"{first_name}_{last_name}_{dob}" if (first_name and last_name and dob) else "web_form"
 
-    # Build current address
+    # Build current address — sanitize text fields (letters + spaces only);
+    # house number and postcode are passed through untouched.
     current_address = {
-        "flat": data.get("flat", "") or None,
-        "houseName": data.get("building_name", "") or None,
+        "flat": sanitize_for_valifi(data.get("flat", "")),
+        "houseName": sanitize_for_valifi(data.get("building_name", "")),
         "houseNumber": data.get("building_number", "") or None,
-        "street": data.get("street", "") or None,
+        "street": sanitize_for_valifi(data.get("street", "")),
         "street2": None,
-        "district": data.get("district", "") or None,
-        "postTown": data.get("post_town", "") or None,
-        "county": data.get("county", "") or None,
+        "district": sanitize_for_valifi(data.get("district", "")),
+        "postTown": sanitize_for_valifi(data.get("post_town", "")),
+        "county": sanitize_for_valifi(data.get("county", "")),
         "postCode": data.get("post_code", "") or None
     }
     
