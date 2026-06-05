@@ -939,8 +939,12 @@ def retry_with_backoff(max_retries=3, initial_delay=0.5, max_delay=5, backoff_fa
                     logger.warning(f"{func.__name__} connection error (attempt {attempt + 1}/{max_retries}): {e}")
                 except Exception as e:
                     last_exception = e
-                    # Don't retry on 4xx errors (client errors)
-                    if hasattr(e, 'response') and e.response and 400 <= e.response.status_code < 500:
+                    # Don't retry on 4xx errors (client errors).
+                    # NOTE: must use `e.response is not None` — a requests Response
+                    # is falsy for any non-2xx status (Response.__bool__ returns
+                    # self.ok), so `and e.response` would skip this branch on a 403
+                    # and (wrongly) retry deterministic client errors.
+                    if hasattr(e, 'response') and e.response is not None and 400 <= e.response.status_code < 500:
                         logger.error(f"{func.__name__} client error: {e}")
                         raise
                     logger.warning(f"{func.__name__} failed (attempt {attempt + 1}/{max_retries}): {e}")
@@ -1032,7 +1036,7 @@ class ValifiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Address lookup failed for {postcode}: {e}")
             # If token might be expired, clear it
-            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                 self._token = None
                 self._token_expiry = None
             raise
@@ -1058,7 +1062,7 @@ class ValifiClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"OTP request failed for {mobile}: {e}")
             # Clear token on auth errors
-            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                 self._token = None
                 self._token_expiry = None
             raise
@@ -1083,7 +1087,7 @@ class ValifiClient:
             
         except requests.exceptions.RequestException as e:
             logger.error(f"OTP verification failed for {mobile}: {e}")
-            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                 self._token = None
                 self._token_expiry = None
             raise
@@ -1117,7 +1121,7 @@ class ValifiClient:
             raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Identity validation failed: {e}")
-            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                 self._token = None
                 self._token_expiry = None
             raise
@@ -1189,7 +1193,7 @@ class ValifiClient:
             raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Credit report failed: {e}")
-            if hasattr(e, 'response') and e.response and e.response.status_code == 401:
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 401:
                 self._token = None
                 self._token_expiry = None
             raise
