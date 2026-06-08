@@ -802,6 +802,15 @@ def normalise_incoming(d):
 
 
 # === SECTION SEPARATOR ===
+def sanitize_client_reference(value):
+    """Valifi (esp. TransUnion) requires clientReference to match
+    ^[A-Za-z0-9_-]*$ — apostrophes, spaces, accents etc. are rejected with a 400.
+    Strip anything outside that set (e.g. "Fiona_O'Hare_1962-12-08" -> "Fiona_OHare_1962-12-08").
+    """
+    return re.sub(r'[^A-Za-z0-9_-]', '', value or '')
+
+
+# === SECTION SEPARATOR ===
 def format_address_for_valifi(address_data):
     """Format an address dictionary into Valifi's expected structure"""
     if not address_data or not address_data.get('post_code'):
@@ -3324,8 +3333,9 @@ def validate_identity():
     last_name = sanitize_name((data.get("lastName", "") or "").strip())
     first_name, middle_name = split_forename(first_name_raw, middle_name_raw)
 
-    # Build client reference from trimmed names
+    # Build client reference from trimmed names (must match ^[A-Za-z0-9_-]*$).
     client_ref = f"{first_name}_{last_name}" if first_name and last_name else "identityCheck"
+    client_ref = sanitize_client_reference(client_ref) or "identityCheck"
 
     # Build current address — sanitize text fields (letters + spaces only).
     current_address = {
@@ -3459,8 +3469,10 @@ def query_valifi():
     first_name, middle_name = split_forename(first_name_raw, middle_name_raw)
     dob = data.get("dateOfBirth", "") or ""  # "YYYY-MM-DD"
 
-    # Deterministic client reference helps support/debug; must NOT be empty.
+    # Deterministic client reference helps support/debug; must NOT be empty and
+    # must match ^[A-Za-z0-9_-]*$ (TU 400s otherwise — e.g. apostrophe in "O'Hare").
     client_reference = f"{first_name}_{last_name}_{dob}" if (first_name and last_name and dob) else "web_form"
+    client_reference = sanitize_client_reference(client_reference) or "web_form"
 
     # Build current address — sanitize text fields (letters + spaces only);
     # house number and postcode are passed through untouched.
@@ -3553,7 +3565,42 @@ def query_valifi():
     import json
     logger.info(f"Sending to Valifi ({bureau_label} {endpoint}): {json.dumps(payload, indent=2)[:500]}")
 
-    result = valifi_client.get_credit_report(payload, endpoint=endpoint, bureau=bureau_label)
+    try:
+        result = valifi_client.get_credit_report(payload, endpoint=endpoint, bureau=bureau_label)
+    except requests.exceptions.HTTPError as e:
+        body = e.response.text if (getattr(e, "response", None) is not None) else ""
+        status_code = e.response.status_code if (getattr(e, "response", None) is not None) else 502
+        # Pull the bureau's own message out of the JSON body if we can.
+        bureau_msg = body[:300]
+        try:
+            parsed_err = json.loads(body).get("error")
+            bureau_msg = parsed_err.get("message") if isinstance(parsed_err, dict) else (parsed_err or bureau_msg)
+        except Exception:
+            pass
+
+        # "Customer profile not found" is NOT an error — the bureau simply has no
+        # match for this person (TU returns it as a 400). Treat it like a clean
+        # "no accounts" result so the batch reports it as found-nothing, not a failure.
+        if status_code == 400 and "profile not found" in body.lower():
+            logger.info(f"{bureau_label}: no customer profile found for {first_name} {last_name} — returning empty result")
+            return jsonify({
+                "status": "false",
+                "bureau": bureau_label,
+                "profileFound": False,
+                "message": f"Customer profile not found with {bureau_label}",
+                "data": {"accounts": []}
+            }), 200
+
+        # Any other 4xx is a genuine request problem — surface the bureau's exact
+        # message so it's visible in the GUI/Needs-Attention sheet (no log-diving).
+        logger.error(f"{bureau_label} rejected request ({status_code}): {bureau_msg}")
+        return jsonify({
+            "error": "bureau_rejected",
+            "bureau": bureau_label,
+            "status_code": status_code,
+            "bureau_message": bureau_msg
+        }), 502
+
     # Tag which bureau produced this so the frontend/storage can distinguish.
     if isinstance(result, dict):
         result.setdefault("bureau", bureau_label)

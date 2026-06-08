@@ -679,8 +679,10 @@ Or from Excel column:
                 const pdfUrl = extractPdfUrl(valifiResponse);
                 const jsonUrl = valifiResponse?.jsonUrl || valifiResponse?.data?.jsonUrl || "";
                 const respBureau = valifiResponse?.bureau || bureau;
+                const bureauNote = valifiResponse?.message
+                    || (valifiResponse?.profileFound === false ? `No profile found on ${respBureau}` : "");
 
-                log(`[${idxLabel}] ← ${respBureau}: ${accounts.length} accounts, PDF: ${pdfUrl ? "Yes" : "No"}`);
+                log(`[${idxLabel}] ← ${respBureau}: ${accounts.length} accounts, PDF: ${pdfUrl ? "Yes" : "No"}${bureauNote ? " — " + bureauNote : ""}`);
                 if (jsonUrl) log(`[${idxLabel}] 🔗 Full JSON: ${jsonUrl}`);
                 
                 // ===== Step 2: Build summary for /upload_summary =====
@@ -952,7 +954,8 @@ Or from Excel column:
                     claim_id: claimId,
                     lenders: accounts.length,
                     leads: leadIds.length,
-                    json_url: jsonUrl
+                    json_url: jsonUrl,
+                    note: bureauNote
                 });
                 
             } catch (err) {
@@ -1064,7 +1067,7 @@ Or from Excel column:
                 let reason;
                 if (r.status === "ERROR") reason = "Error: " + (r.error || "request failed");
                 else if (r.status === "SKIPPED") reason = r.error || "Skipped";
-                else reason = "No accounts found (0 lenders) — nothing on this bureau";
+                else reason = r.note || "No accounts found (0 lenders) — nothing on this bureau";
                 return {
                     index: r.index,
                     first_name: r.first_name,
