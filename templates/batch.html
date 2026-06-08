@@ -574,8 +574,16 @@ Or from Excel column:
             skipEmptyLines: true,
             transformHeader: normalizeHeader,
             complete: function(results) {
+                const foundHeaders = (results.meta && results.meta.fields) ? results.meta.fields : [];
+                log(`CSV headers detected (after mapping): ${foundHeaders.join(", ") || "(none)"}`);
+                log(`Total rows parsed: ${results.data.length}`);
                 records = results.data.filter(r => r.first_name && r.last_name);
                 log(`Loaded ${records.length} valid records from CSV`);
+                if (records.length === 0 && results.data.length > 0) {
+                    log(`⚠️ 0 valid records: rows parsed but no first_name/last_name after mapping. ` +
+                        `If the headers above don't include first_name & last_name, this is an OLD batch.html ` +
+                        `(no header mapping) or the file isn't a real CSV. Re-download the latest HTML and re-select the file.`, "warn");
+                }
                 renderPreview(records);
                 document.getElementById("runBatchBtn").disabled = records.length === 0;
             },
