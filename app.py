@@ -3580,6 +3580,36 @@ def query_valifi():
         except Exception as e:
             logger.error(f"Failed to upload PDF to S3: {e}")
 
+    # Store the FULL raw response JSON in S3 and return a fetchable link. This is
+    # what lets us inspect the exact structure of a bureau's response (TU vs
+    # Equifax) and build accurate field-by-field parsing. We return a presigned
+    # GET URL (valid 7 days) so it can be opened/shared regardless of bucket ACL.
+    if s3_client:
+        try:
+            safe_ref = re.sub(r'[^A-Za-z0-9_-]', '_', client_reference)[:80] or "report"
+            json_key = f"raw-responses/{bureau_label.lower()}/{safe_ref}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
+            s3_client.put_object(
+                Bucket=Config.AWS_S3_BUCKET,
+                Key=json_key,
+                Body=json.dumps(result, indent=2).encode("utf-8"),
+                ContentType="application/json",
+                Metadata={"bureau": bureau_label, "clientReference": client_reference[:200]}
+            )
+            try:
+                json_url = s3_client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": Config.AWS_S3_BUCKET, "Key": json_key},
+                    ExpiresIn=604800,  # 7 days (SigV4 max)
+                )
+            except Exception as sign_err:
+                logger.warning(f"Presign failed, using direct URL: {sign_err}")
+                json_url = f"https://{Config.AWS_S3_BUCKET}.s3.{Config.AWS_REGION}.amazonaws.com/{json_key}"
+            result["jsonUrl"] = json_url
+            report_data["jsonUrl"] = json_url
+            logger.info(f"Stored full {bureau_label} response JSON in S3: {json_key}")
+        except Exception as e:
+            logger.error(f"Failed to store full response JSON to S3: {e}")
+
     # Surface accounts onto report_data regardless of bureau. Equifax nests them
     # under summaryReportV2; TransUnion under summaryReport. Prefer V2, then
     # summaryReport, but never clobber accounts already present.

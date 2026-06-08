@@ -674,8 +674,11 @@ Or from Excel column:
                 const valifiResponse = await queryResp.json();
                 const accounts = extractAccounts(valifiResponse);
                 const pdfUrl = extractPdfUrl(valifiResponse);
-                
-                log(`[${idxLabel}] ← Found ${accounts.length} accounts, PDF: ${pdfUrl ? "Yes" : "No"}`);
+                const jsonUrl = valifiResponse?.jsonUrl || valifiResponse?.data?.jsonUrl || "";
+                const respBureau = valifiResponse?.bureau || bureau;
+
+                log(`[${idxLabel}] ← ${respBureau}: ${accounts.length} accounts, PDF: ${pdfUrl ? "Yes" : "No"}`);
+                if (jsonUrl) log(`[${idxLabel}] 🔗 Full JSON: ${jsonUrl}`);
                 
                 // ===== Step 2: Build summary for /upload_summary =====
                 const mobile = (record.mobile || "").trim();
@@ -847,6 +850,8 @@ Or from Excel column:
                         submission_datetime: formatDateTimeDDMMYYYY(batchTimestamp),
                         leads_created_count: leadIds.length,
                         pdf_url: pdfUrl,
+                        bureau: respBureau,
+                        full_json_url: jsonUrl,
                         credit_report_s3_url: creditReportS3Url,
                         cmc_in_credit_report: cmcSearchFound ? "Yes" : "No",
                         signature_provided: false,
@@ -938,9 +943,11 @@ Or from Excel column:
                     first_name: record.first_name,
                     last_name: record.last_name,
                     status: "OK",
+                    bureau: respBureau,
                     claim_id: claimId,
                     lenders: accounts.length,
-                    leads: leadIds.length
+                    leads: leadIds.length,
+                    json_url: jsonUrl
                 });
                 
             } catch (err) {
@@ -995,19 +1002,24 @@ Or from Excel column:
         
         html += `<div style="max-height: 300px; overflow: auto;">`;
         html += `<table id="resultsTable"><thead><tr>
-            <th>#</th><th>First</th><th>Last</th><th>Status</th><th>Claim ID</th><th>Lenders</th><th>Leads</th><th>Error</th>
+            <th>#</th><th>First</th><th>Last</th><th>Status</th><th>Bureau</th><th>Claim ID</th><th>Lenders</th><th>Leads</th><th>Full JSON</th><th>Error</th>
         </tr></thead><tbody>`;
-        
+
         results.forEach(r => {
             const statusClass = r.status === "OK" ? "badge-ok" : r.status === "SKIPPED" ? "badge-skip" : "badge-error";
+            const jsonCell = r.json_url
+                ? `<a href="${r.json_url}" target="_blank" rel="noopener">open JSON</a>`
+                : "";
             html += `<tr>
                 <td>${r.index}</td>
                 <td>${r.first_name}</td>
                 <td>${r.last_name}</td>
                 <td><span class="badge ${statusClass}">${r.status}</span></td>
+                <td>${r.bureau || ""}</td>
                 <td>${r.claim_id || ""}</td>
                 <td>${r.lenders || ""}</td>
                 <td>${r.leads || ""}</td>
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">${jsonCell}</td>
                 <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${r.error || ""}</td>
             </tr>`;
         });
