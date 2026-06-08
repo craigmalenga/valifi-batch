@@ -690,7 +690,12 @@ Or from Excel column:
                 
                 // ===== Step 2: Build summary for /upload_summary =====
                 const mobile = (record.mobile || "").trim();
-                const ukMobile = mobile.startsWith("44") ? "0" + mobile.substring(2) : mobile;
+                // Normalise to UK 07... form. Handles: +44/44 prefixes, and the
+                // common CSV/Excel case where the leading 0 was stripped because
+                // the column was treated as a number (e.g. 7464628698 -> 07464628698).
+                let ukMobile = mobile.replace(/\s+/g, "").replace(/^\+/, "");
+                if (ukMobile.startsWith("44")) ukMobile = "0" + ukMobile.substring(2);
+                else if (ukMobile.length === 10 && ukMobile.startsWith("7")) ukMobile = "0" + ukMobile;
                 const combinedAddress = buildCombinedAddress(queryPayload);
                 const prevAddressesFormatted = formatPreviousAddresses(queryPayload.previousAddress, queryPayload.previousPreviousAddress);
                 
