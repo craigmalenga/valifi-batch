@@ -1091,63 +1091,121 @@ Or from Excel column:
     }
 
     // ===== Excel Export =====
+    // Make any value safe for a spreadsheet cell (objects -> JSON, null -> "").
+    function sanitizeRow(obj) {
+        const out = {};
+        for (const k in obj) {
+            const v = obj[k];
+            if (v === null || v === undefined) out[k] = "";
+            else if (typeof v === "object") out[k] = JSON.stringify(v);
+            else out[k] = v;
+        }
+        return out;
+    }
+
+    // Turn a raw error string into a short, groupable reason for the Summary sheet.
+    function shortReason(err) {
+        if (!err) return "Unknown error";
+        const e = String(err);
+        if (e.toLowerCase().includes("profile not found")) return "Customer profile not found (no bureau data)";
+        const idx = e.indexOf(" - ");
+        if (idx > -1) {
+            try {
+                const j = JSON.parse(e.slice(idx + 3));
+                return j.bureau_message || j.details || j.error || e.slice(0, 100);
+            } catch (_) { return e.slice(0, 100); }
+        }
+        return e.slice(0, 100);
+    }
+
     function exportToExcel() {
-        if (exportData.length === 0) {
-            alert("No data to export. Run a batch first.");
-            return;
+        try {
+            if (typeof XLSX === "undefined") {
+                log("Excel library (XLSX) didn't load — it comes from a CDN, so you need internet when the page is first opened. Reload the page and retry.", "error");
+                alert("Excel library didn't load (needs internet on first open). Reload the page and try again.");
+                return;
+            }
+            if (exportData.length === 0 && results.length === 0) {
+                alert("No data to export. Run a batch first.");
+                return;
+            }
+
+            log("Generating Excel file...");
+
+            const wb = XLSX.utils.book_new();
+
+            // ===== Sheet 1: Summary =====
+            const okRows  = results.filter(r => r.status === "OK");
+            const hits    = okRows.filter(r => (r.lenders || 0) > 0);
+            const noHits  = okRows.filter(r => (r.lenders || 0) === 0);
+            const errors  = results.filter(r => r.status === "ERROR");
+            const skipped = results.filter(r => r.status === "SKIPPED");
+            const totalLenders = hits.reduce((s, r) => s + (r.lenders || 0), 0);
+            const totalLeads   = okRows.reduce((s, r) => s + (r.leads || 0), 0);
+            const round2 = (n, d) => d > 0 ? Math.round((n / d) * 100) / 100 : 0;
+            const pct    = (n, d) => d > 0 ? (Math.round((n / d) * 1000) / 10) + "%" : "0%";
+
+            const summaryAoa = [
+                ["Metric", "Value"],
+                ["Total cases processed", results.length],
+                ["Succeeded (OK)", okRows.length],
+                ["  – with lender hits", hits.length],
+                ["  – no hits (no data / profile not found)", noHits.length],
+                ["Failed (errors)", errors.length],
+                ["Skipped (missing required fields)", skipped.length],
+                ["", ""],
+                ["Hit rate (hits / processed)", pct(hits.length, results.length)],
+                ["Total lenders found", totalLenders],
+                ["Total leads created", totalLeads],
+                ["Avg lenders per hit", round2(totalLenders, hits.length)],
+                ["Avg leads per successful case", round2(totalLeads, okRows.length)],
+                ["", ""],
+                ["Failure / no-data reason", "Count"],
+            ];
+            const reasonCounts = {};
+            errors.forEach(r => { const k = shortReason(r.error); reasonCounts[k] = (reasonCounts[k] || 0) + 1; });
+            noHits.forEach(r => { const k = r.note || "No accounts found on bureau"; reasonCounts[k] = (reasonCounts[k] || 0) + 1; });
+            Object.keys(reasonCounts).sort((a, b) => reasonCounts[b] - reasonCounts[a])
+                .forEach(k => summaryAoa.push([k, reasonCounts[k]]));
+
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryAoa), "Summary");
+
+            // ===== Sheet 2: Batch Results (one row per lead) =====
+            if (exportData.length > 0) {
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData.map(sanitizeRow)), "Batch Results");
+            }
+
+            // ===== Sheet 3: Needs Attention =====
+            const attentionRows = results
+                .filter(r => r.status === "ERROR" || r.status === "SKIPPED" || (r.status === "OK" && (r.lenders || 0) === 0))
+                .map(r => {
+                    let reason;
+                    if (r.status === "ERROR") reason = "Error: " + (r.error || "request failed");
+                    else if (r.status === "SKIPPED") reason = r.error || "Skipped";
+                    else reason = r.note || "No accounts found (0 lenders) — nothing on this bureau";
+                    return {
+                        index: r.index, first_name: r.first_name, last_name: r.last_name,
+                        date_of_birth: r.date_of_birth || "", post_code: r.post_code || "",
+                        bureau: r.bureau || "", status: r.status, reason: reason,
+                        lenders: r.lenders || 0, leads: r.leads || 0,
+                        claim_id: r.claim_id || "", full_json_url: r.json_url || ""
+                    };
+                });
+            if (attentionRows.length > 0) {
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attentionRows.map(sanitizeRow)), "Needs Attention");
+            }
+
+            const timestamp = new Date().toISOString().split("T")[0];
+            const filename = `batch_export_${timestamp}.xlsx`;
+            XLSX.writeFile(wb, filename);
+
+            log(`Excel file downloaded: ${filename}`, "success");
+            log(`  - Sheets: Summary, Batch Results (${exportData.length}), Needs Attention (${attentionRows.length})`);
+        } catch (err) {
+            log(`Excel export FAILED: ${err && err.message ? err.message : err}`, "error");
+            console.error("Excel export error:", err);
+            alert("Excel export failed: " + (err && err.message ? err.message : err));
         }
-        
-        log("Generating Excel file...");
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        
-        // Create worksheet from export data
-        const ws = XLSX.utils.json_to_sheet(exportData);
-
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, "Batch Results");
-
-        // ===== Second worksheet: cases that need attention =====
-        // Anything that errored, was skipped, or came back with no accounts/leads.
-        const attentionRows = results
-            .filter(r => r.status === "ERROR" || r.status === "SKIPPED" || (r.status === "OK" && (r.lenders || 0) === 0))
-            .map(r => {
-                let reason;
-                if (r.status === "ERROR") reason = "Error: " + (r.error || "request failed");
-                else if (r.status === "SKIPPED") reason = r.error || "Skipped";
-                else reason = r.note || "No accounts found (0 lenders) — nothing on this bureau";
-                return {
-                    index: r.index,
-                    first_name: r.first_name,
-                    last_name: r.last_name,
-                    date_of_birth: r.date_of_birth || "",
-                    post_code: r.post_code || "",
-                    bureau: r.bureau || "",
-                    status: r.status,
-                    reason: reason,
-                    lenders: r.lenders || 0,
-                    leads: r.leads || 0,
-                    claim_id: r.claim_id || "",
-                    full_json_url: r.json_url || ""
-                };
-            });
-
-        if (attentionRows.length > 0) {
-            const wsAttn = XLSX.utils.json_to_sheet(attentionRows);
-            XLSX.utils.book_append_sheet(wb, wsAttn, "Needs Attention");
-        }
-
-        // Generate filename with timestamp
-        const timestamp = new Date().toISOString().split("T")[0];
-        const filename = `batch_export_${timestamp}.xlsx`;
-
-        // Download the file
-        XLSX.writeFile(wb, filename);
-
-        log(`Excel file downloaded: ${filename}`, "success");
-        log(`  - Batch Results rows: ${exportData.length}`);
-        log(`  - Needs Attention rows: ${attentionRows.length}`);
     }
 
     // ===== Event Listeners =====
