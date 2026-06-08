@@ -287,12 +287,13 @@
                 
                 <p class="small" style="margin-top: 12px;">
                     <strong>Required CSV columns:</strong><br>
-                    <code>title</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>mobile</code>,
+                    <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>mobile</code>,
                     <code>dob_day</code>, <code>dob_month</code>, <code>dob_year</code>,
-                    <code>street</code>, <code>post_town</code>, <code>post_code</code><br>
-                    <span style="color:#b45309;">⚠️ <strong>title</strong> is required for TransUnion — its match uses gender
-                    (Mr / Mrs / Ms / Miss). A wrong/missing title can return "profile not found".
-                    If left blank we try Mr then Ms automatically, but an accurate title is best.</span><br><br>
+                    <code>street</code>, <code>post_town</code>, <code>post_code</code><br><br>
+                    <strong>Recommended (not required — won't fail if missing):</strong><br>
+                    <code>title</code> — TransUnion's match uses gender, so an accurate title
+                    (Mr / Mrs / Ms / Miss) improves the hit rate. <strong>If left blank we
+                    automatically try Mr, then Ms</strong>, before concluding no data.<br><br>
                     <strong>Optional:</strong><br>
                     <code>middle_name</code>, <code>flat</code>, <code>building_name</code>,
                     <code>building_number</code>, <code>district</code>, <code>county</code>,
