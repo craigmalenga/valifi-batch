@@ -629,8 +629,11 @@ Or from Excel column:
                     index: idxLabel,
                     first_name: record.first_name || "",
                     last_name: record.last_name || "",
+                    date_of_birth: dateOfBirth || "",
+                    post_code: (record.post_code || "").trim(),
+                    bureau: bureau,
                     status: "SKIPPED",
-                    error: "Missing required fields"
+                    error: "Missing required fields (need first_name, last_name, dob, post_code)"
                 });
                 continue;
             }
@@ -942,6 +945,8 @@ Or from Excel column:
                     index: idxLabel,
                     first_name: record.first_name,
                     last_name: record.last_name,
+                    date_of_birth: dateOfBirth || "",
+                    post_code: (record.post_code || "").trim(),
                     status: "OK",
                     bureau: respBureau,
                     claim_id: claimId,
@@ -956,6 +961,9 @@ Or from Excel column:
                     index: idxLabel,
                     first_name: record.first_name || "",
                     last_name: record.last_name || "",
+                    date_of_birth: dateOfBirth || "",
+                    post_code: (record.post_code || "").trim(),
+                    bureau: bureau,
                     status: "ERROR",
                     error: err.message
                 });
@@ -980,7 +988,9 @@ Or from Excel column:
         isRunning = false;
         document.getElementById("runBatchBtn").disabled = false;
         document.getElementById("stopBtn").disabled = true;
-        document.getElementById("exportBtn").disabled = exportData.length === 0;
+        // Enable export if there are leads OR any results at all (so the
+        // "Needs Attention" sheet is downloadable even on an all-failure run).
+        document.getElementById("exportBtn").disabled = (exportData.length === 0 && results.length === 0);
     }
 
     function renderResults(results) {
@@ -1042,19 +1052,50 @@ Or from Excel column:
         
         // Create worksheet from export data
         const ws = XLSX.utils.json_to_sheet(exportData);
-        
+
         // Add worksheet to workbook
         XLSX.utils.book_append_sheet(wb, ws, "Batch Results");
-        
+
+        // ===== Second worksheet: cases that need attention =====
+        // Anything that errored, was skipped, or came back with no accounts/leads.
+        const attentionRows = results
+            .filter(r => r.status === "ERROR" || r.status === "SKIPPED" || (r.status === "OK" && (r.lenders || 0) === 0))
+            .map(r => {
+                let reason;
+                if (r.status === "ERROR") reason = "Error: " + (r.error || "request failed");
+                else if (r.status === "SKIPPED") reason = r.error || "Skipped";
+                else reason = "No accounts found (0 lenders) — nothing on this bureau";
+                return {
+                    index: r.index,
+                    first_name: r.first_name,
+                    last_name: r.last_name,
+                    date_of_birth: r.date_of_birth || "",
+                    post_code: r.post_code || "",
+                    bureau: r.bureau || "",
+                    status: r.status,
+                    reason: reason,
+                    lenders: r.lenders || 0,
+                    leads: r.leads || 0,
+                    claim_id: r.claim_id || "",
+                    full_json_url: r.json_url || ""
+                };
+            });
+
+        if (attentionRows.length > 0) {
+            const wsAttn = XLSX.utils.json_to_sheet(attentionRows);
+            XLSX.utils.book_append_sheet(wb, wsAttn, "Needs Attention");
+        }
+
         // Generate filename with timestamp
         const timestamp = new Date().toISOString().split("T")[0];
         const filename = `batch_export_${timestamp}.xlsx`;
-        
+
         // Download the file
         XLSX.writeFile(wb, filename);
-        
+
         log(`Excel file downloaded: ${filename}`, "success");
-        log(`  - Total rows: ${exportData.length}`);
+        log(`  - Batch Results rows: ${exportData.length}`);
+        log(`  - Needs Attention rows: ${attentionRows.length}`);
     }
 
     // ===== Event Listeners =====
