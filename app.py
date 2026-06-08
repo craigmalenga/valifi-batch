@@ -3434,6 +3434,11 @@ def query_valifi():
     
     data = request.json or {}
 
+    # Capture request-level options BEFORE normalise_incoming() rebuilds `data`
+    # with only the identity/address keys (it would otherwise drop these).
+    bureau_choice = data.get("bureau")
+    max_data_choice = data.get("maxData", True)
+
     # Accept either frontend-shaped keys (firstName/post_town/...) OR
     # already-Valifi-shaped keys (forename/postTown/...). Without this, a caller
     # posting Valifi-shaped keys would yield blank forename/surname and trip
@@ -3486,13 +3491,13 @@ def query_valifi():
     # Which bureau? Equifax (default) or TransUnion. The request body is
     # identical for both — only the Valifi endpoint differs. Selectable per
     # case from the GUI via the "bureau" field.
-    bureau = (data.get("bureau") or "equifax").strip().lower()
+    bureau = (bureau_choice or "equifax").strip().lower()
     is_tu = bureau in ("tu", "transunion", "trans union")
 
     # "Pull max data in one go" — request every report variant the bureau
     # supports so we never have to go back and re-pull. Controlled from the GUI
     # via the "maxData" flag (defaults on so a batch grabs everything by default).
-    max_data = data.get("maxData", True)
+    max_data = max_data_choice
     if isinstance(max_data, str):
         max_data = max_data.strip().lower() in ("1", "true", "yes", "on")
 
