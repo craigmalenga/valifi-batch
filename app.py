@@ -3522,12 +3522,21 @@ def query_valifi():
             "includeSummaryReport": bool(max_data),
         }
 
+    # Title handling. Equifax accepts an empty title; TransUnion REJECTS it
+    # ("Invalid Payload: data/title must NOT have fewer than 2 characters"), so
+    # for TU we fall back to a valid 2-char title when the record has none.
+    # NOTE: "Mr" is just a length-valid default — populate the CSV `title`
+    # column for accurate titles (esp. non-male applicants).
+    title = (data.get("title", "") or "").strip()
+    if is_tu and len(title) < 2:
+        title = "Mr"
+
     # Build payload with trimmed names
     payload = {
         **report_flags,
 
         "clientReference": client_reference,
-        "title": data.get("title", "") or "",
+        "title": title,
         "forename": first_name,
         "middleName": middle_name,
         "surname": last_name,
