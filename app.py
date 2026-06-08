@@ -3534,21 +3534,31 @@ def query_valifi():
             "includeSummaryReport": bool(max_data),
         }
 
-    # Title handling. Equifax accepts an empty title; TransUnion REJECTS it
-    # ("Invalid Payload: data/title must NOT have fewer than 2 characters"), so
-    # for TU we fall back to a valid 2-char title when the record has none.
-    # NOTE: "Mr" is just a length-valid default — populate the CSV `title`
-    # column for accurate titles (esp. non-male applicants).
+    # Title handling.
+    # - Equifax accepts an empty title.
+    # - TransUnion rejects empty (must be >=2 chars) AND uses the title's GENDER
+    #   in its identity match — a wrong-gender title can cause "Customer profile
+    #   not found" even when the person IS on file (proven with Elizabeth Austin:
+    #   "Mr" -> not found, "Ms" -> found).
+    # So for TU we try the given/best title first, and if it comes back
+    # "profile not found" we retry ONCE with the opposite-gender title before
+    # concluding there's no data. Ms/Mrs/Miss are all "female" to TU's matcher,
+    # so a single female alternate is enough.
     title = (data.get("title", "") or "").strip()
-    if is_tu and len(title) < 2:
-        title = "Mr"
+    FEMALE_TITLES = {"ms", "mrs", "miss", "ms.", "mrs.", "lady", "dame"}
+    if is_tu:
+        primary_title = title if len(title) >= 2 else "Mr"
+        fallback_title = "Mr" if primary_title.strip().lower() in FEMALE_TITLES else "Ms"
+        title_candidates = [primary_title, fallback_title]
+    else:
+        title_candidates = [title]
 
-    # Build payload with trimmed names
+    # Build payload (title is set per-attempt in the loop below).
     payload = {
         **report_flags,
 
         "clientReference": client_reference,
-        "title": title,
+        "title": title_candidates[0],
         "forename": first_name,
         "middleName": middle_name,
         "surname": last_name,
@@ -3559,47 +3569,61 @@ def query_valifi():
         "previousPreviousAddress": previous_previous_address
     }
 
-    logger.info(f"Requesting {bureau_label} report for {first_name} {last_name} (maxData={bool(max_data)})")
-
-    # DEBUG: Log exactly what we're sending to Valifi
     import json
-    logger.info(f"Sending to Valifi ({bureau_label} {endpoint}): {json.dumps(payload, indent=2)[:500]}")
+    logger.info(f"Requesting {bureau_label} report for {first_name} {last_name} (maxData={bool(max_data)}, titles={title_candidates})")
 
-    try:
-        result = valifi_client.get_credit_report(payload, endpoint=endpoint, bureau=bureau_label)
-    except requests.exceptions.HTTPError as e:
-        body = e.response.text if (getattr(e, "response", None) is not None) else ""
-        status_code = e.response.status_code if (getattr(e, "response", None) is not None) else 502
-        # Pull the bureau's own message out of the JSON body if we can.
-        bureau_msg = body[:300]
+    # Try each candidate title until one matches. A TU "profile not found" rolls
+    # over to the next title; any other error is surfaced immediately.
+    result = None
+    profile_not_found = False
+    for idx, attempt_title in enumerate(title_candidates):
+        payload["title"] = attempt_title
+        logger.info(f"Sending to Valifi ({bureau_label} {endpoint}) title='{attempt_title}': {json.dumps(payload)[:300]}")
         try:
-            parsed_err = json.loads(body).get("error")
-            bureau_msg = parsed_err.get("message") if isinstance(parsed_err, dict) else (parsed_err or bureau_msg)
-        except Exception:
-            pass
+            result = valifi_client.get_credit_report(payload, endpoint=endpoint, bureau=bureau_label)
+            if isinstance(result, dict):
+                result["matchedTitle"] = attempt_title
+            break
+        except requests.exceptions.HTTPError as e:
+            body = e.response.text if (getattr(e, "response", None) is not None) else ""
+            status_code = e.response.status_code if (getattr(e, "response", None) is not None) else 502
+            bureau_msg = body[:300]
+            try:
+                parsed_err = json.loads(body).get("error")
+                bureau_msg = parsed_err.get("message") if isinstance(parsed_err, dict) else (parsed_err or bureau_msg)
+            except Exception:
+                pass
 
-        # "Customer profile not found" is NOT an error — the bureau simply has no
-        # match for this person (TU returns it as a 400). Treat it like a clean
-        # "no accounts" result so the batch reports it as found-nothing, not a failure.
-        if status_code == 400 and "profile not found" in body.lower():
-            logger.info(f"{bureau_label}: no customer profile found for {first_name} {last_name} — returning empty result")
+            # "Customer profile not found" = no match for this name/dob/address/
+            # gender combo. Retry with the next title if we have one, else it's a
+            # genuine no-data result (not a failure).
+            if status_code == 400 and "profile not found" in body.lower():
+                profile_not_found = True
+                more = idx + 1 < len(title_candidates)
+                logger.info(f"{bureau_label}: no profile for {first_name} {last_name} with title='{attempt_title}'"
+                            + (f" — retrying with '{title_candidates[idx + 1]}'" if more else " — no more titles to try"))
+                continue
+
+            # Any other 4xx is a real request problem — surface the bureau's exact
+            # message so it's visible in the GUI/Needs-Attention sheet.
+            logger.error(f"{bureau_label} rejected request ({status_code}): {bureau_msg}")
             return jsonify({
-                "status": "false",
+                "error": "bureau_rejected",
                 "bureau": bureau_label,
-                "profileFound": False,
-                "message": f"Customer profile not found with {bureau_label}",
-                "data": {"accounts": []}
-            }), 200
+                "status_code": status_code,
+                "bureau_message": bureau_msg
+            }), 502
 
-        # Any other 4xx is a genuine request problem — surface the bureau's exact
-        # message so it's visible in the GUI/Needs-Attention sheet (no log-diving).
-        logger.error(f"{bureau_label} rejected request ({status_code}): {bureau_msg}")
+    if result is None:
+        # Every title attempt returned "profile not found" -> genuine no-data.
+        logger.info(f"{bureau_label}: no customer profile found for {first_name} {last_name} after trying {title_candidates}")
         return jsonify({
-            "error": "bureau_rejected",
+            "status": "false",
             "bureau": bureau_label,
-            "status_code": status_code,
-            "bureau_message": bureau_msg
-        }), 502
+            "profileFound": False,
+            "message": f"Customer profile not found with {bureau_label} (tried {', '.join(title_candidates)})",
+            "data": {"accounts": []}
+        }), 200
 
     # Tag which bureau produced this so the frontend/storage can distinguish.
     if isinstance(result, dict):
