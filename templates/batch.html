@@ -256,7 +256,24 @@
                         <input id="maxRecords" type="number" value="0" min="0">
                     </div>
                 </div>
-                
+
+                <div class="field-inline">
+                    <div>
+                        <label for="bureau">Credit bureau</label>
+                        <select id="bureau">
+                            <option value="equifax" selected>Equifax (/equifax/cz)</option>
+                            <option value="transunion">TransUnion (/tu/report)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="maxData" style="display:flex; align-items:center; gap:6px;">
+                            <input id="maxData" type="checkbox" checked style="width:auto;">
+                            Pull max data in one go
+                        </label>
+                        <span class="small">All report variants (JSON + PDF + summaries) so you never re-pull.</span>
+                    </div>
+                </div>
+
                 <hr style="margin: 14px 0; border: none; border-top: 1px solid #e1e4f0;">
                 
                 <h2>2. CSV Upload</h2>
@@ -570,6 +587,8 @@ Or from Excel column:
         const delayMs = parseInt(document.getElementById("delayMs").value) || 1500;
         const maxRecords = parseInt(document.getElementById("maxRecords").value) || 0;
         const limit = maxRecords > 0 ? Math.min(maxRecords, records.length) : records.length;
+        const bureau = document.getElementById("bureau").value;          // equifax | transunion
+        const maxData = document.getElementById("maxData").checked;       // pull all report variants
         
         isRunning = true;
         stopRequested = false;
@@ -633,10 +652,12 @@ Or from Excel column:
                     post_town: (record.post_town || "").trim(),
                     post_code: (record.post_code || "").trim(),
                     previousAddress: buildPreviousAddress(record, "prev1"),
-                    previousPreviousAddress: buildPreviousAddress(record, "prev2")
+                    previousPreviousAddress: buildPreviousAddress(record, "prev2"),
+                    bureau: bureau,        // equifax | transunion
+                    maxData: maxData       // pull every report variant in one go
                 };
-                
-                log(`[${idxLabel}] → Calling /query...`);
+
+                log(`[${idxLabel}] → Calling /query (${bureau}${maxData ? ", max data" : ""})...`);
                 
                 const queryResp = await fetch(`${baseUrl}/query`, {
                     method: "POST",

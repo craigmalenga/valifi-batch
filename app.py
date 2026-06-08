@@ -1127,8 +1127,13 @@ class ValifiClient:
             raise
     
     @retry_with_backoff(max_retries=1, initial_delay=2)
-    def get_credit_report(self, data):
-        """Get credit report — single attempt per case.
+    def get_credit_report(self, data, endpoint="/bureau/v1/equifax/cz", bureau="Equifax"):
+        """Get a credit report from a Valifi bureau endpoint — single attempt per case.
+
+        `endpoint` selects the bureau:
+          - Equifax:     /bureau/v1/equifax/cz
+          - TransUnion:  /bureau/v1/tu/report
+        The request body is identical for both bureaus (only the URL differs).
 
         We deliberately do NOT retry the credit pull: a 403 'Kount check failed'
         is deterministic, and repeated identical lookups from our server IP feed
@@ -1137,7 +1142,7 @@ class ValifiClient:
         """
         # Use session to maintain cookies like Postman
         session = requests.Session()
-        
+
         # Add all headers that Postman sends
         headers = self._get_headers()
         headers.update({
@@ -1148,18 +1153,18 @@ class ValifiClient:
             "Connection": "keep-alive"
         })
         session.headers.update(headers)
-        
+
         try:
             # NOTE: by the time a payload reaches here it uses Valifi keys
             # (forename/surname). Reading firstName/lastName here always logged
             # "None None" even on successful calls — a logging artifact, NOT proof
             # of blank names. Log the real keys, plus the full outgoing payload so
             # any future Kount/4xx failure is diagnosable in one log line.
-            logger.info(f"Getting credit report for: {data.get('forename') or data.get('firstName')} {data.get('surname') or data.get('lastName')}")
-            logger.info(f"FULL VALIFI REQUEST PAYLOAD: {json.dumps(data)}")
+            logger.info(f"Getting {bureau} report for: {data.get('forename') or data.get('firstName')} {data.get('surname') or data.get('lastName')}")
+            logger.info(f"FULL VALIFI REQUEST PAYLOAD ({bureau} {endpoint}): {json.dumps(data)}")
 
             resp = session.post(
-                f"{self.base_url}/bureau/v1/equifax/cz",
+                f"{self.base_url}{endpoint}",
                 json=data,
                 timeout=60
             )
@@ -3478,13 +3483,43 @@ def query_valifi():
         previous_previous_address = format_address_for_valifi(data["previousPreviousAddress"])
         logger.info(f"Including previous previous address in credit report: {previous_previous_address.get('postCode')}")
 
+    # Which bureau? Equifax (default) or TransUnion. The request body is
+    # identical for both — only the Valifi endpoint differs. Selectable per
+    # case from the GUI via the "bureau" field.
+    bureau = (data.get("bureau") or "equifax").strip().lower()
+    is_tu = bureau in ("tu", "transunion", "trans union")
+
+    # "Pull max data in one go" — request every report variant the bureau
+    # supports so we never have to go back and re-pull. Controlled from the GUI
+    # via the "maxData" flag (defaults on so a batch grabs everything by default).
+    max_data = data.get("maxData", True)
+    if isinstance(max_data, str):
+        max_data = max_data.strip().lower() in ("1", "true", "yes", "on")
+
+    if is_tu:
+        endpoint = "/bureau/v1/tu/report"
+        bureau_label = "TransUnion"
+        # TransUnion supports these three report variants.
+        report_flags = {
+            "includeJsonReport": True,
+            "includePdfReport": True,
+            "includeSummaryReport": True,
+        }
+    else:
+        endpoint = "/bureau/v1/equifax/cz"
+        bureau_label = "Equifax"
+        report_flags = {
+            "includeJsonReport": True,
+            "includePdfReport": True,
+            "includeSummaryReportV2": True,
+            # Extra variants only when pulling max data, to keep lean pulls small.
+            "includePdfSummaryReport": bool(max_data),
+            "includeSummaryReport": bool(max_data),
+        }
+
     # Build payload with trimmed names
     payload = {
-        "includeJsonReport": True,
-        "includePdfReport": True,
-        "includePdfSummaryReport": False,
-        "includeSummaryReport": False,
-        "includeSummaryReportV2": True,
+        **report_flags,
 
         "clientReference": client_reference,
         "title": data.get("title", "") or "",
@@ -3498,13 +3533,16 @@ def query_valifi():
         "previousPreviousAddress": previous_previous_address
     }
 
-    logger.info(f"Requesting Equifax report for {first_name} {last_name}")
+    logger.info(f"Requesting {bureau_label} report for {first_name} {last_name} (maxData={bool(max_data)})")
 
     # DEBUG: Log exactly what we're sending to Valifi
     import json
-    logger.info(f"Sending to Valifi: {json.dumps(payload, indent=2)[:500]}")
-    
-    result = valifi_client.get_credit_report(payload)
+    logger.info(f"Sending to Valifi ({bureau_label} {endpoint}): {json.dumps(payload, indent=2)[:500]}")
+
+    result = valifi_client.get_credit_report(payload, endpoint=endpoint, bureau=bureau_label)
+    # Tag which bureau produced this so the frontend/storage can distinguish.
+    if isinstance(result, dict):
+        result.setdefault("bureau", bureau_label)
     
     # Store the full credit report in MEMORY (not session - too large for cookies!)
     # We'll pass it through the frontend instead
@@ -3542,11 +3580,15 @@ def query_valifi():
         except Exception as e:
             logger.error(f"Failed to upload PDF to S3: {e}")
 
-    # Process summaryReportV2 if present
-    if report_data and report_data.get('summaryReportV2'):
-        summaryV2 = report_data['summaryReportV2']
-        if summaryV2.get('accounts'):
-            report_data['accounts'] = summaryV2['accounts']
+    # Surface accounts onto report_data regardless of bureau. Equifax nests them
+    # under summaryReportV2; TransUnion under summaryReport. Prefer V2, then
+    # summaryReport, but never clobber accounts already present.
+    if report_data and not report_data.get('accounts'):
+        for summ_key in ('summaryReportV2', 'summaryReport'):
+            summ = report_data.get(summ_key)
+            if isinstance(summ, dict) and summ.get('accounts'):
+                report_data['accounts'] = summ['accounts']
+                break
 
     accounts = report_data.get('accounts', [])
     
