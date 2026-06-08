@@ -1,0 +1,30 @@
+Valify
+
+sample site external
+ - put name / dob 
+ - post code
+ - agree tick
+ - continue (request  to vilify  - tell me what you can find from soft check)
+ - confirms address
+ - doesn't need KBA questions (verification) 
+ - looks for hp/lease/ etc
+ - sends back information only on motor finance
+ - might need to look for lender name e.g a list of lenders that are motor finance lenders (suitable - Chris to give me a long list) 
+ - pull all of the data for relevant 
+ - start balance / current balance
+ - cant do anything DCA after 28 January 2021 (google search)
+ - comma delimited 
+ - maybe look up on prior address? (chris to ask vilify)
+ - rules
+ 1) locates needed
+ 2) if locates and no HP / credit agreements (then there is a batch check to 2007) whereas the "live" does it only back 6 years - need to learn how to do batch returns
+ 3) go to FLG and then batch report then customer 
+3b) need FLG status - "Awaiting batch processing" and use this to trigger 4 if not found
+ 4) change status if no information "Status closed - no finance agreement" and then that alone triggers an email to client from FLG "Closed - No Lender Details (Pre Sub)"
+4b) if found in batch, and new not in data live, then need to create LeadIDs and with "pending consent" and that then sends an email
+ 5) need to e.g. have x3 lenders tick boxes in the DCA / irresponsible lending
+ 6) "Hidden commissions" / "Irresponsible lending" we can investigate as well
+ 7) hidden ones already ticked and greyed out and only require ticks "if we decide it is appropriate to look into irresponsible lending"
+ 8) and here 3 lead IDs going into DCA / irresponsible (FLG)
+ 9) see .txt from Liam
+10) add the 4 data items liam told me and a new catcha-all field

@@ -1,0 +1,718 @@
+{
+  "info": {
+    "_postman_id": "c7b805e7-8d3c-432d-b5da-4723916fa8bb",
+    "name": "Valifi Client Postman Collection",
+    "description": "Welcome to the **Valifi Platform Postman Collection**! This collection streamlines your integration with the Valifi Platform, providing easy access to our suite of APIs. With this collection, you can perform these key actions:\n\n1. **Authentication:** Securely access our APIs by authenticating your application through our pre-configured authentication flow for managing access tokens.\n    \n2. **OTP**: Verify that customers have possession of their stated mobile number.\n    \n3. **AML + Mobile ID:** Generate an AML Report before requesting a credit report, with optional mobile verification against bureau data.\n    \n4. **Requesting KBA Questions:** Access Knowledge-Based Authentication (KBA) questions for identity verification. These real-time questions provide robust and compliant verification.\n    \n5. **Requesting Equifax CZ Credit Reports:** Access comprehensive credit reports through our Equifax (CZ) API for financial assessments and claims management.\n    \n6. **Requesting TransUnion Credit Reports:** Access comprehensive credit reports through our TransUnion API for financial assessments and claims management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+    "_exporter_id": "27621989",
+    "_collection_link": ""
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "API Authenticate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "     var res = pm.response.json();",
+                  "       console.log(res.data)",
+                  "     if(res.data.useTwoFa){",
+                  "        console.log('set userId')",
+                  "        pm.environment.set('user_id', res.data.userId);",
+                  "    }",
+                  "    if(res.data.token){",
+                  "        pm.collectionVariables.set('access_token', res.data.token);",
+                  "    }",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": {
+                "password": "{{password}}",
+                "username": "{{username}}",
+                "showPassword": false
+              }
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/basic-auth",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "     var res = pm.response.json();",
+                  "    pm.environment.set('access_token', res.data.token);",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"otp\": \"546039\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/verify2Fa/{{user_id}}",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        }
+      ],
+      "description": "This endpoint uses **Basic Authentication** to retrieve an access token, which must be included in the header of all subsequent API requests for secure interaction with the Valifi Platform.\n\n#### Key Details:\n\n- **Authentication Method**: Basic Authentication using a username and password.\n    \n- **Token Expiry**: Tokens are time-limited and should be refreshed as needed.\n    \n- **Production Environment Requirements**:\n    \n    - **Two-Factor Authentication (2FA)**: Real users are required to complete 2FA by entering a verification code sent via SMS.\n        \n    - **IP Whitelisting**: API users must ensure their server's IP addresses are added to the whitelist for added security.\n        \n\nEnsure that tokens are stored securely and never shared or exposed publicly. Always follow best practices for secure authentication when integrating with the API."
+    },
+    {
+      "name": "Equifax Report & KBA",
+      "item": [
+        {
+          "name": "Get Equifax Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bureau/v1/equifax/cz-batch-timestamps?dateFrom=2025-03-01&dateTo=2025-05-01",
+              "host": ["{{base_url}}"],
+              "path": ["bureau", "v1", "equifax", "cz-batch-timestamps"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2025-03-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2025-05-01"
+                },
+                {
+                  "key": "id",
+                  "value": "322342",
+                  "disabled": true
+                },
+                {
+                  "key": "clientRef",
+                  "value": "test1",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Equifax CZ PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/bureau/v1/equifax/cz-pdf/6"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Existing Equifax CZ  Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bureau/v1/equifax/cz-report/10000?includeSummaryReport=true",
+              "host": ["{{base_url}}"],
+              "path": ["bureau", "v1", "equifax", "cz-report", "10000"],
+              "query": [
+                {
+                  "key": "includeSummaryReport",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request New Equifax CZ Report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    var res = pm.response.json();",
+                  "    if(res.data.id){",
+                  "        pm.collectionVariables.set('equifax_report_id', res.data.id);",
+                  "    }",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \t\"includeJsonReport\": false,\n    \t\"includePdfReport\": false,\n        \"includePdfSummaryReport\": false,\n        \"includeSummaryReport\": true,\n    \t\"clientReference\": \"test2\",\n    \t\"title\": \"\",\n    \t\"forename\": \"MIHAI-ADRI\",\n    \t\"middleName\": \"\",\n    \t\"surname\": \"SPOUGE\",\n    \t\"dateOfBirth\": \"1956-11-04\",\n    \t\"currentAddress\": {\n        \t\"flat\": null,\n        \t\"houseName\": null,\n        \t\"houseNumber\": \"14\",\n        \t\"street\": \"asas\",\n        \t\"street2\": null,\n        \t\"district\": null,\n        \t\"postTown\": \"\",\n        \t\"county\": null,\n       \t\"postCode\": \"CB6 1AS\"\n    \t},\n    \t\"previousAddress\": null,\n    \t\"previousPreviousAddress\": null\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/equifax/cz",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Request Postcode Lookup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "   //  var res = pm.response.json();",
+                  "  //  pm.collectionVariables.set('access_token', res.data.token);",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"clientReference\": \"test\",\n    \"postCode\" : \"BA13 3BN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/equifax/postcode-lookup",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Request KBA Questions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    var res = pm.response.json();",
+                  "    console.log(res)",
+                  "    pm.collectionVariables.set('authenticationId', res.authenticationId);",
+                  "    pm.collectionVariables.set('correlationId', res.correlationId);",
+                  "    pm.collectionVariables.set('questionnaireId', res.questions.questionnaireId);",
+                  "});",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \t\"clientReference\": \"myrefid\",\n    \t\"title\": \"Mr\",\n    \t\"forename\": \"ROSALIE\",\n    \t\"middleName\": \"\",\n    \t\"surname\": \"PARSONS\",\n    \t\"dateOfBirth\": \"1960-01-18\",\n    \t\"currentAddress\": {\n        \t\"flat\": null,\n        \t\"houseName\": null,\n        \t\"houseNumber\": \"318\",\n        \t\"street\": \"\",\n        \t\"street2\": null,\n        \t\"district\": null,\n        \t\"postTown\": \"ELY\",\n        \t\"county\": null,\n       \t\"postCode\": \"CB6 2AG\"\n    \t},\n    \t\"previousAddress\": null,\n    \t\"previousPreviousAddress\": null\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/equifax/identity-assurance",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit KBA Answers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "   //  var res = pm.response.json();",
+                  "  //  pm.collectionVariables.set('access_token', res.data.token);",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"correlationId\": \"{{correlationId}}\",\n     \"data\": {\n        \"kba\": {\n            \"authenticationId\": \"{{authenticationId}}\",\n            \"questionnaireId\":  \"{{questionnaireId}}\",\n            \"questionAnswers\": [\n                {\n                    \"questionId\": 1,\n                    \"answer\": [\n                       3\n                    ]\n                },\n                {\n                    \"questionId\": 2,\n                    \"answer\": [\n                        4\n                    ]\n                },\n                {\n                    \"questionId\": 3,\n                    \"answer\": [\n                        3\n                    ]\n                }\n            ]\n        }\n    }\n}\n\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/equifax/identity-assurance-result",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "TransUnion Report",
+      "item": [
+        {
+          "name": "Request New TransUnion Report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    var res = pm.response.json();",
+                  "    if(res.data.id){",
+                  "        pm.collectionVariables.set('transunion_report_id', res.data.id);",
+                  "    }",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "// This test customer will return automotive accounts. The surname must be AutomotiveFinance\n{\n    \"includeJsonReport\": true,\n    \"includePdfReport\": false,\n    \"includeSummaryReport\": true,\n    \"clientReference\": \"test\",\n    \"title\": \"Mr\" ,\n    \"forename\": \"Ensom\",\n    \"middleName\": \"\",\n    \"surname\": \"AutomotiveFinance\",\n    \"dateOfBirth\": \"1962-01-01\",\n    \"currentAddress\": {\n        \"flat\": \"1\",\n        \"street\": \"Fisher Street\",\n        \"postTown\": \"TEST TOWN\",\n       \t\"postCode\": \"X9 1WS\"\n    },\n     \"previousAddress\": null,\n     \"previousPreviousAddress\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/tu/report",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get TransUnion Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bureau/v1/tu/batch-timestamps?dateFrom=2025-03-01&dateTo=2025-05-01",
+              "host": ["{{base_url}}"],
+              "path": ["bureau", "v1", "tu", "batch-timestamps"],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "2025-03-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2025-05-01"
+                },
+                {
+                  "key": "id",
+                  "value": "322342",
+                  "disabled": true
+                },
+                {
+                  "key": "clientRef",
+                  "value": "test1",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Existing TransUnion Report",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bureau/v1/tu/report/{{transunion_report_id}}?includeSummaryReport=true",
+              "host": ["{{base_url}}"],
+              "path": [
+                "bureau",
+                "v1",
+                "tu",
+                "report",
+                "{{transunion_report_id}}"
+              ],
+              "query": [
+                {
+                  "key": "includeSummaryReport",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mobile OTP",
+      "item": [
+        {
+          "name": "Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"mobile\":\"{{mobile_number}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/otp/v1/request"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n   \"mobile\":\"{{mobile_number}}\",\r\n   \"code\":\"187123\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/otp/v1/verify"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AML & Mobile ID",
+      "item": [
+        {
+          "name": "Request AML & Mobile ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successful POST request\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "    var res = pm.response.json();",
+                  "    if(res.data.id){",
+                  "        pm.collectionVariables.set('validate_report_id', res.data.id);",
+                  "    }",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [""],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"includeJsonReport\": true,\n    \"includeMobileId\": true,\n    \"clientReference\": \"test2\",\n    \"title\": \"Mr\" ,\n    \"forename\": \"JOHN\",\n    \"middleName\": \"\",\n    \"surname\": \"FERRARI\",\n    \"dateOfBirth\": \"13/10/1944\",\n    \"mobileNumber\": \"07123456780\",\n    \"currentAddress\": {\n        \"flat\": \"17\",\n        \"street\": \"TOP GEAR LANE\",\n        \"postTown\": \"TEST TOWN\",\n       \t\"postCode\": \"X9 9LF\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/bureau/v1/tu/validate",
+            "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Existing AML & Mobile ID",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/bureau/v1/tu/validate/{{validate_report_id}}?includeJsonReport=true",
+              "host": ["{{base_url}}"],
+              "path": [
+                "bureau",
+                "v1",
+                "tu",
+                "validate",
+                "{{validate_report_id}}"
+              ],
+              "query": [
+                {
+                  "key": "includeJsonReport",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": {
+      "token": "{{access_token}}"
+    }
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "id",
+      "value": ""
+    },
+    {
+      "key": "base_url",
+      "value": "https://staging-app.valifi.click"
+    },
+    {
+      "key": "username",
+      "value": "info@youremail.com",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "yourPassword",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "authenticationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correlationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionnaireId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "equifax_report_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transunion_report_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mobile_number",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "validate_report_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+can we change this code so that if there are any +VE values in relation to either:
+
+gambling / credit commitments t hat they arent counted in the summary tables below (the +ves are categorised as other in the summary table even if categorised as credit commitments with 100% in the categorisation)
+
+this is to ensure that any e.g. loans received dont offset actual repayments (it is the repayment commitments we are interested in)
+
+also i want the code to attempt to marry up any direct debits that were then revered in the same day
+
+the code should look for key words for direct debits being returned (ie +Ve amounts into account) with key phrases "reversed DD" "reversed payment" "bounced DD" "bounced direct debit" "unpaid DD",  "unp" or "unpaid direct debit" (it is only when it is a +Ve) and it needs to be treated as:
+
+1. match this against ON THE SAME DAY / SAME AMOUNT BUT -ve then it is the same categorisation as the other payment (they are linked together in hte data)
+
+2. can we have a new section before the summary results that covers these direct debits that have bounced so that the user can confirm treatmnet manually etc
+
+3. i dont want to count the +VE amounts in the summary (similar to gambling or credit commitments) - the payment comitment for the original DD should remain and not be cancelled just cos user didnt pay it (+VE would otherwise offset the -ve)
+
+4. there is a chance however that e.g. a single payment with the same description (e.g. "netflix" ot "sky" is tried several times in a month (so in this instance i want to only count the -ve once if the other instances also have bounded DDs asssociated) - logic im trying to capture here is if D tried 5 times and bounces 5 times, the commitment is only one of those payments in the month not 5
+
+5. opnly exception to 4 is if the DD is weekly as some services could be weekly (but only allow this counting only 1 where others exist where associated bounced DDs are linked to earlier attempts
+
+as i said build this in but introdcued the new area (800 pixel width for now) for me to be able to build a user interface to verfiy or not  these treatemens
