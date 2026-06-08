@@ -532,15 +532,47 @@ Or from Excel column:
     }
 
     // ===== CSV Handling =====
+    // Map friendly/variant CSV headers to the internal snake_case keys the tool
+    // uses, so files like "First name", "Date of birth (day)", "Phone number",
+    // "Email address", "flat_number" all load without renaming columns.
+    const HEADER_ALIASES = {
+        first_name: "first_name", firstname: "first_name", forename: "first_name", first: "first_name",
+        last_name: "last_name", lastname: "last_name", surname: "last_name", last: "last_name",
+        title: "title", middle_name: "middle_name", middlename: "middle_name",
+        date_of_birth_day: "dob_day", dob_day: "dob_day", birth_day: "dob_day", day_of_birth: "dob_day", dob_d: "dob_day",
+        date_of_birth_month: "dob_month", dob_month: "dob_month", birth_month: "dob_month", month_of_birth: "dob_month", dob_m: "dob_month",
+        date_of_birth_year: "dob_year", dob_year: "dob_year", birth_year: "dob_year", year_of_birth: "dob_year", dob_y: "dob_year",
+        email_address: "email", email: "email", e_mail: "email", emailaddress: "email",
+        phone_number: "mobile", phone: "mobile", mobile_number: "mobile", mobile: "mobile",
+        telephone: "mobile", tel: "mobile", contact_number: "mobile", phonenumber: "mobile",
+        flat_number: "flat", flat: "flat", flat_no: "flat", flatnumber: "flat",
+        building_number: "building_number", house_number: "building_number", building_no: "building_number", house_no: "building_number",
+        building_name: "building_name", house_name: "building_name",
+        street: "street", address_line_1: "street", address1: "street", address: "street", street_name: "street",
+        district: "district", county: "county",
+        post_town: "post_town", town: "post_town", city: "post_town", towncity: "post_town", town_city: "post_town",
+        post_code: "post_code", postcode: "post_code", zip: "post_code", postal_code: "post_code"
+    };
+
+    function normalizeHeader(h) {
+        // lower-case, collapse any run of non-alphanumerics to "_", trim "_" (also strips BOM)
+        const key = (h || "").toString().trim().toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+        // Pass prev1_*/prev2_* through untouched; alias known names; else keep normalized key.
+        if (/^prev[12]_/.test(key)) return key;
+        return HEADER_ALIASES[key] || key;
+    }
+
     document.getElementById("csvFile").addEventListener("change", function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         document.getElementById("fileInfo").textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        
+
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
+            transformHeader: normalizeHeader,
             complete: function(results) {
                 records = results.data.filter(r => r.first_name && r.last_name);
                 log(`Loaded ${records.length} valid records from CSV`);
