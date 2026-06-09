@@ -1118,6 +1118,29 @@ Or from Excel column:
         return e.slice(0, 100);
     }
 
+    // Trigger a browser download from an in-memory blob (reliable on file:// pages).
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    }
+
+    // Plain CSV builder for the fallback path (no library needed).
+    function toCSV(rows) {
+        if (!rows || !rows.length) return "";
+        const cols = Object.keys(rows[0]);
+        const esc = v => {
+            if (v === null || v === undefined) v = "";
+            else if (typeof v === "object") v = JSON.stringify(v);
+            v = String(v);
+            return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        };
+        return cols.join(",") + "\n" + rows.map(r => cols.map(c => esc(r[c])).join(",")).join("\n");
+    }
+
     function exportToExcel() {
         try {
             if (typeof XLSX === "undefined") {
@@ -1197,14 +1220,28 @@ Or from Excel column:
 
             const timestamp = new Date().toISOString().split("T")[0];
             const filename = `batch_export_${timestamp}.xlsx`;
-            XLSX.writeFile(wb, filename);
+            // Write to an array buffer and download via Blob — more reliable than
+            // XLSX.writeFile when the page is opened as a local file (file://).
+            const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+            downloadBlob(new Blob([wbout], { type: "application/octet-stream" }), filename);
 
             log(`Excel file downloaded: ${filename}`, "success");
             log(`  - Sheets: Summary, Batch Results (${exportData.length}), Needs Attention (${attentionRows.length})`);
         } catch (err) {
-            log(`Excel export FAILED: ${err && err.message ? err.message : err}`, "error");
+            const msg = (err && err.message) ? err.message : String(err);
+            log(`Excel export FAILED: ${msg}`, "error");
             console.error("Excel export error:", err);
-            alert("Excel export failed: " + (err && err.message ? err.message : err));
+            // Guaranteed fallback: download the data as CSV even if XLSX is broken/missing.
+            try {
+                if (exportData.length > 0) {
+                    const ts = new Date().toISOString().split("T")[0];
+                    downloadBlob(new Blob([toCSV(exportData.map(sanitizeRow))], { type: "text/csv;charset=utf-8" }), `batch_export_${ts}.csv`);
+                    log("Fell back to CSV export — your data downloaded as batch_export_*.csv (Excel failed).", "warn");
+                }
+            } catch (csvErr) {
+                log(`CSV fallback also failed: ${(csvErr && csvErr.message) ? csvErr.message : csvErr}`, "error");
+            }
+            alert("Excel export failed: " + msg + (exportData.length ? "\n\nA CSV was downloaded instead." : ""));
         }
     }
 
