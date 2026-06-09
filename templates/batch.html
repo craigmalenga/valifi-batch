@@ -381,6 +381,8 @@ Or from Excel column:
     
     // Data for Excel export - one row per Lead ID
     let exportData = [];
+    // Per-case results (one per record) — module-scoped so exportToExcel/renderResults can read them
+    let results = [];
 
     // ===== Utilities =====
     function log(msg, level = "info") {
@@ -650,7 +652,7 @@ Or from Excel column:
         log(`skipFLG: true (no FLG API calls)`);
         log("─".repeat(50));
         
-        const results = [];
+        results = [];          // reset module-scoped results for this run (exportData reset above)
         const campaign = `batch_import_${new Date().toISOString().split("T")[0]}`;
         const batchTimestamp = new Date().toISOString();
         
@@ -1095,10 +1097,13 @@ Or from Excel column:
     function sanitizeRow(obj) {
         const out = {};
         for (const k in obj) {
-            const v = obj[k];
-            if (v === null || v === undefined) out[k] = "";
-            else if (typeof v === "object") out[k] = JSON.stringify(v);
-            else out[k] = v;
+            let v = obj[k];
+            if (v === null || v === undefined) v = "";
+            else if (typeof v === "object") v = JSON.stringify(v);
+            // Excel hard-limits a cell to 32767 chars; a big lender_data_json blob
+            // can exceed that and make the whole write throw. Truncate to be safe.
+            if (typeof v === "string" && v.length > 32760) v = v.slice(0, 32760) + "…[truncated]";
+            out[k] = v;
         }
         return out;
     }
@@ -1131,7 +1136,10 @@ Or from Excel column:
     // Plain CSV builder for the fallback path (no library needed).
     function toCSV(rows) {
         if (!rows || !rows.length) return "";
-        const cols = Object.keys(rows[0]);
+        // Union all keys so rows of differing shape (e.g. results) keep every column.
+        const colSet = new Set();
+        rows.forEach(r => Object.keys(r).forEach(k => colSet.add(k)));
+        const cols = [...colSet];
         const esc = v => {
             if (v === null || v === undefined) v = "";
             else if (typeof v === "object") v = JSON.stringify(v);
@@ -1231,17 +1239,22 @@ Or from Excel column:
             const msg = (err && err.message) ? err.message : String(err);
             log(`Excel export FAILED: ${msg}`, "error");
             console.error("Excel export error:", err);
-            // Guaranteed fallback: download the data as CSV even if XLSX is broken/missing.
+            // Guaranteed fallback: download SOMETHING as CSV even if XLSX is broken.
+            // Prefer the per-lead export rows; if there are none (all-failure run),
+            // fall back to the per-case results so you still get the failure list.
+            let didCsv = false;
             try {
-                if (exportData.length > 0) {
+                const fbRows = (exportData.length > 0 ? exportData : results).map(sanitizeRow);
+                if (fbRows.length > 0) {
                     const ts = new Date().toISOString().split("T")[0];
-                    downloadBlob(new Blob([toCSV(exportData.map(sanitizeRow))], { type: "text/csv;charset=utf-8" }), `batch_export_${ts}.csv`);
+                    downloadBlob(new Blob([toCSV(fbRows)], { type: "text/csv;charset=utf-8" }), `batch_export_${ts}.csv`);
                     log("Fell back to CSV export — your data downloaded as batch_export_*.csv (Excel failed).", "warn");
+                    didCsv = true;
                 }
             } catch (csvErr) {
                 log(`CSV fallback also failed: ${(csvErr && csvErr.message) ? csvErr.message : csvErr}`, "error");
             }
-            alert("Excel export failed: " + msg + (exportData.length ? "\n\nA CSV was downloaded instead." : ""));
+            alert("Excel export failed: " + msg + (didCsv ? "\n\nA CSV was downloaded instead." : ""));
         }
     }
 
