@@ -829,14 +829,16 @@ Or from Excel column:
                 const claimId = uploadResult.claim_id || "?";
                 const leadIds = uploadResult.lead_ids || [];
                 const valifiJsonReference = uploadResult.valifi_json_reference || "";
-                
-                // Parse valifi reference to extract S3 URL and CMC info
-                let creditReportS3Url = "";
+
+                // credit_report_s3_url comes straight from the backend (the
+                // claims_tracking column). Fall back to the s3_url inside the
+                // reference if the explicit field isn't present.
+                let creditReportS3Url = uploadResult.credit_report_s3_url || "";
                 let cmcSearchFound = "";
                 try {
                     if (valifiJsonReference) {
                         const parsed = JSON.parse(valifiJsonReference);
-                        creditReportS3Url = parsed.s3_url || "";
+                        if (!creditReportS3Url) creditReportS3Url = parsed.s3_url || "";
                         cmcSearchFound = parsed.cmc_search_found || false;
                     }
                 } catch (e) {
@@ -976,6 +978,10 @@ Or from Excel column:
                         flg_data9_account_number: isDCA ? lead.account_number : "",
                         flg_data12_start_date: isDCA ? formatDateDDMMYYYY(lead.start_date) : "",
                         flg_data14_prev_addresses: isDCA ? prevAddressesFormatted : "",
+                        // Clearly-named FLG fields: data32 (DCA) / data36 (IRL) carry the
+                        // credit_report_reference value (its s3_url == credit_report_s3_url).
+                        data32: isDCA ? valifiJsonReference : "",
+                        data36: !isDCA ? valifiJsonReference : "",
                         flg_data32_valifi_json_url: isDCA ? valifiJsonReference : "",
                         flg_data34_account_json: isDCA ? (lead.lender_data_json || "") : "",
                         flg_data47_cmc_info: "",

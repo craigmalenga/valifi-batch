@@ -4188,6 +4188,12 @@ def upload_summary():
             response_data["successful_leads"] = flg_result.get("successful_leads", 0)
             response_data["failed_leads"] = flg_result.get("failed_leads", 0)
             response_data["valifi_json_reference"] = flg_result.get("valifi_json", "")
+            # Expose the stored credit-report S3 URL (claims_tracking.credit_report_s3_url),
+            # which is also the s3_url embedded in the data32/data36 reference.
+            try:
+                response_data["credit_report_s3_url"] = json.loads(flg_result.get("valifi_json", "") or "{}").get("s3_url", "")
+            except Exception:
+                response_data["credit_report_s3_url"] = ""
 
         return jsonify(response_data), 200
     
