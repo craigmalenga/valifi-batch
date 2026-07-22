@@ -1,0 +1,3 @@
+lead_id,found,type,pages,full_name,lender,signature_present,name_present,dob_present,address_present,lender_present,data7_existed_before,ready,missing_fields,generated,data7_url,flg_data7_updated,error
+228277220,yes,IRL,2,NOMO TESTIN,TESTCO1,yes,yes,yes,yes,yes,yes,yes,,yes,https://belmond-claims-document-storage.s3.eu-west-2.amazonaws.com/belmond-pdf-storage/Other%2BLenders/228277220-NOMO-TESTIN-22-07-2026-495173be9e-up.pdf,yes,
+228277219,yes,DCA,4,NOMO TESTIN,TESTCO1,yes,yes,yes,yes,yes,yes,yes,,yes,https://belmond-claims-document-storage.s3.eu-west-2.amazonaws.com/belmond-pdf-storage/Other%2BLenders/228277219-NOMO-TESTIN-22-07-2026-41434509f9-up.pdf,yes,
