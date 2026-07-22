@@ -3157,6 +3157,16 @@ def serve_js(filename):
     js_dir = os.path.join(app.root_path, 'js')
     return send_from_directory(js_dir, filename)
 
+@app.route('/batch')
+@app.route('/batch.html')
+def serve_batch_tool():
+    """Serve the batch runner GUI (templates/batch.html) as a raw file.
+    The tool's backend calls (/query, /upload_summary) remain IP-whitelisted,
+    so exposing the static UI here is safe."""
+    import os
+    templates_dir = os.path.join(app.root_path, 'templates')
+    return send_from_directory(templates_dir, 'batch.html')
+
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     """Serve static files with proper MIME types"""
